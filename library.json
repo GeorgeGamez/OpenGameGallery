@@ -1,0 +1,74 @@
+{
+  "games": [
+    {
+      "id": "chess",
+      "name": "Chess",
+      "type": "board",
+      "page": "chess/chess.html",
+      "description": "The classic two-player strategy game of kings, queens, and tactical manoeuvring.",
+      "image": "images/cover/chess.jpg",
+      "categories": ["board", "strategy"],
+      "searchTerms": [],
+      "players": {
+        "min": 2,
+        "max": 4
+      },
+      "variants": [
+        {
+          "id": "standard",
+          "name": "Standard Chess",
+          "players": {
+            "min": 2,
+            "max": 2
+          }
+        },
+        {
+          "id": "chess960",
+          "name": "Chess960",
+          "players": {
+            "min": 2,
+            "max": 2
+          }
+        },
+        {
+          "id": "grand",
+          "name": "Grand Chess",
+          "players": {
+            "min": 2,
+            "max": 2
+          }
+        },
+        {
+          "id": "shako",
+          "name": "Shako",
+          "players": {
+            "min": 2,
+            "max": 2
+          }
+        },
+        {
+          "id": "threeman",
+          "name": "3-Player Chess",
+          "players": {
+            "min": 3,
+            "max": 3
+          }
+        },
+        {
+          "id": "fourplayer",
+          "name": "4-Player Chess",
+          "players": {
+            "min": 4,
+            "max": 4
+          }
+        }
+      ],
+      "capabilities": {
+        "local": true,
+        "online": false,
+        "computer": true
+      },
+      "options": {}
+    }
+  ]
+}
