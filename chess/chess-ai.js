@@ -1,3 +1,5 @@
+"use strict";
+
 const ChessAI = (() => {
   const PIECE_VALUES = {
     p: 100,
