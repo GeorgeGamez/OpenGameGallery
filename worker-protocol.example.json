@@ -1,0 +1,49 @@
+{
+  "createRoomRequest": {
+    "hostName": "George",
+    "hostAvatar": "🎮",
+    "config": {
+      "game": "chess",
+      "variant": "standard",
+      "localPlayers": 1,
+      "onlinePlayers": 1,
+      "computerPlayers": 0,
+      "computerDifficulties": {},
+      "playerOrder": ["local:0", "online:0"],
+      "spectatorPlayers": [],
+      "options": {}
+    }
+  },
+  "webSocketMessages": [
+    {
+      "type": "player:identify",
+      "name": "George",
+      "avatar": "🎮",
+      "profileId": "p_example",
+      "spectator": false
+    },
+    {
+      "type": "room:config",
+      "config": {}
+    },
+    {
+      "type": "player:spectator",
+      "spectator": true
+    },
+    {
+      "type": "game:start"
+    },
+    {
+      "type": "game:move",
+      "payload": {}
+    },
+    {
+      "type": "game:state",
+      "state": {}
+    },
+    {
+      "type": "game:event",
+      "payload": {}
+    }
+  ]
+}
