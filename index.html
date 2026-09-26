@@ -1147,7 +1147,8 @@
 
       // Replace this placeholder with the HTTPS URL Cloudflare gave your Worker.
       // Example: https://game-library-server.your-name.workers.dev
-      const ONLINE_SERVER_URL = "opengamegallery.george-arps.workers.dev";
+      const ONLINE_SERVER_URL =
+        "https://opengamegallery.george-arps.workers.dev/";
 
       let games = [];
       let selectedGame = null;
@@ -2405,9 +2406,15 @@
         try {
           closeOnlineSocket();
 
+          /*
+           * text/plain is a CORS-safelisted Content-Type, so this initial POST
+           * does not trigger an OPTIONS preflight in browsers. The Worker still
+           * parses the body with request.json(). The server also supports OPTIONS
+           * for future requests that genuinely need a preflight.
+           */
           const response = await fetch(onlineHttpUrl("/api/rooms"), {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "text/plain;charset=UTF-8" },
             body: JSON.stringify({
               hostName: profiles[0]?.name || "Host",
               hostAvatar: profiles[0]?.avatar || "♟",
@@ -2417,7 +2424,13 @@
             }),
           });
 
-          const data = await response.json().catch(() => ({}));
+          const raw = await response.text();
+          let data = {};
+          try {
+            data = raw ? JSON.parse(raw) : {};
+          } catch {
+            data = { error: raw };
+          }
           if (!response.ok)
             throw new Error(
               data.error || `Server returned HTTP ${response.status}.`,
