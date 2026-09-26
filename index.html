@@ -486,7 +486,7 @@
 
     .profile-row{
       display:grid;
-      grid-template-columns:auto 1fr auto;
+      grid-template-columns:auto 1fr auto auto;
       align-items:center;
       gap:10px;
       padding:9px 10px;
@@ -745,6 +745,113 @@
       cursor:pointer;
     }
 
+    .profile-row .profile-remove{
+      color:var(--muted);
+      background:none;
+      border:0;
+      cursor:pointer;
+      font-size:16px;
+      padding:4px 6px;
+    }
+
+    .profile-row .profile-remove:disabled{
+      opacity:.35;
+      cursor:not-allowed;
+    }
+
+    .online-group-box{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      padding:12px;
+      background:var(--panel2);
+      border:1px solid var(--border);
+      border-radius:8px;
+    }
+
+    .online-group-row{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:8px;
+      align-items:center;
+    }
+
+    .online-code-display{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:9px 10px;
+      background:#1d2027;
+      border:1px solid var(--border);
+      border-radius:6px;
+    }
+
+    .online-code{
+      font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+      font-size:20px;
+      font-weight:800;
+      letter-spacing:4px;
+      color:var(--accent);
+    }
+
+    .online-group-input{
+      width:100%;
+      color:var(--text);
+      background:#1d2027;
+      border:1px solid var(--border);
+      border-radius:6px;
+      padding:8px 9px;
+      font:inherit;
+      text-transform:uppercase;
+      letter-spacing:2px;
+    }
+
+    .online-disabled-note{
+      color:var(--muted);
+      font-size:11px;
+      line-height:1.45;
+    }
+
+    .online-disabled-note strong{color:var(--text)}
+
+    .spectator-list{
+      display:flex;
+      flex-direction:column;
+      gap:7px;
+      margin-top:9px;
+    }
+
+    .spectator-row{
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      gap:9px;
+      padding:8px 9px;
+      background:var(--panel2);
+      border:1px solid var(--border);
+      border-radius:7px;
+    }
+
+    .spectator-row.is-spectator{opacity:.55}
+
+    .spectator-state{
+      color:var(--muted);
+      font-size:10px;
+    }
+
+    .spectator-remove{
+      width:27px;
+      height:27px;
+      color:var(--text);
+      background:#353a45;
+      border:1px solid var(--border);
+      border-radius:5px;
+      cursor:pointer;
+      font-size:16px;
+      line-height:1;
+    }
+
     .online-note{
       margin-top:14px;
       padding:11px;
@@ -822,53 +929,48 @@
 
   <div class="player-panel-body">
     <div class="setup-section">
-      <h3>Local profiles</h3>
+      <h3>Local players &amp; profiles</h3>
       <div class="player-summary">
-        Create profiles once and reuse them across different games.
+        Each profile is a local player. Adding a profile adds a local player; removing a profile removes that player from the local player list.
       </div>
       <div id="profileList" class="profile-list"></div>
       <button id="addProfile" class="small-button primary" type="button" style="margin-top:10px;width:100%;">
-        + Add profile
+        + Add profile / local player
       </button>
       <div id="profileEditorContainer"></div>
     </div>
 
     <div class="setup-section">
-      <h3>Players in this session</h3>
-      <div class="player-count-control">
-        <div class="player-count-label">
-          <strong>Local players</strong>
-          <span>Profiles using this device.</span>
+      <h3>Online group</h3>
+      <div class="online-group-box">
+        <div class="online-group-row">
+          <button id="requestOnlineCode" class="small-button primary" type="button">Request online code</button>
+          <span id="onlineCodeStatus" class="profile-type">Not connected</span>
         </div>
-        <button id="localMinus" class="count-button" type="button">−</button>
-        <strong id="localCount">1</strong>
-        <button id="localPlus" class="count-button" type="button">+</button>
-      </div>
-      <div id="localPlayerList" class="player-list"></div>
-    </div>
-
-    <div class="setup-section">
-      <h3>Online players</h3>
-      <div class="player-count-control">
-        <div class="player-count-label">
-          <strong>Online player slots</strong>
-          <span>Reserved for players who will connect online.</span>
+        <div id="onlineCodeDisplay" class="online-code-display" hidden>
+          <span class="profile-type">Host code</span>
+          <span id="onlineCode" class="online-code">----</span>
         </div>
-        <button id="onlineMinus" class="count-button" type="button">−</button>
-        <strong id="onlineCount">0</strong>
-        <button id="onlinePlus" class="count-button" type="button">+</button>
-      </div>
-      <div id="onlinePlayerList" class="player-list"></div>
-      <div class="online-note">
-        Online slots remain placeholders for now. They can later become
-        invitations or connected profiles without changing the game setup.
+        <div class="online-group-row">
+          <input id="joinOnlineCode" class="online-group-input" type="text" inputmode="numeric" maxlength="4" placeholder="Enter 4-digit code" aria-label="Online group code" />
+          <button id="joinOnlineGroup" class="small-button" type="button">Join</button>
+        </div>
+        <label class="toggle-option" style="margin:0;">
+          <span class="toggle-label">Host computer players for the group</span>
+          <span class="toggle-switch">
+            <input id="hostComputerPlayers" type="checkbox" checked />
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+        <div class="online-disabled-note">
+          <strong>Online networking is staged for now.</strong> The code and host setting are stored locally so the menu is ready for Cloudflare, but they do not connect browsers yet. Once the server is configured, the host's game, player order, computer players, and settings can be sent to everyone in the group.
+        </div>
       </div>
     </div>
 
     <div class="setup-section">
       <div class="player-summary">
-        <strong id="totalPlayerCount">1 player</strong> currently configured.
-        Computer players are chosen separately for each game and can be adjusted without changing your profiles.
+        <strong id="totalPlayerCount">1 local player</strong> currently configured. Online players will be added when online networking is enabled.
       </div>
     </div>
   </div>
@@ -908,16 +1010,14 @@ const playersTab = document.getElementById("playersTab");
 const playerPanel = document.getElementById("playerPanel");
 const closePlayersButton = document.getElementById("closePlayers");
 
-const localMinus = document.getElementById("localMinus");
-const localPlus = document.getElementById("localPlus");
-const localCountEl = document.getElementById("localCount");
-const localPlayerList = document.getElementById("localPlayerList");
-
-const onlineMinus = document.getElementById("onlineMinus");
-const onlinePlus = document.getElementById("onlinePlus");
-const onlineCountEl = document.getElementById("onlineCount");
-const onlinePlayerList = document.getElementById("onlinePlayerList");
 const totalPlayerCountEl = document.getElementById("totalPlayerCount");
+const requestOnlineCodeButton = document.getElementById("requestOnlineCode");
+const onlineCodeStatus = document.getElementById("onlineCodeStatus");
+const onlineCodeDisplay = document.getElementById("onlineCodeDisplay");
+const onlineCodeEl = document.getElementById("onlineCode");
+const joinOnlineCodeInput = document.getElementById("joinOnlineCode");
+const joinOnlineGroupButton = document.getElementById("joinOnlineGroup");
+const hostComputerPlayers = document.getElementById("hostComputerPlayers");
 
 let games = [];
 let selectedGame = null;
@@ -936,25 +1036,21 @@ const AVATARS = [
   "◆","●","▲","■","☀","☾","⚙","🎮"
 ];
 
-const PLAYER_STATE_STORAGE_KEY = "gameLibraryPlayerState";
-
-function loadSavedLocalPlayerCount(){
-  try{
-    const saved = JSON.parse(localStorage.getItem(PLAYER_STATE_STORAGE_KEY) || "null");
-    if(saved && Number.isInteger(saved.local)) return Math.max(1, saved.local);
-  }catch(error){
-    console.warn("Could not load saved player count:", error);
-  }
-  return 1;
-}
-
 const playerState = {
   local: 1,
   online: 0
 };
 
+const onlineState = {
+  code: localStorage.getItem("gameLibraryOnlineCode") || "",
+  joinedCode: "",
+  hostComputers: localStorage.getItem("gameLibraryHostComputers") !== "false"
+};
+
+let spectatorTokens = new Set();
+
 let profiles = loadProfiles();
-playerState.local = Math.min(loadSavedLocalPlayerCount(), Math.max(1, profiles.length));
+playerState.local = Math.max(1, profiles.length);
 let editingProfileId = null;
 
 function loadProfiles(){
@@ -976,12 +1072,6 @@ function loadProfiles(){
 
 function saveProfiles(){
   localStorage.setItem("gameLibraryProfiles", JSON.stringify(profiles));
-}
-
-function savePlayerState(){
-  localStorage.setItem(PLAYER_STATE_STORAGE_KEY, JSON.stringify({
-    local: playerState.local
-  }));
 }
 
 function createId(){
@@ -1244,7 +1334,14 @@ function sessionPlayerEntries(){
 }
 
 function normalizePlayerOrder(){
-  const entries = sessionPlayerEntries();
+  /*
+   * Spectators are configured players, but they are not active seats for
+   * this game. Keep them completely out of the turn-order list. If a
+   * spectator later returns, they will be appended as a new active entry.
+   */
+  const entries = sessionPlayerEntries().filter(
+    entry => !spectatorTokens.has(entry.token)
+  );
   const valid = new Set(entries.map(entry => entry.token));
   const normalized = playerOrder.filter(token => valid.has(token));
 
@@ -1258,7 +1355,9 @@ function normalizePlayerOrder(){
 }
 
 function resetPlayerOrder(){
-  playerOrder = sessionPlayerEntries().map(entry => entry.token);
+  playerOrder = sessionPlayerEntries()
+    .filter(entry => !spectatorTokens.has(entry.token))
+    .map(entry => entry.token);
 }
 
 function movePlayerOrder(index, direction){
@@ -1276,7 +1375,9 @@ function renderPlayerOrder(section){
   normalizePlayerOrder();
 
   const entries = new Map(
-    sessionPlayerEntries().map(entry => [entry.token, entry])
+    sessionPlayerEntries()
+      .filter(entry => !spectatorTokens.has(entry.token))
+      .map(entry => [entry.token, entry])
   );
 
   const list = document.createElement("div");
@@ -1379,6 +1480,7 @@ function openGameSetup(game){
   for(let i = 0; i < computerCount; i++) {
     computerDifficulties[`computer:${i}`] = "normal";
   }
+  spectatorTokens = new Set();
   resetPlayerOrder();
 
   renderSetupDrawer();
@@ -1400,6 +1502,18 @@ function renderSetupDrawer(){
 
   const variant = getVariant(selectedGame, selectedVariant);
   const range = getPlayerRange(selectedGame, variant);
+
+  /*
+   * The computer range is based on active humans only. If spectators reduce
+   * the active human count below the variant minimum, automatically supply
+   * enough computers to make the setup capable of satisfying that minimum.
+   * This is what allows, for example, 4 configured profiles with 3
+   * spectators to become 1 active human + 1 computer in a 2-player game.
+   */
+  const computerMin = getComputerMinimum(selectedGame, variant);
+  const computerMax = getComputerMaximum(selectedGame, variant);
+  computerCount = Math.max(computerCount, computerMin);
+  computerCount = Math.min(computerCount, computerMax);
 
   drawerGameName.textContent = selectedGame.name;
   drawerGameDescription.textContent =
@@ -1480,16 +1594,60 @@ function renderSetupDrawer(){
   const playerSummary = document.createElement("div");
   playerSummary.className = "player-summary";
 
-  const humanCount = playerState.local + playerState.online;
-  const totalCount = humanCount + computerCount;
+  const configuredCount = sessionPlayerEntries().length;
+  const activeCount = getActiveSessionEntries().length;
+  const spectatorCount = configuredCount - activeCount;
 
   playerSummary.innerHTML =
-    `<strong>${totalCount} player${totalCount === 1 ? "" : "s"}</strong> ` +
-    `configured: ${playerState.local} local, ${playerState.online} online, ` +
-    `${computerCount} computer${computerCount === 1 ? "" : "s"}. ` +
-    `The Players tab at the top controls local and online players.`;
+    `<strong>${activeCount} active player${activeCount === 1 ? "" : "s"}</strong> ` +
+    `of ${configuredCount} configured` +
+    (spectatorCount ? ` (${spectatorCount} spectator${spectatorCount === 1 ? "" : "s"})` : "") +
+    `.`;
 
   playerSection.append(playerHeading, playerSummary);
+
+  const spectatorList = document.createElement("div");
+  spectatorList.className = "spectator-list";
+
+  for(const entry of sessionPlayerEntries()){
+    const isSpectator = spectatorTokens.has(entry.token);
+
+    const row = document.createElement("div");
+    row.className = "spectator-row" + (isSpectator ? " is-spectator" : "");
+
+    const avatar = document.createElement("div");
+    avatar.className = "profile-avatar";
+    avatar.textContent = entry.avatar;
+
+    const info = document.createElement("div");
+    const name = document.createElement("strong");
+    name.textContent = `${entry.label} — ${entry.name}`;
+    const state = document.createElement("div");
+    state.className = "spectator-state";
+    state.textContent = isSpectator ? "Spectator for this game" : entry.type;
+    info.append(name, state);
+
+    const remove = document.createElement("button");
+    remove.className = "spectator-remove";
+    remove.type = "button";
+    remove.textContent = isSpectator ? "↩" : "×";
+    remove.title = isSpectator ? "Return player to the game" : "Make spectator for this game";
+    remove.addEventListener("click", () => {
+      if(isSpectator) spectatorTokens.delete(entry.token);
+      else spectatorTokens.add(entry.token);
+      normalizePlayerOrder();
+      renderSetupDrawer();
+    });
+
+    row.append(avatar, info, remove);
+    spectatorList.appendChild(row);
+  }
+
+  const spectatorHelp = document.createElement("div");
+  spectatorHelp.className = "range-help";
+  spectatorHelp.textContent = "Use × to make a configured player a spectator for this game only. ↩ returns them without changing the player list.";
+
+  playerSection.append(spectatorList, spectatorHelp);
   setupBody.appendChild(playerSection);
 
   /* Player order */
@@ -1503,7 +1661,7 @@ function renderSetupDrawer(){
   const orderHelp = document.createElement("div");
   orderHelp.className = "range-help";
   orderHelp.textContent =
-    "The order below determines whose turn slot comes next. Use ↑ and ↓ to rearrange players.";
+    "The order below determines whose turn slot comes next. Spectators are omitted. Use ↑ and ↓ to rearrange active players.";
 
   const orderSummary = document.createElement("div");
   orderSummary.className = "player-summary";
@@ -1575,7 +1733,7 @@ function renderSetupDrawer(){
   help.textContent =
     `Allowed for ${variant?.name || "this variant"}: ` +
     `${slider.min}–${slider.max} computer players. ` +
-    `Total players must remain within ${range.min}–${range.max}.`;
+    `Spectators do not use player slots; total active players must remain within ${range.min}–${range.max}.`;
 
   rangeMain.append(rangeLabel, slider, help);
   rangeRow.appendChild(rangeMain);
@@ -1636,31 +1794,43 @@ function renderSetupDrawer(){
    * Keep the Play button usable only when the total number of players
    * satisfies the selected variant.
    */
-  const total = playerState.local + playerState.online + computerCount;
+  const total = getActiveSessionEntries().length;
   setupPlayButton.disabled = total < range.min || total > range.max;
   setupPlayButton.title = setupPlayButton.disabled
     ? `This variant requires ${range.min}–${range.max} players.`
     : "";
 }
 
+function getActiveSessionEntries(){
+  return sessionPlayerEntries().filter(entry => !spectatorTokens.has(entry.token));
+}
+
+function getActiveHumanCount(){
+  return sessionPlayerEntries().filter(entry =>
+    (entry.token.startsWith("local:") || entry.token.startsWith("online:")) &&
+    !spectatorTokens.has(entry.token)
+  ).length;
+}
+
 function getComputerMinimum(game, variant){
   const range = getPlayerRange(game, variant);
-  const humans = playerState.local + playerState.online;
+  const humans = getActiveHumanCount();
 
   /*
-   * Minimum computers are whatever is required to reach the variant's
-   * minimum total player count.
+   * Spectators do not occupy a player slot for this game. Computers can
+   * therefore fill any remaining slots needed to reach the variant minimum.
    */
   return Math.max(0, range.min - humans);
 }
 
 function getComputerMaximum(game, variant){
   const range = getPlayerRange(game, variant);
-  const humans = playerState.local + playerState.online;
+  const humans = getActiveHumanCount();
 
   /*
-   * If the game has a maximum, do not allow the computer count to push
-   * the total beyond it. Otherwise allow up to 10 computers.
+   * Spectating configured players are deliberately excluded here. This
+   * means a game configured with four profiles can have three spectating
+   * while one active human is joined by a computer in a two-player game.
    */
   if(Number.isFinite(range.max)){
     return Math.max(
@@ -1678,16 +1848,15 @@ function updatePlayerSummaryOnly(){
   const summary = setupBody.querySelector(".player-summary");
   if(!summary) return;
 
-  const total =
-    playerState.local +
-    playerState.online +
-    computerCount;
+  const configured = sessionPlayerEntries().length;
+  const total = getActiveSessionEntries().length;
+  const spectators = configured - total;
 
   summary.innerHTML =
-    `<strong>${total} player${total === 1 ? "" : "s"}</strong> ` +
-    `configured: ${playerState.local} local, ${playerState.online} online, ` +
-    `${computerCount} computer${computerCount === 1 ? "" : "s"}. ` +
-    `The Players tab at the top controls local and online players.`;
+    `<strong>${total} active player${total === 1 ? "" : "s"}</strong> ` +
+    `of ${configured} configured` +
+    (spectators ? ` (${spectators} spectator${spectators === 1 ? "" : "s"})` : "") +
+    `.`;
 
   const variant = getVariant(selectedGame, selectedVariant);
   const range = getPlayerRange(selectedGame, variant);
@@ -1700,16 +1869,10 @@ function updatePlayerSummaryOnly(){
 function playSelectedGame(){
   if(!selectedGame) return;
 
-  // Keep the local-player count when the player returns from the game.
-  savePlayerState();
-
   const variant = getVariant(selectedGame, selectedVariant);
   const range = getPlayerRange(selectedGame, variant);
 
-  const totalPlayers =
-    playerState.local +
-    playerState.online +
-    computerCount;
+  const totalPlayers = getActiveSessionEntries().length;
 
   if(
     totalPlayers < range.min ||
@@ -1745,7 +1908,11 @@ function playSelectedGame(){
     computerPlayers: String(computerCount),
     computerDifficulties: JSON.stringify(computerDifficulties),
     localProfileIds: JSON.stringify(localProfileIds),
-    playerOrder: JSON.stringify(sessionOrder)
+    playerOrder: JSON.stringify(sessionOrder),
+    spectatorPlayers: JSON.stringify([...spectatorTokens]),
+    onlineCode: onlineState.code,
+    onlineJoinedCode: onlineState.joinedCode,
+    hostComputerPlayers: String(onlineState.hostComputers)
   });
 
   for(const [id, value] of Object.entries(selectedOptions)){
@@ -1757,34 +1924,13 @@ function playSelectedGame(){
 }
 
 function renderPlayerPanel(){
-  localCountEl.textContent = String(playerState.local);
-  onlineCountEl.textContent = String(playerState.online);
-
-  localMinus.disabled = playerState.local <= 1;
-  onlineMinus.disabled = playerState.online <= 0;
-
-  localPlayerList.innerHTML = "";
-  for(let i = 0; i < playerState.local; i++){
-    const profile = profiles[i % profiles.length];
-    addSessionPlayerRow(localPlayerList, profile.name, profile.avatar, false);
-  }
-
-  onlinePlayerList.innerHTML = "";
-  for(let i = 1; i <= playerState.online; i++){
-    addSessionPlayerRow(
-      onlinePlayerList,
-      `Online Player Slot ${i}`,
-      "●",
-      true
-    );
-  }
+  playerState.local = Math.max(1, profiles.length);
+  totalPlayerCountEl.textContent =
+    `${playerState.local} local player${playerState.local === 1 ? "" : "s"}`;
 
   renderProfiles();
+  renderOnlineGroup();
   normalizePlayerOrder();
-
-  const total = playerState.local + playerState.online;
-  totalPlayerCountEl.textContent =
-    `${total} player${total === 1 ? "" : "s"}`;
 
   if(selectedGame){
     const variant = getVariant(selectedGame, selectedVariant);
@@ -1796,6 +1942,47 @@ function renderPlayerPanel(){
 
     renderSetupDrawer();
   }
+}
+
+function renderOnlineGroup(){
+  hostComputerPlayers.checked = onlineState.hostComputers;
+
+  if(onlineState.code){
+    onlineCodeDisplay.hidden = false;
+    onlineCodeEl.textContent = onlineState.code;
+    onlineCodeStatus.textContent = "Local placeholder";
+  }else if(onlineState.joinedCode){
+    onlineCodeDisplay.hidden = true;
+    onlineCodeStatus.textContent = `Joined group ${onlineState.joinedCode} (staged)`;
+  }else{
+    onlineCodeDisplay.hidden = true;
+    onlineCodeStatus.textContent = "Not connected";
+  }
+}
+
+function generateOnlineCode(){
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+function requestOnlineCode(){
+  onlineState.code = generateOnlineCode();
+  onlineState.joinedCode = "";
+  localStorage.setItem("gameLibraryOnlineCode", onlineState.code);
+  renderOnlineGroup();
+}
+
+function joinOnlineGroup(){
+  const code = joinOnlineCodeInput.value.replace(/\D/g, "").slice(0,4);
+  joinOnlineCodeInput.value = code;
+  if(code.length !== 4){
+    onlineCodeStatus.textContent = "Enter a 4-digit code";
+    return;
+  }
+
+  onlineState.joinedCode = code;
+  onlineState.code = "";
+  onlineCodeDisplay.hidden = true;
+  onlineCodeStatus.textContent = `Joined group ${code} (staged)`;
 }
 
 function renderProfiles(){
@@ -1821,7 +2008,7 @@ function renderProfiles(){
 
     const type = document.createElement("div");
     type.className = "profile-type";
-    type.textContent = "Local profile";
+    type.textContent = "Local player";
 
     info.append(name, type);
 
@@ -1831,9 +2018,31 @@ function renderProfiles(){
     edit.textContent = "Edit";
     edit.addEventListener("click", () => openProfileEditor(profile.id));
 
-    row.append(avatar, info, edit);
+    const remove = document.createElement("button");
+    remove.className = "profile-remove";
+    remove.type = "button";
+    remove.textContent = "×";
+    remove.title = profiles.length === 1 ? "At least one local profile is required" : "Remove profile and local player";
+    remove.disabled = profiles.length === 1;
+    remove.addEventListener("click", () => removeProfile(profile.id));
+
+    row.append(avatar, info, edit, remove);
     profileList.appendChild(row);
   });
+}
+
+function removeProfile(profileId){
+  if(profiles.length <= 1) return;
+
+  const index = profiles.findIndex(profile => profile.id === profileId);
+  if(index < 0) return;
+
+  profiles.splice(index, 1);
+  playerState.local = profiles.length;
+  saveProfiles();
+  playerOrder = [];
+  spectatorTokens = new Set();
+  renderPlayerPanel();
 }
 
 function openProfileEditor(profileId = null){
@@ -1978,31 +2187,14 @@ playersTab.addEventListener("click", () => {
 
 closePlayersButton.addEventListener("click", closePlayers);
 
-localMinus.addEventListener("click", () => {
-  playerState.local = Math.max(1, playerState.local - 1);
-  savePlayerState();
-  renderPlayerPanel();
+requestOnlineCodeButton.addEventListener("click", requestOnlineCode);
+joinOnlineGroupButton.addEventListener("click", joinOnlineGroup);
+joinOnlineCodeInput.addEventListener("input", () => {
+  joinOnlineCodeInput.value = joinOnlineCodeInput.value.replace(/\D/g, "").slice(0,4);
 });
-
-localPlus.addEventListener("click", () => {
-  if(playerState.local >= profiles.length){
-    openProfileEditor();
-    return;
-  }
-
-  playerState.local += 1;
-  savePlayerState();
-  renderPlayerPanel();
-});
-
-onlineMinus.addEventListener("click", () => {
-  playerState.online = Math.max(0, playerState.online - 1);
-  renderPlayerPanel();
-});
-
-onlinePlus.addEventListener("click", () => {
-  playerState.online += 1;
-  renderPlayerPanel();
+hostComputerPlayers.addEventListener("change", () => {
+  onlineState.hostComputers = hostComputerPlayers.checked;
+  localStorage.setItem("gameLibraryHostComputers", String(onlineState.hostComputers));
 });
 
 closeSetupButton.addEventListener("click", closeGameSetup);
@@ -2012,6 +2204,7 @@ drawerBackdrop.addEventListener("click", () => {
 });
 
 setupPlayButton.addEventListener("click", playSelectedGame);
+renderOnlineGroup();
 
 document.addEventListener("keydown", event => {
   if(event.key === "Escape"){
