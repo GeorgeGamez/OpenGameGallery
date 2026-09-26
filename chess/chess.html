@@ -96,57 +96,6 @@
       }
       .board-frame.four-player .row-labels { grid-template-rows: repeat(14, 1fr); }
       .board-frame.four-player .col-labels { grid-template-columns: repeat(14, 1fr); }
-      .board-frame.large-board .row-labels { grid-template-rows: repeat(10, 1fr); }
-      .board-frame.large-board .col-labels { grid-template-columns: repeat(10, 1fr); }
-      .board-frame.three-player { display:block; aspect-ratio:1; }
-      .board-frame.three-player .row-labels,
-      .board-frame.three-player .col-labels { display:none; }
-      .board.three-player-layout {
-        position:relative;
-        display:block;
-        width:100%;
-        height:100%;
-        aspect-ratio:auto;
-        border:0;
-        box-shadow:0 8px 30px rgba(0,0,0,0.35);
-        background:transparent;
-        overflow:visible;
-      }
-      .three-man-svg {
-        display:block;
-        width:100%;
-        height:100%;
-        overflow:visible;
-      }
-      .three-cell {
-        stroke:#111318;
-        stroke-width:0.32;
-        vector-effect:non-scaling-stroke;
-        cursor:pointer;
-      }
-      .three-cell.light { fill:var(--light); }
-      .three-cell.dark { fill:var(--dark); }
-      .three-cell.selected { fill:var(--selected); }
-      .three-cell.last-move { filter:brightness(1.08); }
-      .three-cell.legal, .three-cell.legal-capture { filter:brightness(0.94); }
-      .three-man-piece {
-        font-family:"Arial Unicode MS","Segoe UI Symbol","DejaVu Sans",sans-serif;
-        font-size:4.9px;
-        paint-order:stroke;
-        stroke-width:0.16;
-      }
-      .three-man-piece.red { fill:#c62828; stroke:rgba(0,0,0,0.25); }
-      .three-man-piece.white { fill:#fff; stroke:rgba(0,0,0,0.7); }
-      .three-man-piece.black { fill:#111; stroke:#888; }
-      .shako-inverted {
-        display:inline-block;
-        transform:rotate(180deg);
-        transform-origin:center;
-        transform-box:fill-box;
-      }
-      .three-legal-dot { fill:var(--legal); }
-      .three-legal-capture { fill:none; stroke:rgba(65,155,70,0.72); stroke-width:0.9; vector-effect:non-scaling-stroke; }
-      .large-board .piece { font-size:clamp(18px,4.4vw,48px); }
       .board {
         display: grid;
         width: 100%;
@@ -285,6 +234,10 @@
         <h2>Status</h2>
         <div class="status" id="status">Loading…</div>
       </div>
+      <div class="panel">
+        <h2>Keyboard</h2>
+        <div class="note">Type a square such as <b>h8</b> to play a move.</div>
+      </div>
     </section>
     <section class="board-column">
       <div class="game-info">
@@ -307,7 +260,7 @@
   <div class="promotion-modal" id="promotionModal">
     <div class="promotion-box"><h2>Choose promotion</h2><div class="promotion-options" id="promotionOptions"></div></div>
   </div>
-  <script src="chess-ai.js?v=20260925-2"></script>
-  <script src="chess.js?v=20260925-2"></script>
+  <script src="chess-ai.js?v=20260926-online1"></script>
+  <script src="chess.js?v=20260926-online1"></script>
 </body>
 </html>
