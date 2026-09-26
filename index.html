@@ -1076,13 +1076,7 @@
                 <span class="toggle-slider"></span>
               </span>
             </label>
-            <div class="online-disabled-note">
-              <strong>Online networking test mode.</strong> Set
-              <code>ONLINE_SERVER_URL</code> in the script below to your
-              Cloudflare Worker URL. The buttons will then create and join real
-              rooms.
-              <div id="onlineError" class="online-error" hidden></div>
-            </div>
+            <div id="onlineError" class="online-error" hidden></div>
           </div>
         </div>
 
@@ -1147,8 +1141,7 @@
 
       // Replace this placeholder with the HTTPS URL Cloudflare gave your Worker.
       // Example: https://game-library-server.your-name.workers.dev
-      const ONLINE_SERVER_URL =
-        "https://opengamegallery.george-arps.workers.dev/";
+      const ONLINE_SERVER_URL = "opengamegallery.george-arps.workers.dev";
 
       let games = [];
       let selectedGame = null;
@@ -1196,6 +1189,7 @@
         connected: false,
         socket: null,
         participants: [],
+        roomConfig: null,
       };
 
       function onlineConfigured() {
@@ -1494,6 +1488,91 @@
         parent.appendChild(tag);
       }
 
+      function getRemoteParticipants() {
+        return onlineState.participants.filter(
+          (participant) =>
+            participant.connected &&
+            participant.clientId !== onlineState.clientId &&
+            !participant.spectator,
+        );
+      }
+
+      function updateOnlinePlayerCount() {
+        playerState.online = getRemoteParticipants().length;
+      }
+
+      function getOnlineGamePlayers() {
+        normalizePlayerOrder();
+
+        const entries = new Map(
+          sessionPlayerEntries()
+            .filter((entry) => !spectatorTokens.has(entry.token))
+            .map((entry) => [entry.token, entry]),
+        );
+
+        return playerOrder
+          .map((token) => entries.get(token))
+          .filter(Boolean)
+          .map((entry) => {
+            let controllerClientId = onlineState.clientId;
+
+            if (entry.token.startsWith("online:")) {
+              controllerClientId =
+                entry.clientId || entry.token.slice("online:".length);
+            }
+
+            return {
+              id: entry.token,
+              name: entry.name,
+              avatar: entry.avatar,
+              type: entry.token.startsWith("computer:") ? "computer" : "human",
+              playerType: entry.type,
+              controllerClientId,
+              difficulty: entry.difficulty || null,
+            };
+          });
+      }
+
+      function buildOnlineGameConfig() {
+        return {
+          game: selectedGame?.id || "",
+          variant: selectedVariant || "",
+          options: { ...selectedOptions },
+          localPlayers: playerState.local,
+          onlinePlayers: playerState.online,
+          computerPlayers: computerCount,
+          computerDifficulties: { ...computerDifficulties },
+          playerOrder: playerOrder.slice(),
+          spectatorPlayers: [...spectatorTokens],
+          hostComputers: onlineState.hostComputers,
+          players: getOnlineGamePlayers(),
+        };
+      }
+
+      function navigateToOnlineGame(config) {
+        if (!config?.game) return;
+
+        const game =
+          games.find((item) => item.id === config.game) || selectedGame;
+        if (!game) return;
+
+        const page = config.game === "chess" ? "chess.html" : game.page;
+        if (!page) return;
+
+        const params = new URLSearchParams({
+          game: config.game,
+          variant: config.variant || "",
+          onlineCode: onlineRoomCode(),
+          onlineServer: ONLINE_SERVER_URL,
+          onlineHostToken: onlineState.hostToken || "",
+          onlineClientId: onlineState.clientId || "",
+          onlineConfig: JSON.stringify(config),
+          hostComputerPlayers: String(config.hostComputers !== false),
+        });
+
+        window.location.href = `${page}?${params.toString()}`;
+      }
+
       function sessionPlayerEntries() {
         const entries = [];
 
@@ -1510,14 +1589,22 @@
           });
         }
 
+        const remoteParticipants = getRemoteParticipants();
+
         for (let i = 0; i < playerState.online; i++) {
+          const participant = remoteParticipants[i];
+          const token = participant
+            ? `online:${participant.clientId}`
+            : `online:slot:${i}`;
+
           entries.push({
-            id: `online:${i}`,
-            token: `online:${i}`,
+            id: token,
+            token,
             label: `O${i + 1}`,
-            name: `Online Player Slot ${i + 1}`,
+            name: participant?.name || `Online Player ${i + 1}`,
             type: "Online player",
-            avatar: "●",
+            avatar: participant?.avatar || "●",
+            clientId: participant?.clientId || "",
           });
         }
 
@@ -2105,24 +2192,17 @@
           return;
         if (!selectedGame) return;
 
-        const sessionOrder = playerOrder.slice();
-        const config = {
-          game: selectedGame.id,
-          variant: selectedVariant || "",
-          options: { ...selectedOptions },
-          localPlayers: playerState.local,
-          onlinePlayers: playerState.online,
-          computerPlayers: computerCount,
-          computerDifficulties: { ...computerDifficulties },
-          playerOrder: sessionOrder,
-          spectatorPlayers: [...spectatorTokens],
-          hostComputers: onlineState.hostComputers,
-        };
+        const config = buildOnlineGameConfig();
+        onlineState.roomConfig = config;
 
-        onlineState.socket.send(
-          JSON.stringify({ type: "room:config", config }),
-        );
-        onlineState.socket.send(JSON.stringify({ type: "game:start" }));
+        try {
+          onlineState.socket.send(
+            JSON.stringify({ type: "room:config", config }),
+          );
+          onlineState.socket.send(JSON.stringify({ type: "game:start" }));
+        } catch (error) {
+          console.warn("Could not publish online game configuration:", error);
+        }
       }
 
       function playSelectedGame() {
@@ -2156,6 +2236,11 @@
         normalizePlayerOrder();
         const sessionOrder = playerOrder.slice();
 
+        const onlineConfig =
+          onlineState.connected && onlineState.hostToken
+            ? buildOnlineGameConfig()
+            : onlineState.roomConfig;
+
         const params = new URLSearchParams({
           game: selectedGame.id,
           variant: selectedVariant || "",
@@ -2166,44 +2251,33 @@
           localProfileIds: JSON.stringify(localProfileIds),
           playerOrder: JSON.stringify(sessionOrder),
           spectatorPlayers: JSON.stringify([...spectatorTokens]),
-          onlineCode: onlineState.code,
+          onlineCode: onlineRoomCode(),
           onlineJoinedCode: onlineState.joinedCode,
+          onlineHostToken: onlineState.hostToken,
+          onlineClientId: onlineState.clientId,
+          onlineServer: ONLINE_SERVER_URL,
           hostComputerPlayers: String(onlineState.hostComputers),
+          onlineConfig: onlineConfig ? JSON.stringify(onlineConfig) : "",
         });
 
         for (const [id, value] of Object.entries(selectedOptions)) {
           params.set(id, String(value));
         }
 
-        if (onlineState.connected && onlineState.hostToken) {
-          try {
-            onlineState.socket.send(
-              JSON.stringify({
-                type: "room:config",
-                config: {
-                  game: selectedGame.id,
-                  variant: selectedVariant || "",
-                  options: { ...selectedOptions },
-                  localPlayers: playerState.local,
-                  onlinePlayers: playerState.online,
-                  computerPlayers: computerCount,
-                  computerDifficulties: { ...computerDifficulties },
-                  playerOrder: sessionOrder,
-                  spectatorPlayers: [...spectatorTokens],
-                  hostComputers: onlineState.hostComputers,
-                },
-              }),
-            );
-            onlineState.socket.send(JSON.stringify({ type: "game:start" }));
-          } catch (error) {
-            console.warn(
-              "Could not publish online game configuration before navigation:",
-              error,
-            );
-          }
-        }
+        const destination = `${selectedGame.page}?${params.toString()}`;
 
-        window.location.href = `${selectedGame.page}?${params.toString()}`;
+        if (onlineState.connected && onlineState.hostToken) {
+          onlineState.roomConfig = onlineConfig;
+          publishHostGameConfig();
+
+          // Give the WebSocket frames a moment to reach the Worker before this
+          // page is unloaded. Guests use the game:start broadcast to navigate.
+          setTimeout(() => {
+            window.location.href = destination;
+          }, 150);
+        } else {
+          window.location.href = destination;
+        }
       }
 
       function renderPlayerPanel() {
@@ -2235,10 +2309,11 @@
           onlineCodeEl.textContent = onlineState.code || code;
         } else {
           onlineCodeDisplay.hidden = true;
-          onlineCodeEl.textContent = "----";
+          onlineCodeEl.textContent = "";
         }
 
         if (onlineState.connected) {
+          updateOnlinePlayerCount();
           onlineCodeStatus.textContent = `Connected • ${onlineState.participants.length} in group`;
           onlineCodeStatus.classList.add("online-connected");
         } else if (onlineState.code) {
@@ -2341,7 +2416,14 @@
 
           if (message.type === "room:hello") {
             onlineState.participants = message.room?.participants || [];
+            onlineState.roomConfig = message.room?.config || null;
+            updateOnlinePlayerCount();
             renderOnlineGroup();
+            renderPlayerPanel();
+
+            if (message.room?.started && message.room?.config) {
+              navigateToOnlineGame(message.room.config);
+            }
             return;
           }
 
@@ -2349,25 +2431,21 @@
             onlineState.participants = Array.isArray(message.participants)
               ? message.participants
               : [];
-            const others = onlineState.participants.filter(
-              (p) =>
-                p.connected &&
-                p.clientId !== onlineState.clientId &&
-                !p.spectator,
-            );
-            playerState.online = others.length;
+            updateOnlinePlayerCount();
             renderOnlineGroup();
             renderPlayerPanel();
             return;
           }
 
           if (message.type === "room:config") {
-            if (
-              !hostComputers.checked &&
-              message.config?.hostComputers !== false
-            ) {
-              // A future online game screen can consume this authoritative host flag.
-            }
+            onlineState.roomConfig = message.config || null;
+            renderPlayerPanel();
+            return;
+          }
+
+          if (message.type === "game:start") {
+            onlineState.roomConfig = message.config || onlineState.roomConfig;
+            navigateToOnlineGame(onlineState.roomConfig);
             return;
           }
 
@@ -2406,15 +2484,9 @@
         try {
           closeOnlineSocket();
 
-          /*
-           * text/plain is a CORS-safelisted Content-Type, so this initial POST
-           * does not trigger an OPTIONS preflight in browsers. The Worker still
-           * parses the body with request.json(). The server also supports OPTIONS
-           * for future requests that genuinely need a preflight.
-           */
           const response = await fetch(onlineHttpUrl("/api/rooms"), {
             method: "POST",
-            headers: { "Content-Type": "text/plain;charset=UTF-8" },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               hostName: profiles[0]?.name || "Host",
               hostAvatar: profiles[0]?.avatar || "♟",
@@ -2424,13 +2496,7 @@
             }),
           });
 
-          const raw = await response.text();
-          let data = {};
-          try {
-            data = raw ? JSON.parse(raw) : {};
-          } catch {
-            data = { error: raw };
-          }
+          const data = await response.json().catch(() => ({}));
           if (!response.ok)
             throw new Error(
               data.error || `Server returned HTTP ${response.status}.`,
@@ -2438,6 +2504,7 @@
 
           onlineState.code = String(data.code || "");
           onlineState.joinedCode = "";
+          onlineState.roomConfig = null;
           onlineState.hostToken = String(data.hostToken || "");
           onlineState.clientId =
             onlineState.clientId ||
@@ -2637,6 +2704,21 @@
           }
 
           saveProfiles();
+
+          if (onlineState.connected && onlineState.socket) {
+            try {
+              onlineState.socket.send(
+                JSON.stringify({
+                  type: "player:identify",
+                  profileId: profiles[0]?.id || "",
+                  name: profiles[0]?.name || "Player 1",
+                  avatar: profiles[0]?.avatar || "♟",
+                  spectator: false,
+                }),
+              );
+            } catch {}
+          }
+
           editingProfileId = null;
           container.innerHTML = "";
           renderPlayerPanel();
