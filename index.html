@@ -1,2241 +1,2452 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Game Library</title>
-  <style>
-    :root{
-      --bg:#17191f;
-      --panel:#22252d;
-      --panel2:#2b2f39;
-      --text:#f1f3f5;
-      --muted:#aeb4c0;
-      --accent:#78a9ff;
-      --border:#3a3f4a;
-      --danger:#e07a7a;
-    }
-
-    *{box-sizing:border-box}
-
-    body{
-      margin:0;
-      min-height:100vh;
-      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      color:var(--text);
-      background:var(--bg);
-    }
-
-    body.drawer-open{overflow:hidden}
-
-    header{
-      padding:18px 24px;
-      border-bottom:1px solid var(--border);
-      background:#1d2027;
-    }
-
-    header>div{
-      max-width:1280px;
-      margin:auto;
-    }
-
-    .header-row{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:18px;
-    }
-
-    h1{
-      margin:0;
-      font-size:30px;
-    }
-
-    header p{
-      margin:7px 0 0;
-      color:var(--muted);
-      font-size:15px;
-    }
-
-    .top-tab{
-      flex:0 0 auto;
-      color:var(--text);
-      background:var(--panel2);
-      border:1px solid var(--border);
-      border-radius:8px;
-      padding:9px 13px;
-      font:inherit;
-      cursor:pointer;
-    }
-
-    .top-tab:hover{background:#353a45}
-    .top-tab.selected{
-      border-color:var(--accent);
-      outline:1px solid var(--accent);
-    }
-
-    main{
-      max-width:1280px;
-      margin:auto;
-      padding:24px;
-    }
-
-    .library-controls{
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-      margin-bottom:20px;
-    }
-
-    .search-box,.filter-select{
-      color:var(--text);
-      background:var(--panel);
-      border:1px solid var(--border);
-      border-radius:8px;
-      padding:10px 12px;
-      font:inherit;
-    }
-
-    .search-box{
-      flex:1 1 280px;
-      min-width:220px;
-    }
-
-    .search-box:focus{
-      outline:1px solid var(--accent);
-      border-color:var(--accent);
-    }
-
-    .games-grid{
-      display:grid;
-      grid-template-columns:repeat(auto-fill,minmax(290px,1fr));
-      gap:18px;
-    }
-
-    .game-card{
-      overflow:hidden;
-      display:flex;
-      flex-direction:column;
-      background:var(--panel);
-      border:1px solid var(--border);
-      border-radius:12px;
-    }
-
-    .game-image{
-      width:100%;
-      aspect-ratio:16/9;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:#111318;
-      overflow:hidden;
-    }
-
-    .game-image img{
-      width:100%;
-      height:100%;
-      object-fit:cover;
-    }
-
-    .placeholder-image{font-size:72px}
-
-    .game-content{
-      padding:17px;
-      display:flex;
-      flex-direction:column;
-      flex:1;
-    }
-
-    .game-content h2{
-      margin:0;
-      font-size:20px;
-    }
-
-    .description{
-      margin:7px 0 15px;
-      color:var(--muted);
-      font-size:13px;
-      line-height:1.45;
-    }
-
-    .game-meta{
-      display:flex;
-      flex-wrap:wrap;
-      gap:6px;
-      margin-bottom:16px;
-    }
-
-    .meta-tag{
-      padding:4px 7px;
-      color:var(--muted);
-      background:var(--panel2);
-      border:1px solid var(--border);
-      border-radius:5px;
-      font-size:11px;
-    }
-
-    .play-button{
-      width:100%;
-      margin-top:auto;
-      color:#111318;
-      background:var(--accent);
-      border:0;
-      border-radius:7px;
-      padding:10px 14px;
-      font-weight:700;
-      cursor:pointer;
-    }
-
-    .play-button:hover{filter:brightness(1.08)}
-
-    .empty-state,.error-state{
-      padding:35px;
-      text-align:center;
-      border-radius:10px;
-      grid-column:1/-1;
-    }
-
-    .empty-state{
-      color:var(--muted);
-      border:1px dashed var(--border);
-    }
-
-    .error-state{
-      color:#ffb4b4;
-      background:#321f24;
-      border:1px solid #63353d;
-    }
-
-    /* Right-side game setup drawer */
-
-    .drawer-backdrop{
-      position:fixed;
-      inset:0;
-      z-index:20;
-      background:rgba(0,0,0,.45);
-      opacity:0;
-      pointer-events:none;
-      transition:opacity .18s ease;
-    }
-
-    .drawer-backdrop.open{
-      opacity:1;
-      pointer-events:auto;
-    }
-
-    .setup-drawer{
-      position:fixed;
-      z-index:21;
-      top:0;
-      right:0;
-      width:min(430px,100vw);
-      height:100vh;
-      display:flex;
-      flex-direction:column;
-      background:var(--panel);
-      border-left:1px solid var(--border);
-      box-shadow:-12px 0 35px rgba(0,0,0,.3);
-      transform:translateX(100%);
-      transition:transform .2s ease;
-    }
-
-    .setup-drawer.open{transform:translateX(0)}
-
-    .drawer-header{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:15px;
-      padding:18px;
-      border-bottom:1px solid var(--border);
-      background:#1d2027;
-    }
-
-    .drawer-header h2{
-      margin:0;
-      font-size:21px;
-    }
-
-    .drawer-header p{
-      margin:4px 0 0;
-      color:var(--muted);
-      font-size:12px;
-    }
-
-    .close-button{
-      width:34px;
-      height:34px;
-      color:var(--text);
-      background:var(--panel2);
-      border:1px solid var(--border);
-      border-radius:7px;
-      font-size:20px;
-      cursor:pointer;
-    }
-
-    .drawer-body{
-      overflow:auto;
-      flex:1;
-      padding:18px;
-    }
-
-    .setup-section{
-      margin-bottom:20px;
-    }
-
-    .setup-section h3{
-      margin:0 0 9px;
-      color:var(--muted);
-      font-size:13px;
-      font-weight:600;
-    }
-
-    .variant-list{
-      display:flex;
-      flex-wrap:wrap;
-      gap:7px;
-    }
-
-    .variant-button{
-      color:var(--text);
-      background:var(--panel2);
-      border:1px solid var(--border);
-      border-radius:6px;
-      padding:7px 10px;
-      font-size:12px;
-      cursor:pointer;
-    }
-
-    .variant-button:hover{background:#353a45}
-
-    .variant-button.selected{
-      border-color:var(--accent);
-      outline:1px solid var(--accent);
-      background:#303b50;
-    }
-
-    .range-row{
-      display:grid;
-      grid-template-columns:1fr auto;
-      align-items:center;
-      gap:12px;
-      padding:12px;
-      background:var(--panel2);
-      border:1px solid var(--border);
-      border-radius:8px;
-    }
-
-    .range-main{
-      min-width:0;
-    }
-
-    .range-label{
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom:7px;
-      font-size:13px;
-    }
-
-    .range-value{
-      color:var(--accent);
-      font-weight:700;
-      white-space:nowrap;
-    }
-
-    input[type="range"]{
-      width:100%;
-      accent-color:var(--accent);
-    }
-
-    .range-help{
-      margin-top:6px;
-      color:var(--muted);
-      font-size:11px;
-      line-height:1.35;
-    }
-
-    .option-list{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-    }
-
-    .toggle-option{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding:10px 12px;
-      background:var(--panel2);
-      border:1px solid var(--border);
-      border-radius:8px;
-    }
-
-    .toggle-label{
-      color:var(--text);
-      font-size:12px;
-      line-height:1.3;
-      cursor:pointer;
-    }
-
-    .toggle-switch{
-      position:relative;
-      flex:0 0 auto;
-      width:38px;
-      height:21px;
-    }
-
-    .toggle-switch input{
-      opacity:0;
-      width:0;
-      height:0;
-    }
-
-    .toggle-slider{
-      position:absolute;
-      inset:0;
-      background:#454b57;
-      border:1px solid var(--border);
-      border-radius:999px;
-      cursor:pointer;
-      transition:.15s;
-    }
-
-    .toggle-slider::before{
-      content:"";
-      position:absolute;
-      width:15px;
-      height:15px;
-      left:2px;
-      top:2px;
-      background:var(--text);
-      border-radius:50%;
-      transition:.15s;
-    }
-
-    .toggle-switch input:checked + .toggle-slider{
-      background:var(--accent);
-      border-color:var(--accent);
-    }
-
-    .toggle-switch input:checked + .toggle-slider::before{
-      transform:translateX(17px);
-      background:#111318;
-    }
-
-    .toggle-switch input:focus-visible + .toggle-slider{
-      outline:2px solid var(--accent);
-      outline-offset:2px;
-    }
-
-    .player-summary{
-      padding:12px;
-      background:var(--panel2);
-      border:1px solid var(--border);
-      border-radius:8px;
-      color:var(--muted);
-      font-size:12px;
-      line-height:1.45;
-    }
-
-    .player-summary strong{color:var(--text)}
-
-    .drawer-footer{
-      padding:16px 18px;
-      border-top:1px solid var(--border);
-      background:#1d2027;
-    }
-
-    .drawer-play{
-      margin:0;
-    }
-
-    /* Player menu */
-
-    .player-panel{
-      position:fixed;
-      z-index:22;
-      top:0;
-      left:0;
-      width:min(430px,100vw);
-      height:100vh;
-      display:flex;
-      flex-direction:column;
-      background:var(--panel);
-      border-right:1px solid var(--border);
-      box-shadow:12px 0 35px rgba(0,0,0,.3);
-      transform:translateX(-100%);
-      transition:transform .2s ease;
-    }
-
-    .player-panel.open{transform:translateX(0)}
-
-    .player-panel-body{
-      overflow:auto;
-      flex:1;
-      padding:18px;
-    }
-
-    .profile-list{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      margin-top:12px;
-    }
-
-    .profile-row{
-      display:grid;
-      grid-template-columns:auto 1fr auto auto;
-      align-items:center;
-      gap:10px;
-      padding:9px 10px;
-      background:#1d2027;
-      border:1px solid var(--border);
-      border-radius:8px;
-    }
-
-    .profile-avatar{
-      width:34px;
-      height:34px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      border-radius:50%;
-      background:var(--panel2);
-      border:1px solid var(--border);
-      font-size:19px;
-    }
-
-    .profile-info{
-      min-width:0;
-    }
-
-    .profile-name{
-      font-size:13px;
-      font-weight:600;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-    }
-
-    .profile-type{
-      margin-top:2px;
-      color:var(--muted);
-      font-size:11px;
-    }
-
-    .profile-edit{
-      color:var(--muted);
-      background:none;
-      border:0;
-      cursor:pointer;
-      font-size:12px;
-    }
-
-    .profile-editor{
-      display:flex;
-      flex-direction:column;
-      gap:9px;
-      margin-top:12px;
-      padding:12px;
-      background:var(--panel2);
-      border:1px solid var(--border);
-      border-radius:8px;
-    }
-
-    .profile-editor input,
-    .profile-editor select{
-      width:100%;
-      color:var(--text);
-      background:#1d2027;
-      border:1px solid var(--border);
-      border-radius:6px;
-      padding:8px 9px;
-      font:inherit;
-    }
-
-    .avatar-grid{
-      display:grid;
-      grid-template-columns:repeat(8,1fr);
-      gap:6px;
-    }
-
-    .avatar-button{
-      aspect-ratio:1;
-      color:var(--text);
-      background:#1d2027;
-      border:1px solid var(--border);
-      border-radius:6px;
-      font-size:18px;
-      cursor:pointer;
-    }
-
-    .avatar-button.selected{
-      border-color:var(--accent);
-      outline:1px solid var(--accent);
-      background:#303b50;
-    }
-
-    .profile-editor-actions{
-      display:flex;
-      gap:7px;
-    }
-
-    .small-button{
-      flex:1;
-      color:var(--text);
-      background:#353a45;
-      border:1px solid var(--border);
-      border-radius:6px;
-      padding:7px 9px;
-      cursor:pointer;
-    }
-
-    .small-button.primary{
-      color:#111318;
-      background:var(--accent);
-      border-color:var(--accent);
-      font-weight:700;
-    }
-
-    .player-count-control{
-      display:grid;
-      grid-template-columns:1fr auto auto;
-      align-items:center;
-      gap:8px;
-      padding:12px;
-      background:var(--panel2);
-      border:1px solid var(--border);
-      border-radius:8px;
-    }
-
-    .player-count-control+.player-count-control{margin-top:8px}
-
-    .player-count-label{
-      min-width:0;
-    }
-
-    .player-count-label strong{
-      display:block;
-      font-size:13px;
-    }
-
-    .player-count-label span{
-      display:block;
-      margin-top:3px;
-      color:var(--muted);
-      font-size:11px;
-    }
-
-    .count-button{
-      width:32px;
-      height:32px;
-      color:var(--text);
-      background:#353a45;
-      border:1px solid var(--border);
-      border-radius:6px;
-      font-size:18px;
-      cursor:pointer;
-    }
-
-    .count-button:disabled{
-      opacity:.4;
-      cursor:not-allowed;
-    }
-
-    .player-list{
-      margin-top:12px;
-      display:flex;
-      flex-direction:column;
-      gap:7px;
-    }
-
-    .player-row{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      padding:9px 10px;
-      background:#1d2027;
-      border:1px solid var(--border);
-      border-radius:7px;
-      font-size:12px;
-    }
-
-    .session-order-list{
-      display:flex;
-      flex-direction:column;
-      gap:7px;
-      margin-top:9px;
-    }
-
-    .session-order-row{
-      display:grid;
-      grid-template-columns:auto 1fr auto auto;
-      align-items:center;
-      gap:9px;
-      padding:8px 9px;
-      background:var(--panel2);
-      border:1px solid var(--border);
-      border-radius:7px;
-    }
-
-    .session-order-position{
-      width:24px;
-      color:var(--muted);
-      font-size:11px;
-      text-align:center;
-    }
-
-    .session-order-name{
-      min-width:0;
-      font-size:12px;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-    }
-
-    .session-order-name strong{
-      display:block;
-      font-size:12px;
-    }
-
-    .session-order-name span{
-      display:block;
-      margin-top:2px;
-      color:var(--muted);
-      font-size:10px;
-    }
-
-    .computer-difficulty-select{
-      min-width:92px;
-      color:var(--text);
-      background:#1d2027;
-      border:1px solid var(--border);
-      border-radius:5px;
-      padding:5px 6px;
-      font:inherit;
-      font-size:11px;
-    }
-
-    .session-order-info{
-      min-width:0;
-    }
-
-    .order-button{
-      width:28px;
-      height:28px;
-      color:var(--text);
-      background:#353a45;
-      border:1px solid var(--border);
-      border-radius:5px;
-      cursor:pointer;
-    }
-
-    .order-button:disabled{
-      opacity:.35;
-      cursor:not-allowed;
-    }
-
-    .remove-player{
-      color:var(--muted);
-      background:none;
-      border:0;
-      cursor:pointer;
-    }
-
-    .profile-row .profile-remove{
-      color:var(--muted);
-      background:none;
-      border:0;
-      cursor:pointer;
-      font-size:16px;
-      padding:4px 6px;
-    }
-
-    .profile-row .profile-remove:disabled{
-      opacity:.35;
-      cursor:not-allowed;
-    }
-
-    .online-group-box{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      padding:12px;
-      background:var(--panel2);
-      border:1px solid var(--border);
-      border-radius:8px;
-    }
-
-    .online-group-row{
-      display:grid;
-      grid-template-columns:1fr auto;
-      gap:8px;
-      align-items:center;
-    }
-
-    .online-code-display{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      padding:9px 10px;
-      background:#1d2027;
-      border:1px solid var(--border);
-      border-radius:6px;
-    }
-
-    .online-code{
-      font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
-      font-size:20px;
-      font-weight:800;
-      letter-spacing:4px;
-      color:var(--accent);
-    }
-
-    .online-group-input{
-      width:100%;
-      color:var(--text);
-      background:#1d2027;
-      border:1px solid var(--border);
-      border-radius:6px;
-      padding:8px 9px;
-      font:inherit;
-      text-transform:uppercase;
-      letter-spacing:2px;
-    }
-
-    .online-disabled-note{
-      color:var(--muted);
-      font-size:11px;
-      line-height:1.45;
-    }
-
-    .online-disabled-note strong{color:var(--text)}
-
-    .spectator-list{
-      display:flex;
-      flex-direction:column;
-      gap:7px;
-      margin-top:9px;
-    }
-
-    .spectator-row{
-      display:grid;
-      grid-template-columns:auto 1fr auto;
-      align-items:center;
-      gap:9px;
-      padding:8px 9px;
-      background:var(--panel2);
-      border:1px solid var(--border);
-      border-radius:7px;
-    }
-
-    .spectator-row.is-spectator{opacity:.55}
-
-    .spectator-state{
-      color:var(--muted);
-      font-size:10px;
-    }
-
-    .spectator-remove{
-      width:27px;
-      height:27px;
-      color:var(--text);
-      background:#353a45;
-      border:1px solid var(--border);
-      border-radius:5px;
-      cursor:pointer;
-      font-size:16px;
-      line-height:1;
-    }
-
-    .online-note{
-      margin-top:14px;
-      padding:11px;
-      color:var(--muted);
-      background:#1d2027;
-      border:1px dashed var(--border);
-      border-radius:8px;
-      font-size:11px;
-      line-height:1.45;
-    }
-
-    @media(max-width:600px){
-      main{padding:14px}
-      header{padding:16px 14px}
-      h1{font-size:25px}
-      .header-row{align-items:flex-start}
-      .top-tab{padding:8px 10px}
-    }
-  </style>
-</head>
-
-<body>
-<header>
-  <div>
-    <div class="header-row">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game Library</title>
+    <style>
+      :root {
+        --bg: #17191f;
+        --panel: #22252d;
+        --panel2: #2b2f39;
+        --text: #f1f3f5;
+        --muted: #aeb4c0;
+        --accent: #78a9ff;
+        --border: #3a3f4a;
+        --danger: #e07a7a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        color: var(--text);
+        background: var(--bg);
+      }
+
+      body.drawer-open {
+        overflow: hidden;
+      }
+
+      header {
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--border);
+        background: #1d2027;
+      }
+
+      header > div {
+        max-width: 1280px;
+        margin: auto;
+      }
+
+      .header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 30px;
+      }
+
+      header p {
+        margin: 7px 0 0;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .top-tab {
+        flex: 0 0 auto;
+        color: var(--text);
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 9px 13px;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .top-tab:hover {
+        background: #353a45;
+      }
+      .top-tab.selected {
+        border-color: var(--accent);
+        outline: 1px solid var(--accent);
+      }
+
+      main {
+        max-width: 1280px;
+        margin: auto;
+        padding: 24px;
+      }
+
+      .library-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      .search-box,
+      .filter-select {
+        color: var(--text);
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        font: inherit;
+      }
+
+      .search-box {
+        flex: 1 1 280px;
+        min-width: 220px;
+      }
+
+      .search-box:focus {
+        outline: 1px solid var(--accent);
+        border-color: var(--accent);
+      }
+
+      .games-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+        gap: 18px;
+      }
+
+      .game-card {
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+      }
+
+      .game-image {
+        width: 100%;
+        aspect-ratio: 16/9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #111318;
+        overflow: hidden;
+      }
+
+      .game-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .placeholder-image {
+        font-size: 72px;
+      }
+
+      .game-content {
+        padding: 17px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+      }
+
+      .game-content h2 {
+        margin: 0;
+        font-size: 20px;
+      }
+
+      .description {
+        margin: 7px 0 15px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .game-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 16px;
+      }
+
+      .meta-tag {
+        padding: 4px 7px;
+        color: var(--muted);
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        font-size: 11px;
+      }
+
+      .play-button {
+        width: 100%;
+        margin-top: auto;
+        color: #111318;
+        background: var(--accent);
+        border: 0;
+        border-radius: 7px;
+        padding: 10px 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .play-button:hover {
+        filter: brightness(1.08);
+      }
+
+      .empty-state,
+      .error-state {
+        padding: 35px;
+        text-align: center;
+        border-radius: 10px;
+        grid-column: 1/-1;
+      }
+
+      .empty-state {
+        color: var(--muted);
+        border: 1px dashed var(--border);
+      }
+
+      .error-state {
+        color: #ffb4b4;
+        background: #321f24;
+        border: 1px solid #63353d;
+      }
+
+      /* Right-side game setup drawer */
+
+      .drawer-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        background: rgba(0, 0, 0, 0.45);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.18s ease;
+      }
+
+      .drawer-backdrop.open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .setup-drawer {
+        position: fixed;
+        z-index: 21;
+        top: 0;
+        right: 0;
+        width: min(430px, 100vw);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: var(--panel);
+        border-left: 1px solid var(--border);
+        box-shadow: -12px 0 35px rgba(0, 0, 0, 0.3);
+        transform: translateX(100%);
+        transition: transform 0.2s ease;
+      }
+
+      .setup-drawer.open {
+        transform: translateX(0);
+      }
+
+      .drawer-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        padding: 18px;
+        border-bottom: 1px solid var(--border);
+        background: #1d2027;
+      }
+
+      .drawer-header h2 {
+        margin: 0;
+        font-size: 21px;
+      }
+
+      .drawer-header p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .close-button {
+        width: 34px;
+        height: 34px;
+        color: var(--text);
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        font-size: 20px;
+        cursor: pointer;
+      }
+
+      .drawer-body {
+        overflow: auto;
+        flex: 1;
+        padding: 18px;
+      }
+
+      .setup-section {
+        margin-bottom: 20px;
+      }
+
+      .setup-section h3 {
+        margin: 0 0 9px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .variant-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+
+      .variant-button {
+        color: var(--text);
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .variant-button:hover {
+        background: #353a45;
+      }
+
+      .variant-button.selected {
+        border-color: var(--accent);
+        outline: 1px solid var(--accent);
+        background: #303b50;
+      }
+
+      .range-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+
+      .range-main {
+        min-width: 0;
+      }
+
+      .range-label {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 7px;
+        font-size: 13px;
+      }
+
+      .range-value {
+        color: var(--accent);
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+
+      .range-help {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.35;
+      }
+
+      .option-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .toggle-option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+
+      .toggle-label {
+        color: var(--text);
+        font-size: 12px;
+        line-height: 1.3;
+        cursor: pointer;
+      }
+
+      .toggle-switch {
+        position: relative;
+        flex: 0 0 auto;
+        width: 38px;
+        height: 21px;
+      }
+
+      .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .toggle-slider {
+        position: absolute;
+        inset: 0;
+        background: #454b57;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        cursor: pointer;
+        transition: 0.15s;
+      }
+
+      .toggle-slider::before {
+        content: "";
+        position: absolute;
+        width: 15px;
+        height: 15px;
+        left: 2px;
+        top: 2px;
+        background: var(--text);
+        border-radius: 50%;
+        transition: 0.15s;
+      }
+
+      .toggle-switch input:checked + .toggle-slider {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+
+      .toggle-switch input:checked + .toggle-slider::before {
+        transform: translateX(17px);
+        background: #111318;
+      }
+
+      .toggle-switch input:focus-visible + .toggle-slider {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .player-summary {
+        padding: 12px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .player-summary strong {
+        color: var(--text);
+      }
+
+      .drawer-footer {
+        padding: 16px 18px;
+        border-top: 1px solid var(--border);
+        background: #1d2027;
+      }
+
+      .drawer-play {
+        margin: 0;
+      }
+
+      /* Player menu */
+
+      .player-panel {
+        position: fixed;
+        z-index: 22;
+        top: 0;
+        left: 0;
+        width: min(430px, 100vw);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: var(--panel);
+        border-right: 1px solid var(--border);
+        box-shadow: 12px 0 35px rgba(0, 0, 0, 0.3);
+        transform: translateX(-100%);
+        transition: transform 0.2s ease;
+      }
+
+      .player-panel.open {
+        transform: translateX(0);
+      }
+
+      .player-panel-body {
+        overflow: auto;
+        flex: 1;
+        padding: 18px;
+      }
+
+      .profile-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .profile-row {
+        display: grid;
+        grid-template-columns: auto 1fr auto auto;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 10px;
+        background: #1d2027;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+
+      .profile-avatar {
+        width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        font-size: 19px;
+      }
+
+      .profile-info {
+        min-width: 0;
+      }
+
+      .profile-name {
+        font-size: 13px;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .profile-type {
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .profile-edit {
+        color: var(--muted);
+        background: none;
+        border: 0;
+        cursor: pointer;
+        font-size: 12px;
+      }
+
+      .profile-editor {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        margin-top: 12px;
+        padding: 12px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+
+      .profile-editor input,
+      .profile-editor select {
+        width: 100%;
+        color: var(--text);
+        background: #1d2027;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 8px 9px;
+        font: inherit;
+      }
+
+      .avatar-grid {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        gap: 6px;
+      }
+
+      .avatar-button {
+        aspect-ratio: 1;
+        color: var(--text);
+        background: #1d2027;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 18px;
+        cursor: pointer;
+      }
+
+      .avatar-button.selected {
+        border-color: var(--accent);
+        outline: 1px solid var(--accent);
+        background: #303b50;
+      }
+
+      .profile-editor-actions {
+        display: flex;
+        gap: 7px;
+      }
+
+      .small-button {
+        flex: 1;
+        color: var(--text);
+        background: #353a45;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 7px 9px;
+        cursor: pointer;
+      }
+
+      .small-button.primary {
+        color: #111318;
+        background: var(--accent);
+        border-color: var(--accent);
+        font-weight: 700;
+      }
+
+      .player-count-control {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        align-items: center;
+        gap: 8px;
+        padding: 12px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+
+      .player-count-control + .player-count-control {
+        margin-top: 8px;
+      }
+
+      .player-count-label {
+        min-width: 0;
+      }
+
+      .player-count-label strong {
+        display: block;
+        font-size: 13px;
+      }
+
+      .player-count-label span {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .count-button {
+        width: 32px;
+        height: 32px;
+        color: var(--text);
+        background: #353a45;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 18px;
+        cursor: pointer;
+      }
+
+      .count-button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      .player-list {
+        margin-top: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+
+      .player-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 9px 10px;
+        background: #1d2027;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        font-size: 12px;
+      }
+
+      .session-order-list {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        margin-top: 9px;
+      }
+
+      .session-order-row {
+        display: grid;
+        grid-template-columns: auto 1fr auto auto;
+        align-items: center;
+        gap: 9px;
+        padding: 8px 9px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+      }
+
+      .session-order-position {
+        width: 24px;
+        color: var(--muted);
+        font-size: 11px;
+        text-align: center;
+      }
+
+      .session-order-name {
+        min-width: 0;
+        font-size: 12px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .session-order-name strong {
+        display: block;
+        font-size: 12px;
+      }
+
+      .session-order-name span {
+        display: block;
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .computer-difficulty-select {
+        min-width: 92px;
+        color: var(--text);
+        background: #1d2027;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        padding: 5px 6px;
+        font: inherit;
+        font-size: 11px;
+      }
+
+      .session-order-info {
+        min-width: 0;
+      }
+
+      .order-button {
+        width: 28px;
+        height: 28px;
+        color: var(--text);
+        background: #353a45;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        cursor: pointer;
+      }
+
+      .order-button:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+
+      .remove-player {
+        color: var(--muted);
+        background: none;
+        border: 0;
+        cursor: pointer;
+      }
+
+      .profile-row .profile-remove {
+        color: var(--muted);
+        background: none;
+        border: 0;
+        cursor: pointer;
+        font-size: 16px;
+        padding: 4px 6px;
+      }
+
+      .profile-row .profile-remove:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+
+      .online-group-box {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+
+      .online-group-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .online-code-display {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 9px 10px;
+        background: #1d2027;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+      }
+
+      .online-code {
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: 4px;
+        color: var(--accent);
+      }
+
+      .online-group-input {
+        width: 100%;
+        color: var(--text);
+        background: #1d2027;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 8px 9px;
+        font: inherit;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+      }
+
+      .online-disabled-note {
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      .online-disabled-note strong {
+        color: var(--text);
+      }
+
+      .spectator-list {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        margin-top: 9px;
+      }
+
+      .spectator-row {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 9px;
+        padding: 8px 9px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+      }
+
+      .spectator-row.is-spectator {
+        opacity: 0.55;
+      }
+
+      .spectator-state {
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .spectator-remove {
+        width: 27px;
+        height: 27px;
+        color: var(--text);
+        background: #353a45;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        line-height: 1;
+      }
+
+      .online-note {
+        margin-top: 14px;
+        padding: 11px;
+        color: var(--muted);
+        background: #1d2027;
+        border: 1px dashed var(--border);
+        border-radius: 8px;
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      @media (max-width: 600px) {
+        main {
+          padding: 14px;
+        }
+        header {
+          padding: 16px 14px;
+        }
+        h1 {
+          font-size: 25px;
+        }
+        .header-row {
+          align-items: flex-start;
+        }
+        .top-tab {
+          padding: 8px 10px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
       <div>
-        <h1>Game Library</h1>
-        <p>Choose a game to begin.</p>
-      </div>
-      <button id="playersTab" class="top-tab" type="button">Players</button>
-    </div>
-  </div>
-</header>
-
-<main>
-  <div class="library-controls">
-    <input id="searchBox" class="search-box" type="search" placeholder="Search games..." aria-label="Search games" />
-    <select id="categoryFilter" class="filter-select" aria-label="Filter by category">
-      <option value="">All categories</option>
-    </select>
-    <select id="playerFilter" class="filter-select" aria-label="Filter by player count">
-      <option value="">Any player count</option>
-    </select>
-  </div>
-
-  <div class="games-grid" id="gamesGrid"></div>
-</main>
-
-<div id="drawerBackdrop" class="drawer-backdrop"></div>
-
-<aside id="setupDrawer" class="setup-drawer" aria-hidden="true">
-  <div class="drawer-header">
-    <div>
-      <h2 id="drawerGameName">Game Setup</h2>
-      <p id="drawerGameDescription"></p>
-    </div>
-    <button id="closeSetup" class="close-button" type="button" aria-label="Close setup">×</button>
-  </div>
-
-  <div id="setupBody" class="drawer-body"></div>
-
-  <div class="drawer-footer">
-    <button id="setupPlayButton" class="play-button drawer-play" type="button">Play</button>
-  </div>
-</aside>
-
-<aside id="playerPanel" class="player-panel" aria-hidden="true">
-  <div class="drawer-header">
-    <div>
-      <h2>Players</h2>
-      <p>Set up the people and computer players for your games.</p>
-    </div>
-    <button id="closePlayers" class="close-button" type="button" aria-label="Close players">×</button>
-  </div>
-
-  <div class="player-panel-body">
-    <div class="setup-section">
-      <h3>Local players &amp; profiles</h3>
-      <div class="player-summary">
-        Each profile is a local player. Adding a profile adds a local player; removing a profile removes that player from the local player list.
-      </div>
-      <div id="profileList" class="profile-list"></div>
-      <button id="addProfile" class="small-button primary" type="button" style="margin-top:10px;width:100%;">
-        + Add profile / local player
-      </button>
-      <div id="profileEditorContainer"></div>
-    </div>
-
-    <div class="setup-section">
-      <h3>Online group</h3>
-      <div class="online-group-box">
-        <div class="online-group-row">
-          <button id="requestOnlineCode" class="small-button primary" type="button">Request online code</button>
-          <span id="onlineCodeStatus" class="profile-type">Not connected</span>
-        </div>
-        <div id="onlineCodeDisplay" class="online-code-display" hidden>
-          <span class="profile-type">Host code</span>
-          <span id="onlineCode" class="online-code">----</span>
-        </div>
-        <div class="online-group-row">
-          <input id="joinOnlineCode" class="online-group-input" type="text" inputmode="numeric" maxlength="4" placeholder="Enter 4-digit code" aria-label="Online group code" />
-          <button id="joinOnlineGroup" class="small-button" type="button">Join</button>
-        </div>
-        <label class="toggle-option" style="margin:0;">
-          <span class="toggle-label">Host computer players for the group</span>
-          <span class="toggle-switch">
-            <input id="hostComputerPlayers" type="checkbox" checked />
-            <span class="toggle-slider"></span>
-          </span>
-        </label>
-        <div class="online-disabled-note">
-          <strong>Online networking is staged for now.</strong> The code and host setting are stored locally so the menu is ready for Cloudflare, but they do not connect browsers yet. Once the server is configured, the host's game, player order, computer players, and settings can be sent to everyone in the group.
+        <div class="header-row">
+          <div>
+            <h1>Game Library</h1>
+            <p>Choose a game to begin.</p>
+          </div>
+          <button id="playersTab" class="top-tab" type="button">Players</button>
         </div>
       </div>
-    </div>
+    </header>
 
-    <div class="setup-section">
-      <div class="player-summary">
-        <strong id="totalPlayerCount">1 local player</strong> currently configured. Online players will be added when online networking is enabled.
+    <main>
+      <div class="library-controls">
+        <input
+          id="searchBox"
+          class="search-box"
+          type="search"
+          placeholder="Search games..."
+          aria-label="Search games"
+        />
+        <select
+          id="categoryFilter"
+          class="filter-select"
+          aria-label="Filter by category"
+        >
+          <option value="">All categories</option>
+        </select>
+        <select
+          id="playerFilter"
+          class="filter-select"
+          aria-label="Filter by player count"
+        >
+          <option value="">Any player count</option>
+        </select>
       </div>
-    </div>
-  </div>
-</aside>
 
-<script>
-"use strict";
+      <div class="games-grid" id="gamesGrid"></div>
+    </main>
 
-/*
- * Game information lives in library.json.
- *
- * Architecture:
- *   library.json -> game/variant definitions
- *   Players tab -> persistent local/online player pool
- *   Game setup drawer -> selected variant + game-specific options +
- *                        number of computer players
- *   Play -> transports the setup through URLSearchParams for now
- *
- * The URL transport can later be replaced by a shared setup object or
- * session/group system without needing to redesign the library data.
- */
+    <div id="drawerBackdrop" class="drawer-backdrop"></div>
 
-const grid = document.getElementById("gamesGrid");
-const searchBox = document.getElementById("searchBox");
-const categoryFilter = document.getElementById("categoryFilter");
-const playerFilter = document.getElementById("playerFilter");
+    <aside id="setupDrawer" class="setup-drawer" aria-hidden="true">
+      <div class="drawer-header">
+        <div>
+          <h2 id="drawerGameName">Game Setup</h2>
+          <p id="drawerGameDescription"></p>
+        </div>
+        <button
+          id="closeSetup"
+          class="close-button"
+          type="button"
+          aria-label="Close setup"
+        >
+          ×
+        </button>
+      </div>
 
-const drawerBackdrop = document.getElementById("drawerBackdrop");
-const setupDrawer = document.getElementById("setupDrawer");
-const drawerGameName = document.getElementById("drawerGameName");
-const drawerGameDescription = document.getElementById("drawerGameDescription");
-const setupBody = document.getElementById("setupBody");
-const setupPlayButton = document.getElementById("setupPlayButton");
-const closeSetupButton = document.getElementById("closeSetup");
+      <div id="setupBody" class="drawer-body"></div>
 
-const playersTab = document.getElementById("playersTab");
-const playerPanel = document.getElementById("playerPanel");
-const closePlayersButton = document.getElementById("closePlayers");
+      <div class="drawer-footer">
+        <button
+          id="setupPlayButton"
+          class="play-button drawer-play"
+          type="button"
+        >
+          Play
+        </button>
+      </div>
+    </aside>
 
-const totalPlayerCountEl = document.getElementById("totalPlayerCount");
-const requestOnlineCodeButton = document.getElementById("requestOnlineCode");
-const onlineCodeStatus = document.getElementById("onlineCodeStatus");
-const onlineCodeDisplay = document.getElementById("onlineCodeDisplay");
-const onlineCodeEl = document.getElementById("onlineCode");
-const joinOnlineCodeInput = document.getElementById("joinOnlineCode");
-const joinOnlineGroupButton = document.getElementById("joinOnlineGroup");
-const hostComputerPlayers = document.getElementById("hostComputerPlayers");
+    <aside id="playerPanel" class="player-panel" aria-hidden="true">
+      <div class="drawer-header">
+        <div>
+          <h2>Players</h2>
+          <p>Set up the people and computer players for your games.</p>
+        </div>
+        <button
+          id="closePlayers"
+          class="close-button"
+          type="button"
+          aria-label="Close players"
+        >
+          ×
+        </button>
+      </div>
 
-let games = [];
-let selectedGame = null;
-let selectedVariant = null;
-let selectedOptions = {};
-let computerCount = 0;
-let computerDifficulties = {};
-let playerOrder = [];
+      <div class="player-panel-body">
+        <div class="setup-section">
+          <h3>Local players &amp; profiles</h3>
+          <div class="player-summary">
+            Each profile is a local player. Adding a profile adds a local
+            player; removing a profile removes that player from the local player
+            list.
+          </div>
+          <div id="profileList" class="profile-list"></div>
+          <button
+            id="addProfile"
+            class="small-button primary"
+            type="button"
+            style="margin-top: 10px; width: 100%"
+          >
+            + Add profile / local player
+          </button>
+          <div id="profileEditorContainer"></div>
+        </div>
 
-/*
- * These are global player slots. They are deliberately separate from
- * individual games so the eventual online/group system can reuse them.
- */
-const AVATARS = [
-  "♟","♞","♜","♛","♚","⚔","🎲","★",
-  "◆","●","▲","■","☀","☾","⚙","🎮"
-];
+        <div class="setup-section">
+          <h3>Online group</h3>
+          <div class="online-group-box">
+            <div class="online-group-row">
+              <button
+                id="requestOnlineCode"
+                class="small-button primary"
+                type="button"
+              >
+                Request online code
+              </button>
+              <span id="onlineCodeStatus" class="profile-type"
+                >Not connected</span
+              >
+            </div>
+            <div id="onlineCodeDisplay" class="online-code-display" hidden>
+              <span class="profile-type">Host code</span>
+              <span id="onlineCode" class="online-code">----</span>
+            </div>
+            <div class="online-group-row">
+              <input
+                id="joinOnlineCode"
+                class="online-group-input"
+                type="text"
+                inputmode="numeric"
+                maxlength="4"
+                placeholder="Enter 4-digit code"
+                aria-label="Online group code"
+              />
+              <button id="joinOnlineGroup" class="small-button" type="button">
+                Join
+              </button>
+            </div>
+            <label class="toggle-option" style="margin: 0">
+              <span class="toggle-label"
+                >Host computer players for the group</span
+              >
+              <span class="toggle-switch">
+                <input id="hostComputerPlayers" type="checkbox" checked />
+                <span class="toggle-slider"></span>
+              </span>
+            </label>
+            <div class="online-disabled-note">
+              <strong>Online networking is staged for now.</strong> The code and
+              host setting are stored locally so the menu is ready for
+              Cloudflare, but they do not connect browsers yet. Once the server
+              is configured, the host's game, player order, computer players,
+              and settings can be sent to everyone in the group.
+            </div>
+          </div>
+        </div>
 
-const playerState = {
-  local: 1,
-  online: 0
-};
+        <div class="setup-section">
+          <div class="player-summary">
+            <strong id="totalPlayerCount">1 local player</strong> currently
+            configured. Online players will be added when online networking is
+            enabled.
+          </div>
+        </div>
+      </div>
+    </aside>
 
-const onlineState = {
-  code: localStorage.getItem("gameLibraryOnlineCode") || "",
-  joinedCode: "",
-  hostComputers: localStorage.getItem("gameLibraryHostComputers") !== "false"
-};
+    <script>
+      "use strict";
 
-let spectatorTokens = new Set();
+      /*
+       * Game information lives in library.json.
+       *
+       * Architecture:
+       *   library.json -> game/variant definitions
+       *   Players tab -> persistent local/online player pool
+       *   Game setup drawer -> selected variant + game-specific options +
+       *                        number of computer players
+       *   Play -> transports the setup through URLSearchParams for now
+       *
+       * The URL transport can later be replaced by a shared setup object or
+       * session/group system without needing to redesign the library data.
+       */
 
-let profiles = loadProfiles();
-playerState.local = Math.max(1, profiles.length);
-let editingProfileId = null;
+      const grid = document.getElementById("gamesGrid");
+      const searchBox = document.getElementById("searchBox");
+      const categoryFilter = document.getElementById("categoryFilter");
+      const playerFilter = document.getElementById("playerFilter");
 
-function loadProfiles(){
-  try{
-    const saved = JSON.parse(localStorage.getItem("gameLibraryProfiles") || "null");
-    if(Array.isArray(saved) && saved.length){
-      return saved;
-    }
-  }catch(error){
-    console.warn("Could not load profiles:", error);
-  }
+      const drawerBackdrop = document.getElementById("drawerBackdrop");
+      const setupDrawer = document.getElementById("setupDrawer");
+      const drawerGameName = document.getElementById("drawerGameName");
+      const drawerGameDescription = document.getElementById(
+        "drawerGameDescription",
+      );
+      const setupBody = document.getElementById("setupBody");
+      const setupPlayButton = document.getElementById("setupPlayButton");
+      const closeSetupButton = document.getElementById("closeSetup");
 
-  return [{
-    id: createId(),
-    name: "Player 1",
-    avatar: "♟"
-  }];
-}
+      const playersTab = document.getElementById("playersTab");
+      const playerPanel = document.getElementById("playerPanel");
+      const closePlayersButton = document.getElementById("closePlayers");
 
-function saveProfiles(){
-  localStorage.setItem("gameLibraryProfiles", JSON.stringify(profiles));
-}
+      const totalPlayerCountEl = document.getElementById("totalPlayerCount");
+      const requestOnlineCodeButton =
+        document.getElementById("requestOnlineCode");
+      const onlineCodeStatus = document.getElementById("onlineCodeStatus");
+      const onlineCodeDisplay = document.getElementById("onlineCodeDisplay");
+      const onlineCodeEl = document.getElementById("onlineCode");
+      const joinOnlineCodeInput = document.getElementById("joinOnlineCode");
+      const joinOnlineGroupButton = document.getElementById("joinOnlineGroup");
+      const hostComputerPlayers = document.getElementById(
+        "hostComputerPlayers",
+      );
 
-function createId(){
-  return "p_" + Math.random().toString(36).slice(2,10);
-}
+      /*
+       * Replace this placeholder with the HTTPS URL Cloudflare gave your Worker.
+       * Example:
+       *   https://game-library-server.example.workers.dev
+       *
+       * Leave the path off; the code below adds /api/... and /ws/... itself.
+       */
+      const ONLINE_SERVER_URL = "https://opengamegallery.george-arps.workers.dev/";
+      let onlineSocket = null;
+      let onlineClientId =
+        localStorage.getItem("gameLibraryOnlineClientId") || "";
+      let onlineHostToken =
+        localStorage.getItem("gameLibraryOnlineHostToken") || "";
 
-async function loadLibrary(){
-  try{
-    const response = await fetch("library.json");
-    if(!response.ok) throw new Error(`library.json: ${response.status}`);
+      let games = [];
+      let selectedGame = null;
+      let selectedVariant = null;
+      let selectedOptions = {};
+      let computerCount = 0;
+      let computerDifficulties = {};
+      let playerOrder = [];
 
-    const data = await response.json();
-    games = Array.isArray(data) ? data : (data.games || []);
+      /*
+       * These are global player slots. They are deliberately separate from
+       * individual games so the eventual online/group system can reuse them.
+       */
+      const AVATARS = [
+        "♟",
+        "♞",
+        "♜",
+        "♛",
+        "♚",
+        "⚔",
+        "🎲",
+        "★",
+        "◆",
+        "●",
+        "▲",
+        "■",
+        "☀",
+        "☾",
+        "⚙",
+        "🎮",
+      ];
 
-    buildFilters();
-    renderGames();
-    renderPlayerPanel();
-  }catch(error){
-    console.error(error);
-    grid.innerHTML = "";
+      const playerState = {
+        local: 1,
+        online: 0,
+      };
 
-    const el = document.createElement("div");
-    el.className = "error-state";
-    el.textContent =
-      "Could not load library.json. Make sure it is beside index.html and that the site is being served through a web server.";
+      const onlineState = {
+        code: localStorage.getItem("gameLibraryOnlineCode") || "",
+        joinedCode: "",
+        hostComputers:
+          localStorage.getItem("gameLibraryHostComputers") !== "false",
+      };
 
-    grid.appendChild(el);
-  }
-}
+      let spectatorTokens = new Set();
 
-function buildFilters(){
-  const categories = new Set();
-  const counts = new Set();
+      let profiles = loadProfiles();
+      playerState.local = Math.max(1, profiles.length);
+      let editingProfileId = null;
 
-  for(const game of games){
-    for(const category of game.categories || []){
-      categories.add(category);
-    }
+      function loadProfiles() {
+        try {
+          const saved = JSON.parse(
+            localStorage.getItem("gameLibraryProfiles") || "null",
+          );
+          if (Array.isArray(saved) && saved.length) {
+            return saved;
+          }
+        } catch (error) {
+          console.warn("Could not load profiles:", error);
+        }
 
-    /*
-     * The library filter uses the game's broad player range. The setup
-     * drawer uses the selected variant's range.
-     */
-    const min = game.players?.min;
-    const max = game.players?.max;
-
-    if(Number.isInteger(min) && Number.isInteger(max)){
-      for(let n = min; n <= max; n++) counts.add(n);
-    }
-
-    for(const variant of game.variants || []){
-      const vMin = variant.players?.min ?? min;
-      const vMax = variant.players?.max ?? max;
-
-      if(Number.isInteger(vMin) && Number.isInteger(vMax)){
-        for(let n = vMin; n <= vMax; n++) counts.add(n);
+        return [
+          {
+            id: createId(),
+            name: "Player 1",
+            avatar: "♟",
+          },
+        ];
       }
-    }
-  }
 
-  categoryFilter.innerHTML = '<option value="">All categories</option>';
-  [...categories].sort().forEach(category => {
-    const option = document.createElement("option");
-    option.value = category;
-    option.textContent = formatLabel(category);
-    categoryFilter.appendChild(option);
-  });
+      function saveProfiles() {
+        localStorage.setItem("gameLibraryProfiles", JSON.stringify(profiles));
+      }
 
-  playerFilter.innerHTML = '<option value="">Any player count</option>';
-  [...counts].sort((a,b) => a-b).forEach(n => {
-    const option = document.createElement("option");
-    option.value = n;
-    option.textContent = `${n} player${n === 1 ? "" : "s"}`;
-    playerFilter.appendChild(option);
-  });
-}
+      function createId() {
+        return "p_" + Math.random().toString(36).slice(2, 10);
+      }
 
-function formatLabel(value){
-  return String(value)
-    .replace(/[-_]+/g, " ")
-    .replace(/\b\w/g, c => c.toUpperCase());
-}
+      async function loadLibrary() {
+        try {
+          const response = await fetch("library.json");
+          if (!response.ok) throw new Error(`library.json: ${response.status}`);
 
-function getVariant(game, variantId){
-  return (game.variants || []).find(v => v.id === variantId) || game.variants?.[0] || null;
-}
+          const data = await response.json();
+          games = Array.isArray(data) ? data : data.games || [];
 
-function getPlayerRange(game, variant){
-  const min = variant?.players?.min ?? game.players?.min ?? 1;
-  const max = variant?.players?.max ?? game.players?.max ?? 10;
+          buildFilters();
+          renderGames();
+          renderPlayerPanel();
+        } catch (error) {
+          console.error(error);
+          grid.innerHTML = "";
 
-  return {
-    min: Math.max(1, min),
-    max: Math.max(min, max)
-  };
-}
+          const el = document.createElement("div");
+          el.className = "error-state";
+          el.textContent =
+            "Could not load library.json. Make sure it is beside index.html and that the site is being served through a web server.";
 
-function matches(game){
-  const query = searchBox.value.trim().toLowerCase();
-  const category = categoryFilter.value;
-  const count = playerFilter.value;
+          grid.appendChild(el);
+        }
+      }
 
-  if(category && !(game.categories || []).includes(category)) return false;
+      function buildFilters() {
+        const categories = new Set();
+        const counts = new Set();
 
-  if(count){
-    const n = Number(count);
+        for (const game of games) {
+          for (const category of game.categories || []) {
+            categories.add(category);
+          }
 
-    /*
-     * A library search matches if ANY variant supports the selected
-     * number of players. This is important for games such as Chess,
-     * where one variant may be 2-player and another 4-player.
-     */
-    const supported = (game.variants || []).some(variant => {
-      const range = getPlayerRange(game, variant);
-      return n >= range.min && n <= range.max;
-    });
+          /*
+           * The library filter uses the game's broad player range. The setup
+           * drawer uses the selected variant's range.
+           */
+          const min = game.players?.min;
+          const max = game.players?.max;
 
-    if(!supported) return false;
-  }
+          if (Number.isInteger(min) && Number.isInteger(max)) {
+            for (let n = min; n <= max; n++) counts.add(n);
+          }
 
-  if(!query) return true;
+          for (const variant of game.variants || []) {
+            const vMin = variant.players?.min ?? min;
+            const vMax = variant.players?.max ?? max;
 
-  const text = [
-    game.name,
-    game.description,
-    game.type,
-    ...(game.categories || []),
-    ...(game.searchTerms || []),
-    ...(game.variants || []).map(v => v.name),
-    ...(game.variants || []).map(v => v.id)
-  ].filter(Boolean).join(" ").toLowerCase();
+            if (Number.isInteger(vMin) && Number.isInteger(vMax)) {
+              for (let n = vMin; n <= vMax; n++) counts.add(n);
+            }
+          }
+        }
 
-  return text.includes(query);
-}
+        categoryFilter.innerHTML = '<option value="">All categories</option>';
+        [...categories].sort().forEach((category) => {
+          const option = document.createElement("option");
+          option.value = category;
+          option.textContent = formatLabel(category);
+          categoryFilter.appendChild(option);
+        });
 
-function createGameCard(game){
-  const card = document.createElement("article");
-  card.className = "game-card";
+        playerFilter.innerHTML = '<option value="">Any player count</option>';
+        [...counts]
+          .sort((a, b) => a - b)
+          .forEach((n) => {
+            const option = document.createElement("option");
+            option.value = n;
+            option.textContent = `${n} player${n === 1 ? "" : "s"}`;
+            playerFilter.appendChild(option);
+          });
+      }
 
-  const image = document.createElement("div");
-  image.className = "game-image";
+      function formatLabel(value) {
+        return String(value)
+          .replace(/[-_]+/g, " ")
+          .replace(/\b\w/g, (c) => c.toUpperCase());
+      }
 
-  if(game.image){
-    const img = document.createElement("img");
-    img.src = game.image;
-    img.alt = `${game.name} preview`;
-    img.loading = "lazy";
+      function getVariant(game, variantId) {
+        return (
+          (game.variants || []).find((v) => v.id === variantId) ||
+          game.variants?.[0] ||
+          null
+        );
+      }
 
-    img.onerror = () => {
-      img.remove();
-      const p = document.createElement("div");
-      p.className = "placeholder-image";
-      p.textContent = "🎮";
-      image.appendChild(p);
-    };
+      function getPlayerRange(game, variant) {
+        const min = variant?.players?.min ?? game.players?.min ?? 1;
+        const max = variant?.players?.max ?? game.players?.max ?? 10;
 
-    image.appendChild(img);
-  }else{
-    const p = document.createElement("div");
-    p.className = "placeholder-image";
-    p.textContent = "🎮";
-    image.appendChild(p);
-  }
+        return {
+          min: Math.max(1, min),
+          max: Math.max(min, max),
+        };
+      }
 
-  const content = document.createElement("div");
-  content.className = "game-content";
+      function matches(game) {
+        const query = searchBox.value.trim().toLowerCase();
+        const category = categoryFilter.value;
+        const count = playerFilter.value;
 
-  const title = document.createElement("h2");
-  title.textContent = game.name;
+        if (category && !(game.categories || []).includes(category))
+          return false;
 
-  const desc = document.createElement("p");
-  desc.className = "description";
-  desc.textContent = game.description || "No description available.";
+        if (count) {
+          const n = Number(count);
 
-  const meta = document.createElement("div");
-  meta.className = "game-meta";
+          /*
+           * A library search matches if ANY variant supports the selected
+           * number of players. This is important for games such as Chess,
+           * where one variant may be 2-player and another 4-player.
+           */
+          const supported = (game.variants || []).some((variant) => {
+            const range = getPlayerRange(game, variant);
+            return n >= range.min && n <= range.max;
+          });
 
-  if(game.type) addTag(meta, formatLabel(game.type));
+          if (!supported) return false;
+        }
 
-  /*
-   * Card metadata shows the broad game range. The actual setup drawer
-   * changes this according to the selected variant.
-   */
-  if(game.players?.min && game.players?.max){
-    const min = game.players.min;
-    const max = game.players.max;
-    addTag(
-      meta,
-      min === max
-        ? `${min} player${min === 1 ? "" : "s"}`
-        : `${min}–${max} players`
-    );
-  }
+        if (!query) return true;
 
-  for(const category of (game.categories || []).slice(0,3)){
-    addTag(meta, formatLabel(category));
-  }
+        const text = [
+          game.name,
+          game.description,
+          game.type,
+          ...(game.categories || []),
+          ...(game.searchTerms || []),
+          ...(game.variants || []).map((v) => v.name),
+          ...(game.variants || []).map((v) => v.id),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
 
-  const button = document.createElement("button");
-  button.className = "play-button";
-  button.type = "button";
-  button.textContent = "Play";
-  button.onclick = () => openGameSetup(game);
+        return text.includes(query);
+      }
 
-  content.append(title, desc, meta, button);
-  card.append(image, content);
+      function createGameCard(game) {
+        const card = document.createElement("article");
+        card.className = "game-card";
 
-  return card;
-}
+        const image = document.createElement("div");
+        image.className = "game-image";
 
-function addTag(parent, text){
-  const tag = document.createElement("span");
-  tag.className = "meta-tag";
-  tag.textContent = text;
-  parent.appendChild(tag);
-}
+        if (game.image) {
+          const img = document.createElement("img");
+          img.src = game.image;
+          img.alt = `${game.name} preview`;
+          img.loading = "lazy";
 
-function sessionPlayerEntries(){
-  const entries = [];
+          img.onerror = () => {
+            img.remove();
+            const p = document.createElement("div");
+            p.className = "placeholder-image";
+            p.textContent = "🎮";
+            image.appendChild(p);
+          };
 
-  for(let i = 0; i < playerState.local; i++){
-    const profile = profiles[i % profiles.length];
-    const token = `local:${i}`;
-    entries.push({
-      id: token,
-      token,
-      label: `P${i + 1}`,
-      name: profile?.name || `Player ${i + 1}`,
-      type: "Local player",
-      avatar: profile?.avatar || "♟"
-    });
-  }
+          image.appendChild(img);
+        } else {
+          const p = document.createElement("div");
+          p.className = "placeholder-image";
+          p.textContent = "🎮";
+          image.appendChild(p);
+        }
 
-  for(let i = 0; i < playerState.online; i++){
-    entries.push({
-      id: `online:${i}`,
-      token: `online:${i}`,
-      label: `O${i + 1}`,
-      name: `Online Player Slot ${i + 1}`,
-      type: "Online player",
-      avatar: "●"
-    });
-  }
+        const content = document.createElement("div");
+        content.className = "game-content";
 
-  for(let i = 0; i < computerCount; i++){
-    const difficulty = computerDifficulties[`computer:${i}`] || "normal";
+        const title = document.createElement("h2");
+        title.textContent = game.name;
 
-    entries.push({
-      id: `computer:${i}`,
-      token: `computer:${i}`,
-      label: `B${i + 1}`,
-      name: `Computer ${i + 1}`,
-      type: "Computer player",
-      difficulty,
-      avatar: "🤖"
-    });
-  }
+        const desc = document.createElement("p");
+        desc.className = "description";
+        desc.textContent = game.description || "No description available.";
 
-  return entries;
-}
+        const meta = document.createElement("div");
+        meta.className = "game-meta";
 
-function normalizePlayerOrder(){
-  /*
-   * Spectators are configured players, but they are not active seats for
-   * this game. Keep them completely out of the turn-order list. If a
-   * spectator later returns, they will be appended as a new active entry.
-   */
-  const entries = sessionPlayerEntries().filter(
-    entry => !spectatorTokens.has(entry.token)
-  );
-  const valid = new Set(entries.map(entry => entry.token));
-  const normalized = playerOrder.filter(token => valid.has(token));
+        if (game.type) addTag(meta, formatLabel(game.type));
 
-  for(const entry of entries){
-    if(!normalized.includes(entry.token)){
-      normalized.push(entry.token);
-    }
-  }
+        /*
+         * Card metadata shows the broad game range. The actual setup drawer
+         * changes this according to the selected variant.
+         */
+        if (game.players?.min && game.players?.max) {
+          const min = game.players.min;
+          const max = game.players.max;
+          addTag(
+            meta,
+            min === max
+              ? `${min} player${min === 1 ? "" : "s"}`
+              : `${min}–${max} players`,
+          );
+        }
 
-  playerOrder = normalized;
-}
+        for (const category of (game.categories || []).slice(0, 3)) {
+          addTag(meta, formatLabel(category));
+        }
 
-function resetPlayerOrder(){
-  playerOrder = sessionPlayerEntries()
-    .filter(entry => !spectatorTokens.has(entry.token))
-    .map(entry => entry.token);
-}
+        const button = document.createElement("button");
+        button.className = "play-button";
+        button.type = "button";
+        button.textContent = "Play";
+        button.onclick = () => openGameSetup(game);
 
-function movePlayerOrder(index, direction){
-  normalizePlayerOrder();
-  const target = index + direction;
-  if(index < 0 || index >= playerOrder.length || target < 0 || target >= playerOrder.length){
-    return;
-  }
+        content.append(title, desc, meta, button);
+        card.append(image, content);
 
-  [playerOrder[index], playerOrder[target]] = [playerOrder[target], playerOrder[index]];
-  renderSetupDrawer();
-}
+        return card;
+      }
 
-function renderPlayerOrder(section){
-  normalizePlayerOrder();
+      function addTag(parent, text) {
+        const tag = document.createElement("span");
+        tag.className = "meta-tag";
+        tag.textContent = text;
+        parent.appendChild(tag);
+      }
 
-  const entries = new Map(
-    sessionPlayerEntries()
-      .filter(entry => !spectatorTokens.has(entry.token))
-      .map(entry => [entry.token, entry])
-  );
+      function sessionPlayerEntries() {
+        const entries = [];
 
-  const list = document.createElement("div");
-  list.className = "session-order-list";
+        for (let i = 0; i < playerState.local; i++) {
+          const profile = profiles[i % profiles.length];
+          const token = `local:${i}`;
+          entries.push({
+            id: token,
+            token,
+            label: `P${i + 1}`,
+            name: profile?.name || `Player ${i + 1}`,
+            type: "Local player",
+            avatar: profile?.avatar || "♟",
+          });
+        }
 
-  playerOrder.forEach((token, index) => {
-    const entry = entries.get(token);
-    if(!entry) return;
+        for (let i = 0; i < playerState.online; i++) {
+          entries.push({
+            id: `online:${i}`,
+            token: `online:${i}`,
+            label: `O${i + 1}`,
+            name: `Online Player Slot ${i + 1}`,
+            type: "Online player",
+            avatar: "●",
+          });
+        }
 
-    const row = document.createElement("div");
-    row.className = "session-order-row";
+        for (let i = 0; i < computerCount; i++) {
+          const difficulty = computerDifficulties[`computer:${i}`] || "normal";
 
-    const position = document.createElement("div");
-    position.className = "session-order-position";
-    position.textContent = String(index + 1);
+          entries.push({
+            id: `computer:${i}`,
+            token: `computer:${i}`,
+            label: `B${i + 1}`,
+            name: `Computer ${i + 1}`,
+            type: "Computer player",
+            difficulty,
+            avatar: "🤖",
+          });
+        }
 
-    const info = document.createElement("div");
-    info.className = "session-order-name session-order-info";
+        return entries;
+      }
 
-    const name = document.createElement("strong");
-    name.textContent = `${entry.label} — ${entry.name}`;
+      function normalizePlayerOrder() {
+        /*
+         * Spectators are configured players, but they are not active seats for
+         * this game. Keep them completely out of the turn-order list. If a
+         * spectator later returns, they will be appended as a new active entry.
+         */
+        const entries = sessionPlayerEntries().filter(
+          (entry) => !spectatorTokens.has(entry.token),
+        );
+        const valid = new Set(entries.map((entry) => entry.token));
+        const normalized = playerOrder.filter((token) => valid.has(token));
 
-    const type = document.createElement("span");
-    type.textContent = entry.type + (entry.difficulty ? ` • ${formatLabel(entry.difficulty)}` : "");
+        for (const entry of entries) {
+          if (!normalized.includes(entry.token)) {
+            normalized.push(entry.token);
+          }
+        }
 
-    info.append(name, type);
+        playerOrder = normalized;
+      }
 
-    const up = document.createElement("button");
-    up.className = "order-button";
-    up.type = "button";
-    up.textContent = "↑";
-    up.title = "Move player up";
-    up.disabled = index === 0;
-    up.addEventListener("click", () => movePlayerOrder(index, -1));
+      function resetPlayerOrder() {
+        playerOrder = sessionPlayerEntries()
+          .filter((entry) => !spectatorTokens.has(entry.token))
+          .map((entry) => entry.token);
+      }
 
-    const down = document.createElement("button");
-    down.className = "order-button";
-    down.type = "button";
-    down.textContent = "↓";
-    down.title = "Move player down";
-    down.disabled = index === playerOrder.length - 1;
-    down.addEventListener("click", () => movePlayerOrder(index, 1));
+      function movePlayerOrder(index, direction) {
+        normalizePlayerOrder();
+        const target = index + direction;
+        if (
+          index < 0 ||
+          index >= playerOrder.length ||
+          target < 0 ||
+          target >= playerOrder.length
+        ) {
+          return;
+        }
 
-    row.append(position, info);
-
-    if(entry.token.startsWith("computer:")){
-      const difficulty = document.createElement("select");
-      difficulty.className = "computer-difficulty-select";
-      difficulty.title = `${entry.name} difficulty`;
-      difficulty.innerHTML =
-        '<option value="easy">Easy</option>' +
-        '<option value="normal">Normal</option>' +
-        '<option value="hard">Hard</option>' +
-        '<option value="expert">Expert</option>';
-      difficulty.value = computerDifficulties[entry.token] || "normal";
-
-      difficulty.addEventListener("change", () => {
-        computerDifficulties[entry.token] = difficulty.value;
+        [playerOrder[index], playerOrder[target]] = [
+          playerOrder[target],
+          playerOrder[index],
+        ];
         renderSetupDrawer();
-      });
-
-      row.appendChild(difficulty);
-    }
-
-    row.append(up, down);
-    list.appendChild(row);
-  });
-
-  section.appendChild(list);
-}
-function openGameSetup(game){
-  selectedGame = game;
-
-  selectedVariant =
-    game.variants?.[0]?.id ??
-    null;
-
-  selectedOptions = {};
-
-  /*
-   * Set every declared option to its default.
-   */
-  for(const [id, option] of Object.entries(game.options || {})){
-    selectedOptions[id] = option.default;
-  }
-
-  const variant = getVariant(game, selectedVariant);
-  const range = getPlayerRange(game, variant);
-
-  /*
-   * A single local player is the default. Add enough computer players
-   * to satisfy the selected variant's minimum player count.
-   */
-  computerCount = Math.max(
-    0,
-    range.min - playerState.local - playerState.online
-  );
-
-  computerDifficulties = {};
-  for(let i = 0; i < computerCount; i++) {
-    computerDifficulties[`computer:${i}`] = "normal";
-  }
-  spectatorTokens = new Set();
-  resetPlayerOrder();
-
-  renderSetupDrawer();
-  setupDrawer.classList.add("open");
-  drawerBackdrop.classList.add("open");
-  setupDrawer.setAttribute("aria-hidden", "false");
-  document.body.classList.add("drawer-open");
-}
-
-function closeGameSetup(){
-  setupDrawer.classList.remove("open");
-  drawerBackdrop.classList.remove("open");
-  setupDrawer.setAttribute("aria-hidden", "true");
-  document.body.classList.remove("drawer-open");
-}
-
-function renderSetupDrawer(){
-  if(!selectedGame) return;
-
-  const variant = getVariant(selectedGame, selectedVariant);
-  const range = getPlayerRange(selectedGame, variant);
-
-  /*
-   * The computer range is based on active humans only. If spectators reduce
-   * the active human count below the variant minimum, automatically supply
-   * enough computers to make the setup capable of satisfying that minimum.
-   * This is what allows, for example, 4 configured profiles with 3
-   * spectators to become 1 active human + 1 computer in a 2-player game.
-   */
-  const computerMin = getComputerMinimum(selectedGame, variant);
-  const computerMax = getComputerMaximum(selectedGame, variant);
-  computerCount = Math.max(computerCount, computerMin);
-  computerCount = Math.min(computerCount, computerMax);
-
-  drawerGameName.textContent = selectedGame.name;
-  drawerGameDescription.textContent =
-    variant ? variant.name : "Game Setup";
-
-  setupBody.innerHTML = "";
-
-  /* Variant section */
-
-  if((selectedGame.variants || []).length > 0){
-    const section = document.createElement("section");
-    section.className = "setup-section";
-
-    const heading = document.createElement("h3");
-    heading.textContent = "Variant";
-
-    const list = document.createElement("div");
-    list.className = "variant-list";
-
-    for(const gameVariant of selectedGame.variants){
-      const button = document.createElement("button");
-      button.className = "variant-button";
-      button.type = "button";
-      button.textContent = gameVariant.name;
-
-      if(gameVariant.id === selectedVariant){
-        button.classList.add("selected");
       }
 
-      button.addEventListener("click", () => {
-        selectedVariant = gameVariant.id;
+      function renderPlayerOrder(section) {
+        normalizePlayerOrder();
 
-        /*
-         * Changing the variant can change the player limit, so recalculate
-         * the minimum computer count while preserving the user's existing
-         * count where possible.
-         */
-        const newRange = getPlayerRange(selectedGame, gameVariant);
-        const humanPlayers = playerState.local + playerState.online;
-
-        computerCount = Math.max(
-          computerCount,
-          Math.max(0, newRange.min - humanPlayers)
+        const entries = new Map(
+          sessionPlayerEntries()
+            .filter((entry) => !spectatorTokens.has(entry.token))
+            .map((entry) => [entry.token, entry]),
         );
 
-        computerCount = Math.min(
-          computerCount,
-          getComputerMaximum(selectedGame, gameVariant)
-        );
+        const list = document.createElement("div");
+        list.className = "session-order-list";
 
-        /*
-         * Reset variant-specific options to their defaults. This keeps
-         * the setup predictable when switching variants.
-         */
+        playerOrder.forEach((token, index) => {
+          const entry = entries.get(token);
+          if (!entry) return;
+
+          const row = document.createElement("div");
+          row.className = "session-order-row";
+
+          const position = document.createElement("div");
+          position.className = "session-order-position";
+          position.textContent = String(index + 1);
+
+          const info = document.createElement("div");
+          info.className = "session-order-name session-order-info";
+
+          const name = document.createElement("strong");
+          name.textContent = `${entry.label} — ${entry.name}`;
+
+          const type = document.createElement("span");
+          type.textContent =
+            entry.type +
+            (entry.difficulty ? ` • ${formatLabel(entry.difficulty)}` : "");
+
+          info.append(name, type);
+
+          const up = document.createElement("button");
+          up.className = "order-button";
+          up.type = "button";
+          up.textContent = "↑";
+          up.title = "Move player up";
+          up.disabled = index === 0;
+          up.addEventListener("click", () => movePlayerOrder(index, -1));
+
+          const down = document.createElement("button");
+          down.className = "order-button";
+          down.type = "button";
+          down.textContent = "↓";
+          down.title = "Move player down";
+          down.disabled = index === playerOrder.length - 1;
+          down.addEventListener("click", () => movePlayerOrder(index, 1));
+
+          row.append(position, info);
+
+          if (entry.token.startsWith("computer:")) {
+            const difficulty = document.createElement("select");
+            difficulty.className = "computer-difficulty-select";
+            difficulty.title = `${entry.name} difficulty`;
+            difficulty.innerHTML =
+              '<option value="easy">Easy</option>' +
+              '<option value="normal">Normal</option>' +
+              '<option value="hard">Hard</option>' +
+              '<option value="expert">Expert</option>';
+            difficulty.value = computerDifficulties[entry.token] || "normal";
+
+            difficulty.addEventListener("change", () => {
+              computerDifficulties[entry.token] = difficulty.value;
+              renderSetupDrawer();
+            });
+
+            row.appendChild(difficulty);
+          }
+
+          row.append(up, down);
+          list.appendChild(row);
+        });
+
+        section.appendChild(list);
+      }
+      function openGameSetup(game) {
+        selectedGame = game;
+
+        selectedVariant = game.variants?.[0]?.id ?? null;
+
         selectedOptions = {};
-        for(const [id, option] of Object.entries(selectedGame.options || {})){
+
+        /*
+         * Set every declared option to its default.
+         */
+        for (const [id, option] of Object.entries(game.options || {})) {
           selectedOptions[id] = option.default;
         }
 
+        const variant = getVariant(game, selectedVariant);
+        const range = getPlayerRange(game, variant);
+
+        /*
+         * A single local player is the default. Add enough computer players
+         * to satisfy the selected variant's minimum player count.
+         */
+        computerCount = Math.max(
+          0,
+          range.min - playerState.local - playerState.online,
+        );
+
+        computerDifficulties = {};
+        for (let i = 0; i < computerCount; i++) {
+          computerDifficulties[`computer:${i}`] = "normal";
+        }
+        spectatorTokens = new Set();
+        resetPlayerOrder();
+
         renderSetupDrawer();
-      });
+        setupDrawer.classList.add("open");
+        drawerBackdrop.classList.add("open");
+        setupDrawer.setAttribute("aria-hidden", "false");
+        document.body.classList.add("drawer-open");
+      }
 
-      list.appendChild(button);
-    }
+      function closeGameSetup() {
+        setupDrawer.classList.remove("open");
+        drawerBackdrop.classList.remove("open");
+        setupDrawer.setAttribute("aria-hidden", "true");
+        document.body.classList.remove("drawer-open");
+      }
 
-    section.append(heading, list);
-    setupBody.appendChild(section);
-  }
+      function renderSetupDrawer() {
+        if (!selectedGame) return;
 
-  /* Player summary */
+        const variant = getVariant(selectedGame, selectedVariant);
+        const range = getPlayerRange(selectedGame, variant);
 
-  const playerSection = document.createElement("section");
-  playerSection.className = "setup-section";
+        /*
+         * The computer range is based on active humans only. If spectators reduce
+         * the active human count below the variant minimum, automatically supply
+         * enough computers to make the setup capable of satisfying that minimum.
+         * This is what allows, for example, 4 configured profiles with 3
+         * spectators to become 1 active human + 1 computer in a 2-player game.
+         */
+        const computerMin = getComputerMinimum(selectedGame, variant);
+        const computerMax = getComputerMaximum(selectedGame, variant);
+        computerCount = Math.max(computerCount, computerMin);
+        computerCount = Math.min(computerCount, computerMax);
 
-  const playerHeading = document.createElement("h3");
-  playerHeading.textContent = "Players";
+        drawerGameName.textContent = selectedGame.name;
+        drawerGameDescription.textContent = variant
+          ? variant.name
+          : "Game Setup";
 
-  const playerSummary = document.createElement("div");
-  playerSummary.className = "player-summary";
+        setupBody.innerHTML = "";
 
-  const configuredCount = sessionPlayerEntries().length;
-  const activeCount = getActiveSessionEntries().length;
-  const spectatorCount = configuredCount - activeCount;
+        /* Variant section */
 
-  playerSummary.innerHTML =
-    `<strong>${activeCount} active player${activeCount === 1 ? "" : "s"}</strong> ` +
-    `of ${configuredCount} configured` +
-    (spectatorCount ? ` (${spectatorCount} spectator${spectatorCount === 1 ? "" : "s"})` : "") +
-    `.`;
+        if ((selectedGame.variants || []).length > 0) {
+          const section = document.createElement("section");
+          section.className = "setup-section";
 
-  playerSection.append(playerHeading, playerSummary);
+          const heading = document.createElement("h3");
+          heading.textContent = "Variant";
 
-  const spectatorList = document.createElement("div");
-  spectatorList.className = "spectator-list";
+          const list = document.createElement("div");
+          list.className = "variant-list";
 
-  for(const entry of sessionPlayerEntries()){
-    const isSpectator = spectatorTokens.has(entry.token);
+          for (const gameVariant of selectedGame.variants) {
+            const button = document.createElement("button");
+            button.className = "variant-button";
+            button.type = "button";
+            button.textContent = gameVariant.name;
 
-    const row = document.createElement("div");
-    row.className = "spectator-row" + (isSpectator ? " is-spectator" : "");
+            if (gameVariant.id === selectedVariant) {
+              button.classList.add("selected");
+            }
 
-    const avatar = document.createElement("div");
-    avatar.className = "profile-avatar";
-    avatar.textContent = entry.avatar;
+            button.addEventListener("click", () => {
+              selectedVariant = gameVariant.id;
 
-    const info = document.createElement("div");
-    const name = document.createElement("strong");
-    name.textContent = `${entry.label} — ${entry.name}`;
-    const state = document.createElement("div");
-    state.className = "spectator-state";
-    state.textContent = isSpectator ? "Spectator for this game" : entry.type;
-    info.append(name, state);
+              /*
+               * Changing the variant can change the player limit, so recalculate
+               * the minimum computer count while preserving the user's existing
+               * count where possible.
+               */
+              const newRange = getPlayerRange(selectedGame, gameVariant);
+              const humanPlayers = playerState.local + playerState.online;
 
-    const remove = document.createElement("button");
-    remove.className = "spectator-remove";
-    remove.type = "button";
-    remove.textContent = isSpectator ? "↩" : "×";
-    remove.title = isSpectator ? "Return player to the game" : "Make spectator for this game";
-    remove.addEventListener("click", () => {
-      if(isSpectator) spectatorTokens.delete(entry.token);
-      else spectatorTokens.add(entry.token);
-      normalizePlayerOrder();
-      renderSetupDrawer();
-    });
+              computerCount = Math.max(
+                computerCount,
+                Math.max(0, newRange.min - humanPlayers),
+              );
 
-    row.append(avatar, info, remove);
-    spectatorList.appendChild(row);
-  }
+              computerCount = Math.min(
+                computerCount,
+                getComputerMaximum(selectedGame, gameVariant),
+              );
 
-  const spectatorHelp = document.createElement("div");
-  spectatorHelp.className = "range-help";
-  spectatorHelp.textContent = "Use × to make a configured player a spectator for this game only. ↩ returns them without changing the player list.";
+              /*
+               * Reset variant-specific options to their defaults. This keeps
+               * the setup predictable when switching variants.
+               */
+              selectedOptions = {};
+              for (const [id, option] of Object.entries(
+                selectedGame.options || {},
+              )) {
+                selectedOptions[id] = option.default;
+              }
 
-  playerSection.append(spectatorList, spectatorHelp);
-  setupBody.appendChild(playerSection);
+              renderSetupDrawer();
+            });
 
-  /* Player order */
+            list.appendChild(button);
+          }
 
-  const orderSection = document.createElement("section");
-  orderSection.className = "setup-section";
+          section.append(heading, list);
+          setupBody.appendChild(section);
+        }
 
-  const orderHeading = document.createElement("h3");
-  orderHeading.textContent = "Player order";
+        /* Player summary */
 
-  const orderHelp = document.createElement("div");
-  orderHelp.className = "range-help";
-  orderHelp.textContent =
-    "The order below determines whose turn slot comes next. Spectators are omitted. Use ↑ and ↓ to rearrange active players.";
+        const playerSection = document.createElement("section");
+        playerSection.className = "setup-section";
 
-  const orderSummary = document.createElement("div");
-  orderSummary.className = "player-summary";
-  orderSummary.textContent = "For example: P1, P2, B1, B2 → P1, B1, P2, B2.";
+        const playerHeading = document.createElement("h3");
+        playerHeading.textContent = "Players";
 
-  orderSection.append(orderHeading, orderHelp, orderSummary);
-  renderPlayerOrder(orderSection);
-  setupBody.appendChild(orderSection);
+        const playerSummary = document.createElement("div");
+        playerSummary.className = "player-summary";
 
-  /*
-   * Computer difficulty is configured individually in the
-   * player-order list above, so there is no shared difficulty control.
-   */
+        const configuredCount = sessionPlayerEntries().length;
+        const activeCount = getActiveSessionEntries().length;
+        const spectatorCount = configuredCount - activeCount;
 
-  /* Computer slider */
+        playerSummary.innerHTML =
+          `<strong>${activeCount} active player${activeCount === 1 ? "" : "s"}</strong> ` +
+          `of ${configuredCount} configured` +
+          (spectatorCount
+            ? ` (${spectatorCount} spectator${spectatorCount === 1 ? "" : "s"})`
+            : "") +
+          `.`;
 
-  const computerSection = document.createElement("section");
-  computerSection.className = "setup-section";
+        playerSection.append(playerHeading, playerSummary);
 
-  const computerHeading = document.createElement("h3");
-  computerHeading.textContent = "Computer players";
+        const spectatorList = document.createElement("div");
+        spectatorList.className = "spectator-list";
 
-  const rangeRow = document.createElement("div");
-  rangeRow.className = "range-row";
+        for (const entry of sessionPlayerEntries()) {
+          const isSpectator = spectatorTokens.has(entry.token);
 
-  const rangeMain = document.createElement("div");
-  rangeMain.className = "range-main";
+          const row = document.createElement("div");
+          row.className =
+            "spectator-row" + (isSpectator ? " is-spectator" : "");
 
-  const rangeLabel = document.createElement("div");
-  rangeLabel.className = "range-label";
+          const avatar = document.createElement("div");
+          avatar.className = "profile-avatar";
+          avatar.textContent = entry.avatar;
 
-  const label = document.createElement("span");
-  label.textContent = "Number of computers";
+          const info = document.createElement("div");
+          const name = document.createElement("strong");
+          name.textContent = `${entry.label} — ${entry.name}`;
+          const state = document.createElement("div");
+          state.className = "spectator-state";
+          state.textContent = isSpectator
+            ? "Spectator for this game"
+            : entry.type;
+          info.append(name, state);
 
-  const value = document.createElement("span");
-  value.className = "range-value";
-  value.textContent = String(computerCount);
+          const remove = document.createElement("button");
+          remove.className = "spectator-remove";
+          remove.type = "button";
+          remove.textContent = isSpectator ? "↩" : "×";
+          remove.title = isSpectator
+            ? "Return player to the game"
+            : "Make spectator for this game";
+          remove.addEventListener("click", () => {
+            if (isSpectator) spectatorTokens.delete(entry.token);
+            else spectatorTokens.add(entry.token);
+            normalizePlayerOrder();
+            renderSetupDrawer();
+          });
 
-  rangeLabel.append(label, value);
+          row.append(avatar, info, remove);
+          spectatorList.appendChild(row);
+        }
 
-  const slider = document.createElement("input");
-  slider.type = "range";
-  slider.min = String(getComputerMinimum(selectedGame, variant));
-  slider.max = String(getComputerMaximum(selectedGame, variant));
-  slider.value = String(computerCount);
-  slider.step = "1";
+        const spectatorHelp = document.createElement("div");
+        spectatorHelp.className = "range-help";
+        spectatorHelp.textContent =
+          "Use × to make a configured player a spectator for this game only. ↩ returns them without changing the player list.";
 
-  slider.addEventListener("input", () => {
-    const oldCount = computerCount;
-    computerCount = Number(slider.value);
+        playerSection.append(spectatorList, spectatorHelp);
+        setupBody.appendChild(playerSection);
 
-    for(let i = oldCount; i < computerCount; i++){
-      computerDifficulties[`computer:${i}`] = "normal";
-    }
+        /* Player order */
 
-    Object.keys(computerDifficulties).forEach(token => {
-      const index = Number(token.split(":")[1]);
-      if(index >= computerCount) delete computerDifficulties[token];
-    });
+        const orderSection = document.createElement("section");
+        orderSection.className = "setup-section";
 
-    normalizePlayerOrder();
-    value.textContent = String(computerCount);
-    updatePlayerSummaryOnly();
-    renderSetupDrawer();
-  });
+        const orderHeading = document.createElement("h3");
+        orderHeading.textContent = "Player order";
 
-  const help = document.createElement("div");
-  help.className = "range-help";
-  help.textContent =
-    `Allowed for ${variant?.name || "this variant"}: ` +
-    `${slider.min}–${slider.max} computer players. ` +
-    `Spectators do not use player slots; total active players must remain within ${range.min}–${range.max}.`;
+        const orderHelp = document.createElement("div");
+        orderHelp.className = "range-help";
+        orderHelp.textContent =
+          "The order below determines whose turn slot comes next. Spectators are omitted. Use ↑ and ↓ to rearrange active players.";
 
-  rangeMain.append(rangeLabel, slider, help);
-  rangeRow.appendChild(rangeMain);
+        const orderSummary = document.createElement("div");
+        orderSummary.className = "player-summary";
+        orderSummary.textContent =
+          "For example: P1, P2, B1, B2 → P1, B1, P2, B2.";
 
-  computerSection.append(computerHeading, rangeRow);
-  setupBody.appendChild(computerSection);
+        orderSection.append(orderHeading, orderHelp, orderSummary);
+        renderPlayerOrder(orderSection);
+        setupBody.appendChild(orderSection);
 
-  /* Game-specific options */
+        /*
+         * Computer difficulty is configured individually in the
+         * player-order list above, so there is no shared difficulty control.
+         */
 
-  const optionEntries = Object.entries(selectedGame.options || {});
+        /* Computer slider */
 
-  if(optionEntries.length){
-    const optionSection = document.createElement("section");
-    optionSection.className = "setup-section";
+        const computerSection = document.createElement("section");
+        computerSection.className = "setup-section";
 
-    const heading = document.createElement("h3");
-    heading.textContent = "Game options";
+        const computerHeading = document.createElement("h3");
+        computerHeading.textContent = "Computer players";
 
-    const optionList = document.createElement("div");
-    optionList.className = "option-list";
+        const rangeRow = document.createElement("div");
+        rangeRow.className = "range-row";
 
-    for(const [id, option] of optionEntries){
-      if(option.type === "toggle"){
-        const row = document.createElement("div");
-        row.className = "toggle-option";
+        const rangeMain = document.createElement("div");
+        rangeMain.className = "range-main";
 
-        const textLabel = document.createElement("label");
-        textLabel.className = "toggle-label";
-        textLabel.textContent = option.name;
-        textLabel.htmlFor = `option-${id}`;
+        const rangeLabel = document.createElement("div");
+        rangeLabel.className = "range-label";
 
-        const switchLabel = document.createElement("label");
-        switchLabel.className = "toggle-switch";
+        const label = document.createElement("span");
+        label.textContent = "Number of computers";
 
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.id = `option-${id}`;
-        checkbox.checked = Boolean(selectedOptions[id]);
+        const value = document.createElement("span");
+        value.className = "range-value";
+        value.textContent = String(computerCount);
 
-        const slider = document.createElement("span");
-        slider.className = "toggle-slider";
+        rangeLabel.append(label, value);
 
-        checkbox.addEventListener("change", () => {
-          selectedOptions[id] = checkbox.checked;
+        const slider = document.createElement("input");
+        slider.type = "range";
+        slider.min = String(getComputerMinimum(selectedGame, variant));
+        slider.max = String(getComputerMaximum(selectedGame, variant));
+        slider.value = String(computerCount);
+        slider.step = "1";
+
+        slider.addEventListener("input", () => {
+          const oldCount = computerCount;
+          computerCount = Number(slider.value);
+
+          for (let i = oldCount; i < computerCount; i++) {
+            computerDifficulties[`computer:${i}`] = "normal";
+          }
+
+          Object.keys(computerDifficulties).forEach((token) => {
+            const index = Number(token.split(":")[1]);
+            if (index >= computerCount) delete computerDifficulties[token];
+          });
+
+          normalizePlayerOrder();
+          value.textContent = String(computerCount);
+          updatePlayerSummaryOnly();
+          renderSetupDrawer();
         });
 
-        switchLabel.append(checkbox, slider);
-        row.append(textLabel, switchLabel);
-        optionList.appendChild(row);
+        const help = document.createElement("div");
+        help.className = "range-help";
+        help.textContent =
+          `Allowed for ${variant?.name || "this variant"}: ` +
+          `${slider.min}–${slider.max} computer players. ` +
+          `Spectators do not use player slots; total active players must remain within ${range.min}–${range.max}.`;
+
+        rangeMain.append(rangeLabel, slider, help);
+        rangeRow.appendChild(rangeMain);
+
+        computerSection.append(computerHeading, rangeRow);
+        setupBody.appendChild(computerSection);
+
+        /* Game-specific options */
+
+        const optionEntries = Object.entries(selectedGame.options || {});
+
+        if (optionEntries.length) {
+          const optionSection = document.createElement("section");
+          optionSection.className = "setup-section";
+
+          const heading = document.createElement("h3");
+          heading.textContent = "Game options";
+
+          const optionList = document.createElement("div");
+          optionList.className = "option-list";
+
+          for (const [id, option] of optionEntries) {
+            if (option.type === "toggle") {
+              const row = document.createElement("div");
+              row.className = "toggle-option";
+
+              const textLabel = document.createElement("label");
+              textLabel.className = "toggle-label";
+              textLabel.textContent = option.name;
+              textLabel.htmlFor = `option-${id}`;
+
+              const switchLabel = document.createElement("label");
+              switchLabel.className = "toggle-switch";
+
+              const checkbox = document.createElement("input");
+              checkbox.type = "checkbox";
+              checkbox.id = `option-${id}`;
+              checkbox.checked = Boolean(selectedOptions[id]);
+
+              const slider = document.createElement("span");
+              slider.className = "toggle-slider";
+
+              checkbox.addEventListener("change", () => {
+                selectedOptions[id] = checkbox.checked;
+              });
+
+              switchLabel.append(checkbox, slider);
+              row.append(textLabel, switchLabel);
+              optionList.appendChild(row);
+            }
+          }
+
+          optionSection.append(heading, optionList);
+          setupBody.appendChild(optionSection);
+        }
+
+        /*
+         * Keep the Play button usable only when the total number of players
+         * satisfies the selected variant.
+         */
+        const total = getActiveSessionEntries().length;
+        setupPlayButton.disabled = total < range.min || total > range.max;
+        setupPlayButton.title = setupPlayButton.disabled
+          ? `This variant requires ${range.min}–${range.max} players.`
+          : "";
       }
-    }
-
-    optionSection.append(heading, optionList);
-    setupBody.appendChild(optionSection);
-  }
-
-  /*
-   * Keep the Play button usable only when the total number of players
-   * satisfies the selected variant.
-   */
-  const total = getActiveSessionEntries().length;
-  setupPlayButton.disabled = total < range.min || total > range.max;
-  setupPlayButton.title = setupPlayButton.disabled
-    ? `This variant requires ${range.min}–${range.max} players.`
-    : "";
-}
-
-function getActiveSessionEntries(){
-  return sessionPlayerEntries().filter(entry => !spectatorTokens.has(entry.token));
-}
-
-function getActiveHumanCount(){
-  return sessionPlayerEntries().filter(entry =>
-    (entry.token.startsWith("local:") || entry.token.startsWith("online:")) &&
-    !spectatorTokens.has(entry.token)
-  ).length;
-}
-
-function getComputerMinimum(game, variant){
-  const range = getPlayerRange(game, variant);
-  const humans = getActiveHumanCount();
-
-  /*
-   * Spectators do not occupy a player slot for this game. Computers can
-   * therefore fill any remaining slots needed to reach the variant minimum.
-   */
-  return Math.max(0, range.min - humans);
-}
-
-function getComputerMaximum(game, variant){
-  const range = getPlayerRange(game, variant);
-  const humans = getActiveHumanCount();
-
-  /*
-   * Spectating configured players are deliberately excluded here. This
-   * means a game configured with four profiles can have three spectating
-   * while one active human is joined by a computer in a two-player game.
-   */
-  if(Number.isFinite(range.max)){
-    return Math.max(
-      getComputerMinimum(game, variant),
-      range.max - humans
-    );
-  }
-
-  return 10;
-}
-
-function updatePlayerSummaryOnly(){
-  if(!selectedGame) return;
-
-  const summary = setupBody.querySelector(".player-summary");
-  if(!summary) return;
-
-  const configured = sessionPlayerEntries().length;
-  const total = getActiveSessionEntries().length;
-  const spectators = configured - total;
-
-  summary.innerHTML =
-    `<strong>${total} active player${total === 1 ? "" : "s"}</strong> ` +
-    `of ${configured} configured` +
-    (spectators ? ` (${spectators} spectator${spectators === 1 ? "" : "s"})` : "") +
-    `.`;
-
-  const variant = getVariant(selectedGame, selectedVariant);
-  const range = getPlayerRange(selectedGame, variant);
-
-  setupPlayButton.disabled =
-    total < range.min ||
-    total > range.max;
-}
-
-function playSelectedGame(){
-  if(!selectedGame) return;
-
-  const variant = getVariant(selectedGame, selectedVariant);
-  const range = getPlayerRange(selectedGame, variant);
-
-  const totalPlayers = getActiveSessionEntries().length;
-
-  if(
-    totalPlayers < range.min ||
-    totalPlayers > range.max
-  ){
-    return;
-  }
-
-  if(!selectedGame.page){
-    console.error(`Game "${selectedGame.id}" has no page.`);
-    return;
-  }
-
-  /*
-   * Temporary transport. This is intentionally generic so boardGame.html
-   * and cardGame.html can read the same fields.
-   *
-   * Later this can become a setup/session object handled by the online
-   * system instead.
-   */
-  const localProfileIds = profiles
-    .slice(0, playerState.local)
-    .map(profile => profile.id);
-
-  normalizePlayerOrder();
-  const sessionOrder = playerOrder.slice();
-
-  const params = new URLSearchParams({
-    game: selectedGame.id,
-    variant: selectedVariant || "",
-    localPlayers: String(playerState.local),
-    onlinePlayers: String(playerState.online),
-    computerPlayers: String(computerCount),
-    computerDifficulties: JSON.stringify(computerDifficulties),
-    localProfileIds: JSON.stringify(localProfileIds),
-    playerOrder: JSON.stringify(sessionOrder),
-    spectatorPlayers: JSON.stringify([...spectatorTokens]),
-    onlineCode: onlineState.code,
-    onlineJoinedCode: onlineState.joinedCode,
-    hostComputerPlayers: String(onlineState.hostComputers)
-  });
-
-  for(const [id, value] of Object.entries(selectedOptions)){
-    params.set(id, String(value));
-  }
-
-  window.location.href =
-    `${selectedGame.page}?${params.toString()}`;
-}
-
-function renderPlayerPanel(){
-  playerState.local = Math.max(1, profiles.length);
-  totalPlayerCountEl.textContent =
-    `${playerState.local} local player${playerState.local === 1 ? "" : "s"}`;
-
-  renderProfiles();
-  renderOnlineGroup();
-  normalizePlayerOrder();
-
-  if(selectedGame){
-    const variant = getVariant(selectedGame, selectedVariant);
-    const min = getComputerMinimum(selectedGame, variant);
-    const max = getComputerMaximum(selectedGame, variant);
-
-    computerCount = Math.max(computerCount, min);
-    computerCount = Math.min(computerCount, max);
-
-    renderSetupDrawer();
-  }
-}
-
-function renderOnlineGroup(){
-  hostComputerPlayers.checked = onlineState.hostComputers;
-
-  if(onlineState.code){
-    onlineCodeDisplay.hidden = false;
-    onlineCodeEl.textContent = onlineState.code;
-    onlineCodeStatus.textContent = "Local placeholder";
-  }else if(onlineState.joinedCode){
-    onlineCodeDisplay.hidden = true;
-    onlineCodeStatus.textContent = `Joined group ${onlineState.joinedCode} (staged)`;
-  }else{
-    onlineCodeDisplay.hidden = true;
-    onlineCodeStatus.textContent = "Not connected";
-  }
-}
-
-function generateOnlineCode(){
-  return String(Math.floor(1000 + Math.random() * 9000));
-}
-
-function requestOnlineCode(){
-  onlineState.code = generateOnlineCode();
-  onlineState.joinedCode = "";
-  localStorage.setItem("gameLibraryOnlineCode", onlineState.code);
-  renderOnlineGroup();
-}
-
-function joinOnlineGroup(){
-  const code = joinOnlineCodeInput.value.replace(/\D/g, "").slice(0,4);
-  joinOnlineCodeInput.value = code;
-  if(code.length !== 4){
-    onlineCodeStatus.textContent = "Enter a 4-digit code";
-    return;
-  }
-
-  onlineState.joinedCode = code;
-  onlineState.code = "";
-  onlineCodeDisplay.hidden = true;
-  onlineCodeStatus.textContent = `Joined group ${code} (staged)`;
-}
-
-function renderProfiles(){
-  const profileList = document.getElementById("profileList");
-  if(!profileList) return;
-
-  profileList.innerHTML = "";
-
-  profiles.forEach(profile => {
-    const row = document.createElement("div");
-    row.className = "profile-row";
-
-    const avatar = document.createElement("div");
-    avatar.className = "profile-avatar";
-    avatar.textContent = profile.avatar;
-
-    const info = document.createElement("div");
-    info.className = "profile-info";
-
-    const name = document.createElement("div");
-    name.className = "profile-name";
-    name.textContent = profile.name;
-
-    const type = document.createElement("div");
-    type.className = "profile-type";
-    type.textContent = "Local player";
-
-    info.append(name, type);
-
-    const edit = document.createElement("button");
-    edit.className = "profile-edit";
-    edit.type = "button";
-    edit.textContent = "Edit";
-    edit.addEventListener("click", () => openProfileEditor(profile.id));
-
-    const remove = document.createElement("button");
-    remove.className = "profile-remove";
-    remove.type = "button";
-    remove.textContent = "×";
-    remove.title = profiles.length === 1 ? "At least one local profile is required" : "Remove profile and local player";
-    remove.disabled = profiles.length === 1;
-    remove.addEventListener("click", () => removeProfile(profile.id));
-
-    row.append(avatar, info, edit, remove);
-    profileList.appendChild(row);
-  });
-}
-
-function removeProfile(profileId){
-  if(profiles.length <= 1) return;
-
-  const index = profiles.findIndex(profile => profile.id === profileId);
-  if(index < 0) return;
-
-  profiles.splice(index, 1);
-  playerState.local = profiles.length;
-  saveProfiles();
-  playerOrder = [];
-  spectatorTokens = new Set();
-  renderPlayerPanel();
-}
-
-function openProfileEditor(profileId = null){
-  editingProfileId = profileId;
-
-  const existing = profileId
-    ? profiles.find(profile => profile.id === profileId)
-    : null;
-
-  const container = document.getElementById("profileEditorContainer");
-  container.innerHTML = "";
-
-  const editor = document.createElement("div");
-  editor.className = "profile-editor";
-
-  const nameInput = document.createElement("input");
-  nameInput.type = "text";
-  nameInput.maxLength = 30;
-  nameInput.placeholder = "Profile name";
-  nameInput.value = existing?.name || "";
-
-  const avatarGrid = document.createElement("div");
-  avatarGrid.className = "avatar-grid";
-
-  let selectedAvatar = existing?.avatar || AVATARS[0];
-
-  AVATARS.forEach(avatarValue => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "avatar-button";
-    button.textContent = avatarValue;
-
-    if(avatarValue === selectedAvatar){
-      button.classList.add("selected");
-    }
-
-    button.addEventListener("click", () => {
-      selectedAvatar = avatarValue;
-      avatarGrid.querySelectorAll(".avatar-button")
-        .forEach(b => b.classList.remove("selected"));
-      button.classList.add("selected");
-    });
-
-    avatarGrid.appendChild(button);
-  });
-
-  const actions = document.createElement("div");
-  actions.className = "profile-editor-actions";
-
-  const cancel = document.createElement("button");
-  cancel.className = "small-button";
-  cancel.type = "button";
-  cancel.textContent = "Cancel";
-  cancel.addEventListener("click", () => {
-    editingProfileId = null;
-    container.innerHTML = "";
-  });
-
-  const save = document.createElement("button");
-  save.className = "small-button primary";
-  save.type = "button";
-  save.textContent = existing ? "Save" : "Create";
-
-  save.addEventListener("click", () => {
-    const name = nameInput.value.trim() || "Unnamed Player";
-
-    if(existing){
-      existing.name = name;
-      existing.avatar = selectedAvatar;
-    }else{
-      profiles.push({
-        id: createId(),
-        name,
-        avatar: selectedAvatar
+
+      function getActiveSessionEntries() {
+        return sessionPlayerEntries().filter(
+          (entry) => !spectatorTokens.has(entry.token),
+        );
+      }
+
+      function getActiveHumanCount() {
+        return sessionPlayerEntries().filter(
+          (entry) =>
+            (entry.token.startsWith("local:") ||
+              entry.token.startsWith("online:")) &&
+            !spectatorTokens.has(entry.token),
+        ).length;
+      }
+
+      function getComputerMinimum(game, variant) {
+        const range = getPlayerRange(game, variant);
+        const humans = getActiveHumanCount();
+
+        /*
+         * Spectators do not occupy a player slot for this game. Computers can
+         * therefore fill any remaining slots needed to reach the variant minimum.
+         */
+        return Math.max(0, range.min - humans);
+      }
+
+      function getComputerMaximum(game, variant) {
+        const range = getPlayerRange(game, variant);
+        const humans = getActiveHumanCount();
+
+        /*
+         * Spectating configured players are deliberately excluded here. This
+         * means a game configured with four profiles can have three spectating
+         * while one active human is joined by a computer in a two-player game.
+         */
+        if (Number.isFinite(range.max)) {
+          return Math.max(
+            getComputerMinimum(game, variant),
+            range.max - humans,
+          );
+        }
+
+        return 10;
+      }
+
+      function updatePlayerSummaryOnly() {
+        if (!selectedGame) return;
+
+        const summary = setupBody.querySelector(".player-summary");
+        if (!summary) return;
+
+        const configured = sessionPlayerEntries().length;
+        const total = getActiveSessionEntries().length;
+        const spectators = configured - total;
+
+        summary.innerHTML =
+          `<strong>${total} active player${total === 1 ? "" : "s"}</strong> ` +
+          `of ${configured} configured` +
+          (spectators
+            ? ` (${spectators} spectator${spectators === 1 ? "" : "s"})`
+            : "") +
+          `.`;
+
+        const variant = getVariant(selectedGame, selectedVariant);
+        const range = getPlayerRange(selectedGame, variant);
+
+        setupPlayButton.disabled = total < range.min || total > range.max;
+      }
+
+      function playSelectedGame() {
+        if (!selectedGame) return;
+
+        const variant = getVariant(selectedGame, selectedVariant);
+        const range = getPlayerRange(selectedGame, variant);
+
+        const totalPlayers = getActiveSessionEntries().length;
+
+        if (totalPlayers < range.min || totalPlayers > range.max) {
+          return;
+        }
+
+        if (!selectedGame.page) {
+          console.error(`Game "${selectedGame.id}" has no page.`);
+          return;
+        }
+
+        /*
+         * Temporary transport. This is intentionally generic so boardGame.html
+         * and cardGame.html can read the same fields.
+         *
+         * Later this can become a setup/session object handled by the online
+         * system instead.
+         */
+        const localProfileIds = profiles
+          .slice(0, playerState.local)
+          .map((profile) => profile.id);
+
+        normalizePlayerOrder();
+        const sessionOrder = playerOrder.slice();
+
+        const params = new URLSearchParams({
+          game: selectedGame.id,
+          variant: selectedVariant || "",
+          localPlayers: String(playerState.local),
+          onlinePlayers: String(playerState.online),
+          computerPlayers: String(computerCount),
+          computerDifficulties: JSON.stringify(computerDifficulties),
+          localProfileIds: JSON.stringify(localProfileIds),
+          playerOrder: JSON.stringify(sessionOrder),
+          spectatorPlayers: JSON.stringify([...spectatorTokens]),
+          onlineCode: onlineState.code,
+          onlineJoinedCode: onlineState.joinedCode,
+          hostComputerPlayers: String(onlineState.hostComputers),
+        });
+
+        for (const [id, value] of Object.entries(selectedOptions)) {
+          params.set(id, String(value));
+        }
+
+        if (
+          onlineSocket &&
+          onlineSocket.readyState === WebSocket.OPEN &&
+          onlineState.code
+        ) {
+          onlineSocket.send(
+            JSON.stringify({
+              type: "room:config",
+              config: {
+                game: selectedGame.id,
+                variant: selectedVariant || "",
+                localPlayers: playerState.local,
+                onlinePlayers: playerState.online,
+                computerPlayers: computerCount,
+                computerDifficulties,
+                playerOrder,
+                spectatorPlayers: [...spectatorTokens],
+                hostComputers: onlineState.hostComputers,
+              },
+            }),
+          );
+          onlineSocket.send(JSON.stringify({ type: "game:start" }));
+        }
+
+        window.location.href = `${selectedGame.page}?${params.toString()}`;
+      }
+
+      function renderPlayerPanel() {
+        playerState.local = Math.max(1, profiles.length);
+        totalPlayerCountEl.textContent = `${playerState.local} local player${playerState.local === 1 ? "" : "s"}`;
+
+        renderProfiles();
+        renderOnlineGroup();
+        normalizePlayerOrder();
+
+        if (selectedGame) {
+          const variant = getVariant(selectedGame, selectedVariant);
+          const min = getComputerMinimum(selectedGame, variant);
+          const max = getComputerMaximum(selectedGame, variant);
+
+          computerCount = Math.max(computerCount, min);
+          computerCount = Math.min(computerCount, max);
+
+          renderSetupDrawer();
+        }
+      }
+
+      function renderOnlineGroup() {
+        hostComputerPlayers.checked = onlineState.hostComputers;
+
+        if (onlineState.code) {
+          onlineCodeDisplay.hidden = false;
+          onlineCodeEl.textContent = onlineState.code;
+          onlineCodeStatus.textContent =
+            onlineSocket?.readyState === WebSocket.OPEN
+              ? "Connected"
+              : "Connecting...";
+        } else if (onlineState.joinedCode) {
+          onlineCodeDisplay.hidden = true;
+          onlineCodeStatus.textContent = `Joined group ${onlineState.joinedCode} (staged)`;
+        } else {
+          onlineCodeDisplay.hidden = true;
+          onlineCodeStatus.textContent = "Not connected";
+        }
+      }
+
+      function generateOnlineCode() {
+        return String(Math.floor(1000 + Math.random() * 9000));
+      }
+
+      function requestOnlineCode() {
+        onlineState.code = generateOnlineCode();
+        onlineState.joinedCode = "";
+        localStorage.setItem("gameLibraryOnlineCode", onlineState.code);
+        renderOnlineGroup();
+      }
+
+      function joinOnlineGroup() {
+        const code = joinOnlineCodeInput.value.replace(/\D/g, "").slice(0, 4);
+        joinOnlineCodeInput.value = code;
+        if (code.length !== 4) {
+          onlineCodeStatus.textContent = "Enter a 4-digit code";
+          return;
+        }
+
+        onlineState.joinedCode = code;
+        onlineState.code = "";
+        onlineCodeDisplay.hidden = true;
+        onlineCodeStatus.textContent = `Joined group ${code} (staged)`;
+      }
+
+      function renderProfiles() {
+        const profileList = document.getElementById("profileList");
+        if (!profileList) return;
+
+        profileList.innerHTML = "";
+
+        profiles.forEach((profile) => {
+          const row = document.createElement("div");
+          row.className = "profile-row";
+
+          const avatar = document.createElement("div");
+          avatar.className = "profile-avatar";
+          avatar.textContent = profile.avatar;
+
+          const info = document.createElement("div");
+          info.className = "profile-info";
+
+          const name = document.createElement("div");
+          name.className = "profile-name";
+          name.textContent = profile.name;
+
+          const type = document.createElement("div");
+          type.className = "profile-type";
+          type.textContent = "Local player";
+
+          info.append(name, type);
+
+          const edit = document.createElement("button");
+          edit.className = "profile-edit";
+          edit.type = "button";
+          edit.textContent = "Edit";
+          edit.addEventListener("click", () => openProfileEditor(profile.id));
+
+          const remove = document.createElement("button");
+          remove.className = "profile-remove";
+          remove.type = "button";
+          remove.textContent = "×";
+          remove.title =
+            profiles.length === 1
+              ? "At least one local profile is required"
+              : "Remove profile and local player";
+          remove.disabled = profiles.length === 1;
+          remove.addEventListener("click", () => removeProfile(profile.id));
+
+          row.append(avatar, info, edit, remove);
+          profileList.appendChild(row);
+        });
+      }
+
+      function removeProfile(profileId) {
+        if (profiles.length <= 1) return;
+
+        const index = profiles.findIndex((profile) => profile.id === profileId);
+        if (index < 0) return;
+
+        profiles.splice(index, 1);
+        playerState.local = profiles.length;
+        saveProfiles();
+        playerOrder = [];
+        spectatorTokens = new Set();
+        renderPlayerPanel();
+      }
+
+      function openProfileEditor(profileId = null) {
+        editingProfileId = profileId;
+
+        const existing = profileId
+          ? profiles.find((profile) => profile.id === profileId)
+          : null;
+
+        const container = document.getElementById("profileEditorContainer");
+        container.innerHTML = "";
+
+        const editor = document.createElement("div");
+        editor.className = "profile-editor";
+
+        const nameInput = document.createElement("input");
+        nameInput.type = "text";
+        nameInput.maxLength = 30;
+        nameInput.placeholder = "Profile name";
+        nameInput.value = existing?.name || "";
+
+        const avatarGrid = document.createElement("div");
+        avatarGrid.className = "avatar-grid";
+
+        let selectedAvatar = existing?.avatar || AVATARS[0];
+
+        AVATARS.forEach((avatarValue) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "avatar-button";
+          button.textContent = avatarValue;
+
+          if (avatarValue === selectedAvatar) {
+            button.classList.add("selected");
+          }
+
+          button.addEventListener("click", () => {
+            selectedAvatar = avatarValue;
+            avatarGrid
+              .querySelectorAll(".avatar-button")
+              .forEach((b) => b.classList.remove("selected"));
+            button.classList.add("selected");
+          });
+
+          avatarGrid.appendChild(button);
+        });
+
+        const actions = document.createElement("div");
+        actions.className = "profile-editor-actions";
+
+        const cancel = document.createElement("button");
+        cancel.className = "small-button";
+        cancel.type = "button";
+        cancel.textContent = "Cancel";
+        cancel.addEventListener("click", () => {
+          editingProfileId = null;
+          container.innerHTML = "";
+        });
+
+        const save = document.createElement("button");
+        save.className = "small-button primary";
+        save.type = "button";
+        save.textContent = existing ? "Save" : "Create";
+
+        save.addEventListener("click", () => {
+          const name = nameInput.value.trim() || "Unnamed Player";
+
+          if (existing) {
+            existing.name = name;
+            existing.avatar = selectedAvatar;
+          } else {
+            profiles.push({
+              id: createId(),
+              name,
+              avatar: selectedAvatar,
+            });
+          }
+
+          saveProfiles();
+          editingProfileId = null;
+          container.innerHTML = "";
+          renderPlayerPanel();
+        });
+
+        actions.append(cancel, save);
+        editor.append(nameInput, avatarGrid, actions);
+
+        container.appendChild(editor);
+        nameInput.focus();
+      }
+
+      function addSessionPlayerRow(parent, name, avatarValue, removable) {
+        const row = document.createElement("div");
+        row.className = "player-row";
+
+        const avatar = document.createElement("div");
+        avatar.className = "profile-avatar";
+        avatar.textContent = avatarValue;
+
+        const label = document.createElement("span");
+        label.textContent = name;
+
+        row.append(avatar, label);
+
+        if (removable) {
+          const remove = document.createElement("button");
+          remove.className = "remove-player";
+          remove.type = "button";
+          remove.textContent = "Remove";
+
+          remove.addEventListener("click", () => {
+            playerState.online = Math.max(0, playerState.online - 1);
+            renderPlayerPanel();
+          });
+
+          row.appendChild(remove);
+        }
+
+        parent.appendChild(row);
+      }
+
+      function openPlayers() {
+        closeGameSetup();
+        playerPanel.classList.add("open");
+        playerPanel.setAttribute("aria-hidden", "false");
+        playersTab.classList.add("selected");
+      }
+
+      function closePlayers() {
+        playerPanel.classList.remove("open");
+        playerPanel.setAttribute("aria-hidden", "true");
+        playersTab.classList.remove("selected");
+      }
+
+      document.getElementById("addProfile").addEventListener("click", () => {
+        openProfileEditor();
       });
-    }
 
-    saveProfiles();
-    editingProfileId = null;
-    container.innerHTML = "";
-    renderPlayerPanel();
-  });
+      playersTab.addEventListener("click", () => {
+        if (playerPanel.classList.contains("open")) closePlayers();
+        else openPlayers();
+      });
 
-  actions.append(cancel, save);
-  editor.append(nameInput, avatarGrid, actions);
+      closePlayersButton.addEventListener("click", closePlayers);
 
-  container.appendChild(editor);
-  nameInput.focus();
-}
+      requestOnlineCodeButton.addEventListener("click", requestOnlineCode);
+      joinOnlineGroupButton.addEventListener("click", joinOnlineGroup);
+      joinOnlineCodeInput.addEventListener("input", () => {
+        joinOnlineCodeInput.value = joinOnlineCodeInput.value
+          .replace(/\D/g, "")
+          .slice(0, 4);
+      });
+      hostComputerPlayers.addEventListener("change", () => {
+        onlineState.hostComputers = hostComputerPlayers.checked;
+        localStorage.setItem(
+          "gameLibraryHostComputers",
+          String(onlineState.hostComputers),
+        );
+      });
 
-function addSessionPlayerRow(parent, name, avatarValue, removable){
-  const row = document.createElement("div");
-  row.className = "player-row";
+      closeSetupButton.addEventListener("click", closeGameSetup);
+      drawerBackdrop.addEventListener("click", () => {
+        closeGameSetup();
+        closePlayers();
+      });
 
-  const avatar = document.createElement("div");
-  avatar.className = "profile-avatar";
-  avatar.textContent = avatarValue;
+      setupPlayButton.addEventListener("click", playSelectedGame);
+      renderOnlineGroup();
 
-  const label = document.createElement("span");
-  label.textContent = name;
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeGameSetup();
+          closePlayers();
+        }
+      });
 
-  row.append(avatar, label);
+      searchBox.addEventListener("input", renderGames);
+      categoryFilter.addEventListener("change", renderGames);
+      playerFilter.addEventListener("change", renderGames);
 
-  if(removable){
-    const remove = document.createElement("button");
-    remove.className = "remove-player";
-    remove.type = "button";
-    remove.textContent = "Remove";
+      function renderGames() {
+        grid.innerHTML = "";
 
-    remove.addEventListener("click", () => {
-      playerState.online = Math.max(0, playerState.online - 1);
-      renderPlayerPanel();
-    });
+        const visible = games.filter(matches);
 
-    row.appendChild(remove);
-  }
+        if (!visible.length) {
+          const el = document.createElement("div");
+          el.className = "empty-state";
+          el.textContent = "No games match your search or filters.";
+          grid.appendChild(el);
+          return;
+        }
 
-  parent.appendChild(row);
-}
+        visible.forEach((game) => {
+          grid.appendChild(createGameCard(game));
+        });
+      }
 
-function openPlayers(){
-  closeGameSetup();
-  playerPanel.classList.add("open");
-  playerPanel.setAttribute("aria-hidden", "false");
-  playersTab.classList.add("selected");
-}
-
-function closePlayers(){
-  playerPanel.classList.remove("open");
-  playerPanel.setAttribute("aria-hidden", "true");
-  playersTab.classList.remove("selected");
-}
-
-document.getElementById("addProfile").addEventListener("click", () => {
-  openProfileEditor();
-});
-
-playersTab.addEventListener("click", () => {
-  if(playerPanel.classList.contains("open")) closePlayers();
-  else openPlayers();
-});
-
-closePlayersButton.addEventListener("click", closePlayers);
-
-requestOnlineCodeButton.addEventListener("click", requestOnlineCode);
-joinOnlineGroupButton.addEventListener("click", joinOnlineGroup);
-joinOnlineCodeInput.addEventListener("input", () => {
-  joinOnlineCodeInput.value = joinOnlineCodeInput.value.replace(/\D/g, "").slice(0,4);
-});
-hostComputerPlayers.addEventListener("change", () => {
-  onlineState.hostComputers = hostComputerPlayers.checked;
-  localStorage.setItem("gameLibraryHostComputers", String(onlineState.hostComputers));
-});
-
-closeSetupButton.addEventListener("click", closeGameSetup);
-drawerBackdrop.addEventListener("click", () => {
-  closeGameSetup();
-  closePlayers();
-});
-
-setupPlayButton.addEventListener("click", playSelectedGame);
-renderOnlineGroup();
-
-document.addEventListener("keydown", event => {
-  if(event.key === "Escape"){
-    closeGameSetup();
-    closePlayers();
-  }
-});
-
-searchBox.addEventListener("input", renderGames);
-categoryFilter.addEventListener("change", renderGames);
-playerFilter.addEventListener("change", renderGames);
-
-function renderGames(){
-  grid.innerHTML = "";
-
-  const visible = games.filter(matches);
-
-  if(!visible.length){
-    const el = document.createElement("div");
-    el.className = "empty-state";
-    el.textContent = "No games match your search or filters.";
-    grid.appendChild(el);
-    return;
-  }
-
-  visible.forEach(game => {
-    grid.appendChild(createGameCard(game));
-  });
-}
-
-loadLibrary();
-</script>
-</body>
+      loadLibrary();
+    </script>
+  </body>
 </html>
