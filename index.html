@@ -814,6 +814,10 @@
         border-radius: 6px;
       }
 
+      .online-code-display[hidden] {
+        display: none !important;
+      }
+
       .online-code {
         font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
         font-size: 20px;
@@ -850,6 +854,66 @@
         font-size: 11px;
         line-height: 1.35;
         white-space: pre-wrap;
+      }
+
+      .online-participants {
+        margin: 10px 0;
+        padding: 9px;
+        background: #1d2027;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+      }
+
+      .online-participants-heading {
+        font-size: 11px;
+        font-weight: 700;
+        margin-bottom: 7px;
+      }
+
+      .online-participants-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .online-participant-row {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 7px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+      }
+
+      .online-participant-avatar {
+        width: 28px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: #1d2027;
+        font-size: 16px;
+      }
+
+      .online-participant-name {
+        font-size: 12px;
+        font-weight: 700;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .online-participant-type {
+        color: var(--muted);
+        font-size: 10px;
+        margin-top: 1px;
+      }
+
+      .online-participants-empty {
+        color: var(--muted);
+        font-size: 10px;
       }
 
       .online-connected {
@@ -1067,6 +1131,13 @@
                 Join
               </button>
             </div>
+            <div class="online-participants">
+              <div class="online-participants-heading">Connected players</div>
+              <div
+                id="onlineParticipantsList"
+                class="online-participants-list"
+              ></div>
+            </div>
             <label class="toggle-option" style="margin: 0">
               <span class="toggle-label"
                 >Host computer players for the group</span
@@ -1083,8 +1154,8 @@
         <div class="setup-section">
           <div class="player-summary">
             <strong id="totalPlayerCount">1 local player</strong> currently
-            configured. Online players will be added when online networking is
-            enabled.
+            configured. Connected online players appear automatically and can
+            take player slots in the game setup.
           </div>
         </div>
       </div>
@@ -1138,6 +1209,9 @@
         "hostComputerPlayers",
       );
       const onlineError = document.getElementById("onlineError");
+      const onlineParticipantsList = document.getElementById(
+        "onlineParticipantsList",
+      );
 
       // Replace this placeholder with the HTTPS URL Cloudflare gave your Worker.
       // Example: https://game-library-server.your-name.workers.dev
@@ -1148,6 +1222,7 @@
       let selectedVariant = null;
       let selectedOptions = {};
       let computerCount = 0;
+      let computerCountAutoManaged = true;
       let computerDifficulties = {};
       let playerOrder = [];
 
@@ -1190,6 +1265,7 @@
         socket: null,
         participants: [],
         roomConfig: null,
+        pendingStartConfig: null,
       };
 
       function onlineConfigured() {
@@ -1278,6 +1354,12 @@
           buildFilters();
           renderGames();
           renderPlayerPanel();
+
+          if (onlineState.pendingStartConfig) {
+            const config = onlineState.pendingStartConfig;
+            onlineState.pendingStartConfig = null;
+            navigateToOnlineGame(config);
+          }
         } catch (error) {
           console.error(error);
           grid.innerHTML = "";
@@ -1554,10 +1636,13 @@
 
         const game =
           games.find((item) => item.id === config.game) || selectedGame;
-        if (!game) return;
+        const page = config.game === "chess" ? "chess.html" : game?.page;
 
-        const page = config.game === "chess" ? "chess.html" : game.page;
-        if (!page) return;
+        if (!page) {
+          // library.json may still be loading when a game:start message arrives.
+          onlineState.pendingStartConfig = config;
+          return;
+        }
 
         const params = new URLSearchParams({
           game: config.game,
@@ -1775,6 +1860,7 @@
           0,
           range.min - playerState.local - playerState.online,
         );
+        computerCountAutoManaged = true;
 
         computerDifficulties = {};
         for (let i = 0; i < computerCount; i++) {
@@ -1812,8 +1898,12 @@
          */
         const computerMin = getComputerMinimum(selectedGame, variant);
         const computerMax = getComputerMaximum(selectedGame, variant);
-        computerCount = Math.max(computerCount, computerMin);
-        computerCount = Math.min(computerCount, computerMax);
+        if (computerCountAutoManaged) {
+          computerCount = computerMin;
+        } else {
+          computerCount = Math.max(computerCount, computerMin);
+          computerCount = Math.min(computerCount, computerMax);
+        }
 
         drawerGameName.textContent = selectedGame.name;
         drawerGameDescription.textContent = variant
@@ -1855,15 +1945,19 @@
               const newRange = getPlayerRange(selectedGame, gameVariant);
               const humanPlayers = playerState.local + playerState.online;
 
-              computerCount = Math.max(
-                computerCount,
-                Math.max(0, newRange.min - humanPlayers),
-              );
+              if (computerCountAutoManaged) {
+                computerCount = Math.max(0, newRange.min - humanPlayers);
+              } else {
+                computerCount = Math.max(
+                  computerCount,
+                  Math.max(0, newRange.min - humanPlayers),
+                );
 
-              computerCount = Math.min(
-                computerCount,
-                getComputerMaximum(selectedGame, gameVariant),
-              );
+                computerCount = Math.min(
+                  computerCount,
+                  getComputerMaximum(selectedGame, gameVariant),
+                );
+              }
 
               /*
                * Reset variant-specific options to their defaults. This keeps
@@ -2024,6 +2118,7 @@
         slider.addEventListener("input", () => {
           const oldCount = computerCount;
           computerCount = Number(slider.value);
+          computerCountAutoManaged = false;
 
           for (let i = oldCount; i < computerCount; i++) {
             computerDifficulties[`computer:${i}`] = "normal";
@@ -2268,16 +2363,15 @@
 
         if (onlineState.connected && onlineState.hostToken) {
           onlineState.roomConfig = onlineConfig;
+          onlineCodeStatus.textContent = "Starting game…";
           publishHostGameConfig();
-
-          // Give the WebSocket frames a moment to reach the Worker before this
-          // page is unloaded. Guests use the game:start broadcast to navigate.
-          setTimeout(() => {
-            window.location.href = destination;
-          }, 150);
-        } else {
-          window.location.href = destination;
+          // The Worker sends an explicit game:start event back to the host and
+          // broadcasts the same event to every guest. All screens therefore
+          // navigate from the same authoritative room event.
+          return;
         }
+
+        window.location.href = destination;
       }
 
       function renderPlayerPanel() {
@@ -2293,8 +2387,12 @@
           const min = getComputerMinimum(selectedGame, variant);
           const max = getComputerMaximum(selectedGame, variant);
 
-          computerCount = Math.max(computerCount, min);
-          computerCount = Math.min(computerCount, max);
+          if (computerCountAutoManaged) {
+            computerCount = min;
+          } else {
+            computerCount = Math.max(computerCount, min);
+            computerCount = Math.min(computerCount, max);
+          }
 
           renderSetupDrawer();
         }
@@ -2312,9 +2410,55 @@
           onlineCodeEl.textContent = "";
         }
 
+        if (onlineParticipantsList) {
+          onlineParticipantsList.innerHTML = "";
+          const participants = onlineState.participants.filter(
+            (p) => p.connected,
+          );
+
+          if (!participants.length) {
+            const empty = document.createElement("div");
+            empty.className = "online-participants-empty";
+            empty.textContent = onlineRoomCode()
+              ? "No connected players yet."
+              : "Create or join a group to see connected players.";
+            onlineParticipantsList.appendChild(empty);
+          } else {
+            for (const participant of participants) {
+              const row = document.createElement("div");
+              row.className = "online-participant-row";
+
+              const avatar = document.createElement("div");
+              avatar.className = "online-participant-avatar";
+              avatar.textContent = participant.avatar || "🎮";
+
+              const info = document.createElement("div");
+              const name = document.createElement("div");
+              name.className = "online-participant-name";
+              name.textContent = participant.name || "Player";
+
+              const type = document.createElement("div");
+              type.className = "online-participant-type";
+              const labels = [];
+              if (participant.clientId === onlineState.clientId)
+                labels.push("You");
+              if (participant.role === "host") labels.push("Host");
+              else
+                labels.push(
+                  participant.spectator ? "Spectator" : "Online player",
+                );
+              type.textContent = labels.join(" • ");
+
+              info.append(name, type);
+              row.append(avatar, info);
+              onlineParticipantsList.appendChild(row);
+            }
+          }
+        }
+
         if (onlineState.connected) {
           updateOnlinePlayerCount();
-          onlineCodeStatus.textContent = `Connected • ${onlineState.participants.length} in group`;
+          onlineCodeStatus.textContent = `Connected • ${onlineState.participants.filter((p) => p.connected).length} in group`;
           onlineCodeStatus.classList.add("online-connected");
         } else if (onlineState.code) {
           onlineCodeStatus.textContent = `Host room ${onlineState.code}`;
@@ -2445,7 +2589,9 @@
 
           if (message.type === "game:start") {
             onlineState.roomConfig = message.config || onlineState.roomConfig;
-            navigateToOnlineGame(onlineState.roomConfig);
+            if (onlineState.roomConfig) {
+              navigateToOnlineGame(onlineState.roomConfig);
+            }
             return;
           }
 
@@ -2538,17 +2684,15 @@
         }
 
         joinOnlineGroupButton.disabled = true;
-        onlineCodeStatus.textContent = "Checking room…";
+        onlineCodeStatus.textContent = "Connecting…";
 
         try {
-          const response = await fetch(onlineHttpUrl(`/api/rooms/${code}`));
-          const data = await response.json().catch(() => ({}));
-          if (!response.ok)
-            throw new Error(data.error || `Room ${code} was not found.`);
-
+          closeOnlineSocket();
           onlineState.code = "";
           onlineState.joinedCode = code;
           onlineState.hostToken = "";
+          onlineState.roomConfig = null;
+          onlineState.participants = [];
           onlineState.clientId =
             onlineState.clientId ||
             `client_${Math.random().toString(36).slice(2, 12)}`;
