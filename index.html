@@ -844,6 +844,18 @@
         color: var(--text);
       }
 
+      .online-error {
+        margin-top: 8px;
+        color: #ffb4b4;
+        font-size: 11px;
+        line-height: 1.35;
+        white-space: pre-wrap;
+      }
+
+      .online-connected {
+        color: #9fe3ae;
+      }
+
       .spectator-list {
         display: flex;
         flex-direction: column;
@@ -1065,11 +1077,11 @@
               </span>
             </label>
             <div class="online-disabled-note">
-              <strong>Online networking is staged for now.</strong> The code and
-              host setting are stored locally so the menu is ready for
-              Cloudflare, but they do not connect browsers yet. Once the server
-              is configured, the host's game, player order, computer players,
-              and settings can be sent to everyone in the group.
+              <strong>Online networking test mode.</strong> Set
+              <code>ONLINE_SERVER_URL</code> in the script below to your
+              Cloudflare Worker URL. The buttons will then create and join real
+              rooms.
+              <div id="onlineError" class="online-error" hidden></div>
             </div>
           </div>
         </div>
@@ -1131,20 +1143,11 @@
       const hostComputerPlayers = document.getElementById(
         "hostComputerPlayers",
       );
+      const onlineError = document.getElementById("onlineError");
 
-      /*
-       * Replace this placeholder with the HTTPS URL Cloudflare gave your Worker.
-       * Example:
-       *   https://game-library-server.example.workers.dev
-       *
-       * Leave the path off; the code below adds /api/... and /ws/... itself.
-       */
-      const ONLINE_SERVER_URL = "https://opengamegallery.george-arps.workers.dev/";
-      let onlineSocket = null;
-      let onlineClientId =
-        localStorage.getItem("gameLibraryOnlineClientId") || "";
-      let onlineHostToken =
-        localStorage.getItem("gameLibraryOnlineHostToken") || "";
+      // Replace this placeholder with the HTTPS URL Cloudflare gave your Worker.
+      // Example: https://game-library-server.your-name.workers.dev
+      const ONLINE_SERVER_URL = "opengamegallery.george-arps.workers.dev";
 
       let games = [];
       let selectedGame = null;
@@ -1184,10 +1187,55 @@
 
       const onlineState = {
         code: localStorage.getItem("gameLibraryOnlineCode") || "",
-        joinedCode: "",
+        joinedCode: localStorage.getItem("gameLibraryOnlineJoinedCode") || "",
+        hostToken: localStorage.getItem("gameLibraryOnlineHostToken") || "",
+        clientId: localStorage.getItem("gameLibraryOnlineClientId") || "",
         hostComputers:
           localStorage.getItem("gameLibraryHostComputers") !== "false",
+        connected: false,
+        socket: null,
+        participants: [],
       };
+
+      function onlineConfigured() {
+        return (
+          ONLINE_SERVER_URL && !ONLINE_SERVER_URL.includes("YOUR-WORKER-URL")
+        );
+      }
+
+      function showOnlineError(message = "") {
+        if (!onlineError) return;
+        onlineError.textContent = message;
+        onlineError.hidden = !message;
+      }
+
+      function onlineRoomCode() {
+        return onlineState.code || onlineState.joinedCode || "";
+      }
+
+      function persistOnlineState() {
+        if (onlineState.code)
+          localStorage.setItem("gameLibraryOnlineCode", onlineState.code);
+        else localStorage.removeItem("gameLibraryOnlineCode");
+        if (onlineState.joinedCode)
+          localStorage.setItem(
+            "gameLibraryOnlineJoinedCode",
+            onlineState.joinedCode,
+          );
+        else localStorage.removeItem("gameLibraryOnlineJoinedCode");
+        if (onlineState.hostToken)
+          localStorage.setItem(
+            "gameLibraryOnlineHostToken",
+            onlineState.hostToken,
+          );
+        else localStorage.removeItem("gameLibraryOnlineHostToken");
+        if (onlineState.clientId)
+          localStorage.setItem(
+            "gameLibraryOnlineClientId",
+            onlineState.clientId,
+          );
+        else localStorage.removeItem("gameLibraryOnlineClientId");
+      }
 
       let spectatorTokens = new Set();
 
@@ -2046,6 +2094,36 @@
         setupPlayButton.disabled = total < range.min || total > range.max;
       }
 
+      async function publishHostGameConfig() {
+        if (
+          !onlineState.connected ||
+          !onlineState.socket ||
+          !onlineState.code ||
+          !onlineState.hostToken
+        )
+          return;
+        if (!selectedGame) return;
+
+        const sessionOrder = playerOrder.slice();
+        const config = {
+          game: selectedGame.id,
+          variant: selectedVariant || "",
+          options: { ...selectedOptions },
+          localPlayers: playerState.local,
+          onlinePlayers: playerState.online,
+          computerPlayers: computerCount,
+          computerDifficulties: { ...computerDifficulties },
+          playerOrder: sessionOrder,
+          spectatorPlayers: [...spectatorTokens],
+          hostComputers: onlineState.hostComputers,
+        };
+
+        onlineState.socket.send(
+          JSON.stringify({ type: "room:config", config }),
+        );
+        onlineState.socket.send(JSON.stringify({ type: "game:start" }));
+      }
+
       function playSelectedGame() {
         if (!selectedGame) return;
 
@@ -2096,28 +2174,32 @@
           params.set(id, String(value));
         }
 
-        if (
-          onlineSocket &&
-          onlineSocket.readyState === WebSocket.OPEN &&
-          onlineState.code
-        ) {
-          onlineSocket.send(
-            JSON.stringify({
-              type: "room:config",
-              config: {
-                game: selectedGame.id,
-                variant: selectedVariant || "",
-                localPlayers: playerState.local,
-                onlinePlayers: playerState.online,
-                computerPlayers: computerCount,
-                computerDifficulties,
-                playerOrder,
-                spectatorPlayers: [...spectatorTokens],
-                hostComputers: onlineState.hostComputers,
-              },
-            }),
-          );
-          onlineSocket.send(JSON.stringify({ type: "game:start" }));
+        if (onlineState.connected && onlineState.hostToken) {
+          try {
+            onlineState.socket.send(
+              JSON.stringify({
+                type: "room:config",
+                config: {
+                  game: selectedGame.id,
+                  variant: selectedVariant || "",
+                  options: { ...selectedOptions },
+                  localPlayers: playerState.local,
+                  onlinePlayers: playerState.online,
+                  computerPlayers: computerCount,
+                  computerDifficulties: { ...computerDifficulties },
+                  playerOrder: sessionOrder,
+                  spectatorPlayers: [...spectatorTokens],
+                  hostComputers: onlineState.hostComputers,
+                },
+              }),
+            );
+            onlineState.socket.send(JSON.stringify({ type: "game:start" }));
+          } catch (error) {
+            console.warn(
+              "Could not publish online game configuration before navigation:",
+              error,
+            );
+          }
         }
 
         window.location.href = `${selectedGame.page}?${params.toString()}`;
@@ -2146,45 +2228,260 @@
       function renderOnlineGroup() {
         hostComputerPlayers.checked = onlineState.hostComputers;
 
-        if (onlineState.code) {
-          onlineCodeDisplay.hidden = false;
-          onlineCodeEl.textContent = onlineState.code;
-          onlineCodeStatus.textContent =
-            onlineSocket?.readyState === WebSocket.OPEN
-              ? "Connected"
-              : "Connecting...";
-        } else if (onlineState.joinedCode) {
-          onlineCodeDisplay.hidden = true;
-          onlineCodeStatus.textContent = `Joined group ${onlineState.joinedCode} (staged)`;
+        const code = onlineRoomCode();
+        if (code) {
+          onlineCodeDisplay.hidden = !onlineState.code;
+          onlineCodeEl.textContent = onlineState.code || code;
         } else {
           onlineCodeDisplay.hidden = true;
+          onlineCodeEl.textContent = "----";
+        }
+
+        if (onlineState.connected) {
+          onlineCodeStatus.textContent = `Connected • ${onlineState.participants.length} in group`;
+          onlineCodeStatus.classList.add("online-connected");
+        } else if (onlineState.code) {
+          onlineCodeStatus.textContent = `Host room ${onlineState.code}`;
+          onlineCodeStatus.classList.remove("online-connected");
+        } else if (onlineState.joinedCode) {
+          onlineCodeStatus.textContent = `Joined group ${onlineState.joinedCode}`;
+          onlineCodeStatus.classList.remove("online-connected");
+        } else if (!onlineConfigured()) {
+          onlineCodeStatus.textContent = "Server address not set";
+          onlineCodeStatus.classList.remove("online-connected");
+        } else {
           onlineCodeStatus.textContent = "Not connected";
+          onlineCodeStatus.classList.remove("online-connected");
         }
       }
 
-      function generateOnlineCode() {
-        return String(Math.floor(1000 + Math.random() * 9000));
+      function onlineHttpUrl(path) {
+        return `${ONLINE_SERVER_URL.replace(/\/$/, "")}${path}`;
       }
 
-      function requestOnlineCode() {
-        onlineState.code = generateOnlineCode();
-        onlineState.joinedCode = "";
-        localStorage.setItem("gameLibraryOnlineCode", onlineState.code);
-        renderOnlineGroup();
+      function onlineWsUrl(code, token = "", role = "player", clientId = "") {
+        const base = ONLINE_SERVER_URL.replace(/^http/i, "ws").replace(
+          /\/$/,
+          "",
+        );
+        const params = new URLSearchParams({ role });
+        if (token) params.set("token", token);
+        if (clientId) params.set("clientId", clientId);
+        return `${base}/ws/${encodeURIComponent(code)}?${params.toString()}`;
       }
 
-      function joinOnlineGroup() {
-        const code = joinOnlineCodeInput.value.replace(/\D/g, "").slice(0, 4);
-        joinOnlineCodeInput.value = code;
-        if (code.length !== 4) {
-          onlineCodeStatus.textContent = "Enter a 4-digit code";
+      function closeOnlineSocket() {
+        if (onlineState.socket) {
+          try {
+            onlineState.socket.close();
+          } catch {}
+        }
+        onlineState.socket = null;
+        onlineState.connected = false;
+        onlineState.participants = [];
+      }
+
+      function connectOnlineSocket(code, { host = false } = {}) {
+        if (!onlineConfigured())
+          throw new Error("Set ONLINE_SERVER_URL in index.html first.");
+        if (!code) throw new Error("No room code is available.");
+
+        closeOnlineSocket();
+
+        const clientId =
+          onlineState.clientId ||
+          `client_${Math.random().toString(36).slice(2, 12)}`;
+        onlineState.clientId = clientId;
+        persistOnlineState();
+
+        const socket = new WebSocket(
+          onlineWsUrl(
+            code,
+            host ? onlineState.hostToken : "",
+            host ? "host" : "player",
+            clientId,
+          ),
+        );
+
+        onlineState.socket = socket;
+
+        socket.addEventListener("open", () => {
+          onlineState.connected = true;
+          showOnlineError("");
+          socket.send(
+            JSON.stringify({
+              type: "player:identify",
+              profileId: profiles[0]?.id || "",
+              name: profiles[0]?.name || "Player 1",
+              avatar: profiles[0]?.avatar || "♟",
+              spectator: false,
+            }),
+          );
+          if (host) {
+            socket.send(
+              JSON.stringify({
+                type: "room:config",
+                config: {
+                  hostComputers: onlineState.hostComputers,
+                },
+              }),
+            );
+          }
+          renderOnlineGroup();
+        });
+
+        socket.addEventListener("message", (event) => {
+          let message;
+          try {
+            message = JSON.parse(event.data);
+          } catch {
+            return;
+          }
+
+          if (message.type === "room:hello") {
+            onlineState.participants = message.room?.participants || [];
+            renderOnlineGroup();
+            return;
+          }
+
+          if (message.type === "room:participants") {
+            onlineState.participants = Array.isArray(message.participants)
+              ? message.participants
+              : [];
+            const others = onlineState.participants.filter(
+              (p) =>
+                p.connected &&
+                p.clientId !== onlineState.clientId &&
+                !p.spectator,
+            );
+            playerState.online = others.length;
+            renderOnlineGroup();
+            renderPlayerPanel();
+            return;
+          }
+
+          if (message.type === "room:config") {
+            if (
+              !hostComputers.checked &&
+              message.config?.hostComputers !== false
+            ) {
+              // A future online game screen can consume this authoritative host flag.
+            }
+            return;
+          }
+
+          if (message.type === "error") {
+            showOnlineError(message.message || "Online server error.");
+          }
+        });
+
+        socket.addEventListener("close", () => {
+          onlineState.connected = false;
+          onlineState.socket = null;
+          renderOnlineGroup();
+        });
+
+        socket.addEventListener("error", () => {
+          onlineState.connected = false;
+          showOnlineError(
+            "Could not connect to the multiplayer server. Check the Worker URL and deployment.",
+          );
+          renderOnlineGroup();
+        });
+      }
+
+      async function requestOnlineCode() {
+        showOnlineError("");
+        if (!onlineConfigured()) {
+          showOnlineError(
+            "Replace YOUR-WORKER-URL in ONLINE_SERVER_URL with your Cloudflare Worker address.",
+          );
           return;
         }
 
-        onlineState.joinedCode = code;
-        onlineState.code = "";
-        onlineCodeDisplay.hidden = true;
-        onlineCodeStatus.textContent = `Joined group ${code} (staged)`;
+        requestOnlineCodeButton.disabled = true;
+        onlineCodeStatus.textContent = "Creating room…";
+
+        try {
+          closeOnlineSocket();
+
+          const response = await fetch(onlineHttpUrl("/api/rooms"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              hostName: profiles[0]?.name || "Host",
+              hostAvatar: profiles[0]?.avatar || "♟",
+              config: {
+                hostComputers: onlineState.hostComputers,
+              },
+            }),
+          });
+
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok)
+            throw new Error(
+              data.error || `Server returned HTTP ${response.status}.`,
+            );
+
+          onlineState.code = String(data.code || "");
+          onlineState.joinedCode = "";
+          onlineState.hostToken = String(data.hostToken || "");
+          onlineState.clientId =
+            onlineState.clientId ||
+            `client_${Math.random().toString(36).slice(2, 12)}`;
+          playerState.online = 0;
+          persistOnlineState();
+          renderOnlineGroup();
+          connectOnlineSocket(onlineState.code, { host: true });
+        } catch (error) {
+          showOnlineError(error.message || String(error));
+          onlineCodeStatus.textContent = "Room creation failed";
+          renderOnlineGroup();
+        } finally {
+          requestOnlineCodeButton.disabled = false;
+        }
+      }
+
+      async function joinOnlineGroup() {
+        showOnlineError("");
+        const code = joinOnlineCodeInput.value.replace(/\D/g, "").slice(0, 4);
+        joinOnlineCodeInput.value = code;
+        if (code.length !== 4) {
+          showOnlineError("Enter a 4-digit code.");
+          return;
+        }
+        if (!onlineConfigured()) {
+          showOnlineError(
+            "Replace YOUR-WORKER-URL in ONLINE_SERVER_URL with your Cloudflare Worker address.",
+          );
+          return;
+        }
+
+        joinOnlineGroupButton.disabled = true;
+        onlineCodeStatus.textContent = "Checking room…";
+
+        try {
+          const response = await fetch(onlineHttpUrl(`/api/rooms/${code}`));
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok)
+            throw new Error(data.error || `Room ${code} was not found.`);
+
+          onlineState.code = "";
+          onlineState.joinedCode = code;
+          onlineState.hostToken = "";
+          onlineState.clientId =
+            onlineState.clientId ||
+            `client_${Math.random().toString(36).slice(2, 12)}`;
+          persistOnlineState();
+          renderOnlineGroup();
+          connectOnlineSocket(code, { host: false });
+        } catch (error) {
+          showOnlineError(error.message || String(error));
+          onlineCodeStatus.textContent = "Join failed";
+          renderOnlineGroup();
+        } finally {
+          joinOnlineGroupButton.disabled = false;
+        }
       }
 
       function renderProfiles() {
