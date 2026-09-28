@@ -1,266 +1,31 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chess — Game Library</title>
-  <style>
-      :root {
-        --bg: #17191f;
-        --panel: #22252d;
-        --panel2: #2b2f39;
-        --text: #f1f3f5;
-        --muted: #aeb4c0;
-        --accent: #78a9ff;
-        --light: #f0d9b5;
-        --dark: #b58863;
-        --selected: #f6e58d;
-        --legal: rgba(65, 155, 70, 0.55);
-        --last: rgba(246, 230, 75, 0.42);
-        --check: rgba(215, 55, 55, 0.75);
-        --border: #3a3f4a;
-      }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        min-height: 100vh;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        color: var(--text);
-        background: var(--bg);
-      }
-      button {
-        font: inherit;
-        color: var(--text);
-        background: var(--panel2);
-        border: 1px solid var(--border);
-        border-radius: 7px;
-        padding: 8px 12px;
-        cursor: pointer;
-      }
-      button:hover { background: #353a45; }
-      button:disabled { opacity: 0.45; cursor: not-allowed; }
-      header {
-        height: 64px;
-        display: flex;
-        align-items: center;
-        padding: 0 22px;
-        border-bottom: 1px solid var(--border);
-        background: #1d2027;
-      }
-      header h1 { font-size: 21px; margin: 0; }
-      header .subtitle { color: var(--muted); margin-left: 12px; font-size: 14px; }
-      .app {
-        display: grid;
-        grid-template-columns: minmax(180px, 250px) minmax(400px, 760px) minmax(180px, 240px);
-        gap: 20px;
-        max-width: 1380px;
-        margin: 0 auto;
-        padding: 20px;
-        align-items: start;
-      }
-      .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 15px; }
-      .panel + .panel { margin-top: 14px; }
-      .panel h2 { font-size: 15px; margin: 0 0 12px; }
-      .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-      .button-grid button:first-child { grid-column: 1/-1; }
-      .status { padding: 10px; background: var(--panel2); border-radius: 7px; font-size: 14px; line-height: 1.4; }
-      .board-wrap { width: min(76vw, 760px); max-width: 100%; margin: auto; }
-      .board-frame {
-        display: grid;
-        grid-template-columns: 24px minmax(0, 1fr);
-        grid-template-rows: minmax(0, 1fr) 24px;
-        width: 100%;
-        aspect-ratio: 1;
-      }
-      .row-labels {
-        grid-column: 1;
-        grid-row: 1;
-        display: grid;
-        grid-template-rows: repeat(8, 1fr);
-        align-items: center;
-        justify-items: center;
-        color: var(--muted);
-        font-size: 12px;
-        user-select: none;
-      }
-      .col-labels {
-        grid-column: 2;
-        grid-row: 2;
-        display: grid;
-        grid-template-columns: repeat(8, 1fr);
-        align-items: center;
-        justify-items: center;
-        color: var(--muted);
-        font-size: 12px;
-        user-select: none;
-      }
-      .board-frame.four-player .row-labels { grid-template-rows: repeat(14, 1fr); }
-      .board-frame.four-player .col-labels { grid-template-columns: repeat(14, 1fr); }
-      .board {
-        display: grid;
-        width: 100%;
-        aspect-ratio: 1;
-        border: 3px solid #111318;
-        box-shadow: 0 8px 30px rgba(0,0,0,0.35);
-        user-select: none;
-        background: #181b22;
-      }
-      .square {
-        position: relative;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        aspect-ratio: 1;
-        border: 0;
-        border-radius: 0;
-        padding: 0;
-        color: #111;
-        background: var(--light);
-      }
-      .square.dark { background: var(--dark); }
-      .square:hover { filter: brightness(1.06); }
-      .square.selected { background: var(--selected) !important; }
-      .square.last-move::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: var(--last);
-        pointer-events: none;
-      }
-      .square.unplayable { visibility: hidden; pointer-events: none; }
-      .piece {
-        position: relative;
-        z-index: 2;
-        font-family: "Arial Unicode MS", "Segoe UI Symbol", "DejaVu Sans", sans-serif;
-        font-size: clamp(24px, 5.5vw, 60px);
-        line-height: 1;
-        text-shadow: 0 1px 1px rgba(0,0,0,0.25);
-      }
-      .four-player .piece { font-size: clamp(16px, 3.5vw, 42px); }
-      .piece.red { color: #c62828; }
-      .piece.blue { color: #2878c8; }
-      .piece.white, .piece.w { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
-      .piece.black, .piece.b { color: #111; text-shadow: 0 0 1px #888; }
-      .legal-dot {
-        position: absolute;
-        z-index: 3;
-        width: 25%;
-        height: 25%;
-        border-radius: 50%;
-        background: var(--legal);
-        pointer-events: none;
-      }
-      .legal-capture {
-        position: absolute;
-        z-index: 3;
-        inset: 7%;
-        border: 5px solid rgba(65,155,70,0.6);
-        border-radius: 50%;
-        pointer-events: none;
-      }
-      .move-list {
-        height: 450px;
-        overflow-y: auto;
-        border: 1px solid var(--border);
-        border-radius: 7px;
-        background: #1b1e24;
-      }
-      .move-row {
-        display: grid;
-        grid-template-columns: 42px 1fr 1fr;
-        min-height: 32px;
-        align-items: center;
-        border-bottom: 1px solid #30343d;
-        font-size: 13px;
-      }
-      .move-number { color: var(--muted); padding-left: 8px; }
-      .move { padding: 6px 8px; }
-      .captured { display: flex; flex-wrap: wrap; gap: 4px; min-height: 48px; font-size: 24px; }
-      .captured-group { background: #1b1e24; border: 1px solid var(--border); border-radius: 7px; padding: 8px; margin-bottom: 8px; }
-      .captured-label { color: var(--muted); font-size: 11px; margin-bottom: 3px; }
-      .promotion-modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.62); z-index: 20; }
-      .promotion-modal.open { display: flex; }
-      .promotion-box { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; }
-      .promotion-options { display: flex; gap: 10px; }
-      .promotion-options button { min-width: 68px; height: 52px; font-size: 16px; font-weight: bold; padding: 0 12px; }
-      .note { color: var(--muted); font-size: 12px; line-height: 1.45; }
-      .game-info { text-align: center; margin-bottom: 14px; }
-      .game-info .game-name { font-size: 16px; font-weight: 650; }
-      .game-info .variant-name { color: var(--muted); font-size: 12px; margin-top: 2px; }
-      .player-list { display:flex; flex-direction:column; gap:7px; }
-      .player-row { display:flex; align-items:center; gap:10px; padding:8px 10px; background:var(--panel2); border:1px solid var(--border); border-radius:7px; }
-      .player-avatar { width:32px; height:32px; flex:0 0 32px; display:grid; place-items:center; border-radius:50%; background:var(--bg); font-size:19px; }
-      .player-details { min-width:0; }
-      .player-name { font-size:13px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-      .player-type { color:var(--muted); font-size:11px; }
-      .player-row.current { border-color:var(--accent); }
-      @media (max-width: 1050px) {
-        .app { grid-template-columns: 210px minmax(400px,700px); }
-        .right-column { grid-column: 1/-1; }
-        .move-list { height: 250px; }
-      }
-      @media (max-width: 760px) {
-        header .subtitle { display:none; }
-        .app { display:block; padding:10px; }
-        .left-column, .right-column { margin-top:12px; }
-        .board-wrap { width:100%; }
-        .board-frame { grid-template-columns: 20px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 20px; }
-        .row-labels, .col-labels { font-size: 10px; }
-        .piece { font-size:clamp(26px,10vw,52px); }
-        .four-player .piece { font-size:clamp(14px,4vw,36px); }
-      }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chess — Game Library</title>
+<style>
+:root{--bg:#17191f;--panel:#22252d;--panel2:#2b2f39;--text:#f1f3f5;--muted:#aeb4c0;--accent:#78a9ff;--light:#f0d9b5;--dark:#b58863;--selected:#f6e58d;--legal:rgba(65,155,70,.55);--last:rgba(246,230,75,.42);--check:rgba(215,55,55,.75);--border:#3a3f4a;--ok:#86d89a}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:var(--bg)}button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;cursor:pointer}button:hover{background:#353a45}button:disabled{opacity:.45;cursor:not-allowed}header{height:64px;display:flex;align-items:center;padding:0 22px;border-bottom:1px solid var(--border);background:#1d2027}header h1{font-size:21px;margin:0}.subtitle{color:var(--muted);margin-left:12px;font-size:14px}.app{display:grid;grid-template-columns:minmax(180px,250px) minmax(400px,760px) minmax(180px,240px);gap:20px;max-width:1380px;margin:0 auto;padding:20px;align-items:start}.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:15px}.panel+.panel{margin-top:14px}.panel h2{font-size:15px;margin:0 0 12px}.button-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.button-grid button:first-child{grid-column:1/-1}.status{padding:10px;background:var(--panel2);border-radius:7px;font-size:14px;line-height:1.4}.status.ok{border:1px solid #406b4a}.status.error{border:1px solid #6b3d45;color:#ffbcbc}.board-wrap{width:min(76vw,760px);max-width:100%;margin:auto}.board-frame{display:grid;grid-template-columns:24px minmax(0,1fr);grid-template-rows:minmax(0,1fr) 24px;width:100%;aspect-ratio:1}.row-labels{grid-column:1;grid-row:1;display:grid;grid-template-rows:repeat(8,1fr);align-items:center;justify-items:center;color:var(--muted);font-size:12px;user-select:none}.col-labels{grid-column:2;grid-row:2;display:grid;grid-template-columns:repeat(8,1fr);align-items:center;justify-items:center;color:var(--muted);font-size:12px;user-select:none}.board{display:grid;width:100%;aspect-ratio:1;border:3px solid #111318;box-shadow:0 8px 30px rgba(0,0,0,.35);user-select:none;background:#181b22}.square{position:relative;display:flex;justify-content:center;align-items:center;aspect-ratio:1;border:0;border-radius:0;padding:0;color:#111;background:var(--light)}.square.dark{background:var(--dark)}.square:hover{filter:brightness(1.06)}.square.selected{background:var(--selected)!important}.square.last-move::after{content:"";position:absolute;inset:0;background:var(--last);pointer-events:none}.square.in-check{background:var(--check)!important}.piece{position:relative;z-index:2;font-family:"Arial Unicode MS","Segoe UI Symbol","DejaVu Sans",sans-serif;font-size:clamp(24px,5.5vw,60px);line-height:1;text-shadow:0 1px 1px rgba(0,0,0,.25)}.piece.w{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7)}.piece.b{color:#111;text-shadow:0 0 1px #888}.legal-dot{position:absolute;z-index:3;width:25%;height:25%;border-radius:50%;background:var(--legal);pointer-events:none}.legal-capture{position:absolute;z-index:3;inset:7%;border:5px solid rgba(65,155,70,.6);border-radius:50%;pointer-events:none}.move-list{height:450px;overflow-y:auto;border:1px solid var(--border);border-radius:7px;background:#1b1e24}.move-row{display:grid;grid-template-columns:42px 1fr 1fr;min-height:32px;align-items:center;border-bottom:1px solid #30343d;font-size:13px}.move-number{color:var(--muted);padding-left:8px}.move{padding:6px 8px}.captured{display:flex;flex-wrap:wrap;gap:4px;min-height:48px;font-size:24px}.captured-group{background:#1b1e24;border:1px solid var(--border);border-radius:7px;padding:8px;margin-bottom:8px}.captured-label{color:var(--muted);font-size:11px;margin-bottom:3px}.player-list{display:flex;flex-direction:column;gap:7px}.player-row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--panel2);border:1px solid var(--border);border-radius:7px}.player-avatar{width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;border-radius:50%;background:var(--bg);font-size:19px}.player-details{min-width:0}.player-name{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.player-type{color:var(--muted);font-size:11px}.player-row.current{border-color:var(--accent)}.note{color:var(--muted);font-size:12px;line-height:1.45}.promotion-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.62);z-index:20}.promotion-modal.open{display:flex}.promotion-box{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center}.promotion-options{display:flex;gap:10px}.promotion-options button{min-width:68px;height:52px;font-size:16px;font-weight:bold;padding:0 12px}.online-bar{margin-top:12px;padding:9px 10px;background:var(--panel2);border-radius:7px;color:var(--muted);font-size:12px}.online-bar strong{color:var(--text)}
+@media(max-width:1050px){.app{grid-template-columns:210px minmax(400px,700px)}.right-column{grid-column:1/-1}.move-list{height:250px}}@media(max-width:760px){header .subtitle{display:none}.app{display:block;padding:10px}.left-column,.right-column{margin-top:12px}.board-wrap{width:100%}.board-frame{grid-template-columns:20px minmax(0,1fr);grid-template-rows:minmax(0,1fr) 20px}.row-labels,.col-labels{font-size:10px}.piece{font-size:clamp(26px,10vw,52px)}}
+</style>
 </head>
 <body>
-  <header>
-    <h1 id="pageTitle">Chess</h1>
-    <span class="subtitle">Game Player</span>
-  </header>
-  <main class="app">
-    <section class="left-column">
-      <div class="panel">
-        <h2>Controls</h2>
-        <div class="button-grid">
-          <button id="newGameBtn">Back to Game Library</button>
-          <button id="undoBtn">Undo</button>
-          <button id="clearBtn">Reset Position</button>
-        </div>
-      </div>
-      <div class="panel">
-        <h2>Players</h2>
-        <div class="player-list" id="playerList"></div>
-      </div>
-      <div class="panel">
-        <h2>Status</h2>
-        <div class="status" id="status">Loading…</div>
-      </div>
-      <div class="panel">
-        <h2>Keyboard</h2>
-        <div class="note">Type a square such as <b>h8</b> to play a move.</div>
-      </div>
-    </section>
-    <section class="board-column">
-      <div class="game-info">
-        <div class="game-name" id="gameName">Chess</div>
-        <div class="variant-name" id="variantName">Standard Chess</div>
-      </div>
-      <div class="board-wrap">
-        <div class="board-frame" id="boardFrame">
-          <div class="row-labels" id="rowLabels" aria-hidden="true"></div>
-          <div class="board" id="board" aria-label="Chess board"></div>
-          <div class="col-labels" id="colLabels" aria-hidden="true"></div>
-        </div>
-      </div>
-    </section>
-    <section class="right-column">
-      <div class="panel"><h2>Move History</h2><div class="move-list" id="moveList"></div></div>
-      <div class="panel"><h2>Captured Pieces</h2><div id="capturedPanel"></div></div>
-    </section>
-  </main>
-  <div class="promotion-modal" id="promotionModal">
-    <div class="promotion-box"><h2>Choose promotion</h2><div class="promotion-options" id="promotionOptions"></div></div>
-  </div>
-  <script src="chess-ai.js?v=20260926-online1"></script>
-  <script src="chess.js?v=20260926-online1"></script>
+<header><h1 id="pageTitle">Chess</h1><span class="subtitle">Standard Chess</span></header>
+<main class="app">
+<section class="left-column">
+  <div class="panel"><h2>Controls</h2><div class="button-grid"><button id="newGameBtn">Back to Game Library</button><button id="undoBtn">Undo</button><button id="clearBtn">Reset Position</button></div></div>
+  <div class="panel"><h2>Players</h2><div class="player-list" id="playerList"></div><div id="onlineBar" class="online-bar" hidden></div></div>
+  <div class="panel"><h2>Status</h2><div class="status" id="status">Loading…</div></div>
+</section>
+<section class="board-column">
+  <div style="text-align:center;margin-bottom:14px"><div style="font-size:16px;font-weight:650">Chess</div><div style="color:var(--muted);font-size:12px;margin-top:2px">Standard Chess</div></div>
+  <div class="board-wrap"><div class="board-frame" id="boardFrame"><div class="row-labels" id="rowLabels"></div><div class="board" id="board" aria-label="Chess board"></div><div class="col-labels" id="colLabels"></div></div></div>
+</section>
+<section class="right-column"><div class="panel"><h2>Move History</h2><div class="move-list" id="moveList"></div></div><div class="panel"><h2>Captured Pieces</h2><div id="capturedPanel"></div></div></section>
+</main>
+<div class="promotion-modal" id="promotionModal"><div class="promotion-box"><h2>Choose promotion</h2><div class="promotion-options" id="promotionOptions"></div></div></div>
+<script src="chess-ai.js?v=20260927-1"></script>
+<script src="chess.js?v=20260927-1"></script>
 </body>
 </html>
