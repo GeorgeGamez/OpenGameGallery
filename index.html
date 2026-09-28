@@ -13,8 +13,8 @@
         --muted: #aeb4c0;
         --accent: #78a9ff;
         --border: #3a3f4a;
-        --danger: #e07a7a;
         --ok: #86d89a;
+        --danger: #e07a7a;
       }
       * {
         box-sizing: border-box;
@@ -30,9 +30,6 @@
           sans-serif;
         color: var(--text);
         background: var(--bg);
-      }
-      body.drawer-open {
-        overflow: hidden;
       }
       button,
       input {
@@ -172,7 +169,7 @@
         right: 0;
         bottom: 0;
         z-index: 21;
-        width: min(480px, 100vw);
+        width: min(500px, 100vw);
         background: var(--panel);
         border-left: 1px solid var(--border);
         transform: translateX(100%);
@@ -208,10 +205,9 @@
         padding: 14px 18px;
         border-top: 1px solid var(--border);
         display: flex;
-        gap: 10px;
       }
       .drawer-footer button {
-        flex: 1;
+        width: 100%;
       }
       .section {
         padding: 14px 0;
@@ -241,13 +237,15 @@
         flex: 1;
       }
       .profile-list,
-      .players-list {
+      .players-list,
+      .setup-players {
         display: flex;
         flex-direction: column;
         gap: 7px;
       }
       .profile-row,
-      .player-row {
+      .player-row,
+      .setup-slot {
         display: flex;
         align-items: center;
         gap: 10px;
@@ -279,23 +277,6 @@
       .player-type {
         color: var(--muted);
         font-size: 11px;
-      }
-      .current {
-        border-color: var(--accent);
-      }
-      .small {
-        padding: 6px 9px;
-        font-size: 12px;
-      }
-      .danger {
-        color: #ffbcbc;
-        border-color: #6b3d45;
-      }
-      .primary {
-        background: var(--accent);
-        color: #111318;
-        border-color: transparent;
-        font-weight: 700;
       }
       .online-box {
         background: #1b1e24;
@@ -364,26 +345,21 @@
       .error[hidden] {
         display: none;
       }
-      .setup-players {
-        display: flex;
-        flex-direction: column;
-        gap: 7px;
-      }
-      .setup-slot {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 9px 10px;
-        background: var(--panel2);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-      }
       .seat {
         font-weight: 700;
         width: 52px;
       }
-      .waiting {
-        color: var(--muted);
+      .setup-slot .avatar {
+        flex-basis: 34px;
+      }
+      .primary {
+        background: var(--accent);
+        color: #111318;
+        border-color: transparent;
+        font-weight: 700;
+      }
+      .small {
+        padding: 6px 9px;
         font-size: 12px;
       }
       @media (max-width: 650px) {
@@ -449,11 +425,12 @@
               /><button id="joinOnlineGroup" class="small">Join</button>
             </div>
             <div id="onlineCodeStatus" class="status-line">Not connected</div>
-            <div
-              id="onlineParticipants"
-              class="players-list"
-              style="margin-top: 10px"
-            ></div>
+            <div style="margin-top: 10px">
+              <div class="muted" style="margin-bottom: 7px">
+                Connected players
+              </div>
+              <div id="onlineParticipants" class="players-list"></div>
+            </div>
             <div id="onlineError" class="error" hidden></div>
           </div>
         </section>
@@ -479,40 +456,40 @@
     </aside>
     <script>
       "use strict";
-      const ONLINE_SERVER_URL = "opengamegallery.george-arps.workers.dev";
-      const gamesGrid = document.getElementById("gamesGrid"),
-        playersButton = document.getElementById("playersButton"),
-        backdrop = document.getElementById("backdrop"),
-        setupDrawer = document.getElementById("setupDrawer"),
-        closeSetup = document.getElementById("closeSetup"),
-        setupPlayers = document.getElementById("setupPlayers"),
-        setupHint = document.getElementById("setupHint"),
-        playButton = document.getElementById("playButton"),
-        requestOnlineCodeButton = document.getElementById("requestOnlineCode"),
-        disconnectOnlineButton = document.getElementById("disconnectOnline"),
-        onlineCodeDisplay = document.getElementById("onlineCodeDisplay"),
-        onlineCode = document.getElementById("onlineCode"),
-        onlineCodeStatus = document.getElementById("onlineCodeStatus"),
-        joinOnlineCode = document.getElementById("joinOnlineCode"),
-        joinOnlineGroupButton = document.getElementById("joinOnlineGroup"),
-        onlineParticipants = document.getElementById("onlineParticipants"),
-        onlineError = document.getElementById("onlineError"),
-        profileList = document.getElementById("profileList"),
-        addProfileButton = document.getElementById("addProfile"),
-        profileEditor = document.getElementById("profileEditor");
-      let profiles = loadProfiles();
-      let editingProfileId = null;
+      const RAW_ONLINE_SERVER_URL = "opengamegallery.george-arps.workers.dev";
+      const $ = (id) => document.getElementById(id);
+      const gamesGrid = $("gamesGrid"),
+        playersButton = $("playersButton"),
+        backdrop = $("backdrop"),
+        setupDrawer = $("setupDrawer"),
+        closeSetup = $("closeSetup"),
+        setupPlayers = $("setupPlayers"),
+        setupHint = $("setupHint"),
+        playButton = $("playButton"),
+        requestOnlineCodeButton = $("requestOnlineCode"),
+        disconnectOnlineButton = $("disconnectOnline"),
+        onlineCodeDisplay = $("onlineCodeDisplay"),
+        onlineCode = $("onlineCode"),
+        onlineCodeStatus = $("onlineCodeStatus"),
+        joinOnlineCode = $("joinOnlineCode"),
+        joinOnlineGroupButton = $("joinOnlineGroup"),
+        onlineParticipants = $("onlineParticipants"),
+        onlineError = $("onlineError"),
+        profileList = $("profileList"),
+        addProfileButton = $("addProfile"),
+        profileEditor = $("profileEditor");
+      let profiles = loadProfiles(),
+        editingProfileId = null;
       const onlineState = {
         code: localStorage.getItem("gameLibraryOnlineCode") || "",
+        joinedCode: localStorage.getItem("gameLibraryOnlineJoinedCode") || "",
         hostToken: localStorage.getItem("gameLibraryOnlineHostToken") || "",
         clientId: localStorage.getItem("gameLibraryOnlineClientId") || "",
-        joinedCode: localStorage.getItem("gameLibraryOnlineJoinedCode") || "",
         connected: false,
         isHost: false,
         socket: null,
         participants: [],
         config: null,
-        pendingStart: null,
       };
       const AVATARS = [
         "♟",
@@ -533,7 +510,13 @@
         "🎮",
       ];
       function id() {
-        return "p_" + Math.random().toString(36).slice(2, 10);
+        return "client_" + Math.random().toString(36).slice(2, 12);
+      }
+      function escapeHtml(v) {
+        return String(v).replace(
+          /[&<>\"]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+        );
       }
       function loadProfiles() {
         try {
@@ -542,15 +525,27 @@
           );
           if (Array.isArray(p) && p.length) return p;
         } catch {}
-        return [{ id: id(), name: "Player 1", avatar: "♟" }];
+        return [
+          {
+            id: "p_" + Math.random().toString(36).slice(2, 10),
+            name: "Player 1",
+            avatar: "♟",
+          },
+        ];
       }
       function saveProfiles() {
         localStorage.setItem("gameLibraryProfiles", JSON.stringify(profiles));
       }
       function configured() {
         return (
-          ONLINE_SERVER_URL && !ONLINE_SERVER_URL.includes("YOUR-WORKER-URL")
+          RAW_ONLINE_SERVER_URL &&
+          !RAW_ONLINE_SERVER_URL.includes("YOUR-WORKER-URL")
         );
+      }
+      function serverBase() {
+        let u = RAW_ONLINE_SERVER_URL.trim().replace(/\/+$/, "");
+        u = u.replace(/\/(?:api\/rooms(?:\/[^/]+)?|api|ws(?:\/[^/]+)?)$/i, "");
+        return u;
       }
       function roomCode() {
         return onlineState.code || onlineState.joinedCode || "";
@@ -573,38 +568,78 @@
           );
         else localStorage.removeItem("gameLibraryOnlineJoinedCode");
       }
-      function error(msg = "") {
-        onlineError.textContent = msg;
+      function error(msg) {
+        onlineError.textContent = msg || "";
         onlineError.hidden = !msg;
       }
-      function openSetup() {
-        renderSetup();
-        setupDrawer.classList.add("open");
-        backdrop.classList.add("open");
-        setupDrawer.setAttribute("aria-hidden", "false");
-        document.body.classList.add("drawer-open");
+      function closeSocket() {
+        if (onlineState.socket) {
+          try {
+            onlineState.socket.close();
+          } catch {}
+        }
+        onlineState.socket = null;
+        onlineState.connected = false;
+        onlineState.isHost = false;
+        onlineState.participants = [];
       }
-      function closeSetupDrawer() {
-        setupDrawer.classList.remove("open");
-        backdrop.classList.remove("open");
-        setupDrawer.setAttribute("aria-hidden", "true");
-        document.body.classList.remove("drawer-open");
+      function renderProfiles() {
+        profileList.innerHTML = "";
+        for (const p of profiles) {
+          const row = document.createElement("div");
+          row.className = "profile-row";
+          row.innerHTML = `<div class="avatar">${escapeHtml(p.avatar || "♟")}</div><div class="grow"><div class="player-name">${escapeHtml(p.name)}</div><div class="player-type">Local profile</div></div>`;
+          profileList.appendChild(row);
+        }
+      }
+      function openProfileEditor(profileId = null) {
+        editingProfileId = profileId;
+        const p = profiles.find((x) => x.id === profileId) || {
+          name: "Player",
+          avatar: "♟",
+        };
+        profileEditor.innerHTML = `<div style="margin-top:9px;padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px"><input id="profileNameInput" maxlength="30" value="${escapeHtml(p.name)}" style="width:100%;padding:8px;border-radius:7px;border:1px solid var(--border);background:var(--panel);color:var(--text)"><div id="avatarChoices" style="display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin-top:8px"></div><div class="row" style="margin-top:8px"><button id="saveProfile" class="small primary">Save</button><button id="cancelProfile" class="small">Cancel</button></div></div>`;
+        const choices = $("avatarChoices");
+        for (const a of AVATARS) {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "small";
+          b.textContent = a;
+          b.onclick = () => ($("profileNameInput").dataset.avatar = a);
+          choices.appendChild(b);
+        }
+        $("profileNameInput").dataset.avatar = p.avatar || "♟";
+        $("saveProfile").onclick = () => {
+          const name = $("profileNameInput").value.trim() || "Player";
+          const avatar = $("profileNameInput").dataset.avatar || "♟";
+          if (editingProfileId) {
+            const x = profiles.find((y) => y.id === editingProfileId);
+            if (x) {
+              x.name = name;
+              x.avatar = avatar;
+            }
+          } else
+            profiles.push({
+              id: "p_" + Math.random().toString(36).slice(2, 10),
+              name,
+              avatar,
+            });
+          saveProfiles();
+          profileEditor.innerHTML = "";
+          renderProfiles();
+          sendIdentify();
+          renderSetup();
+        };
+        $("cancelProfile").onclick = () => (profileEditor.innerHTML = "");
       }
       function renderGames() {
         gamesGrid.innerHTML = "";
-        const game = {
-          name: "Chess",
-          description:
-            "The classic two-player strategy game of kings, queens, and tactical manoeuvring.",
-          image: "images/cover/chess.jpg",
-          players: { min: 2, max: 2 },
-        };
         const card = document.createElement("article");
         card.className = "game-card";
         const image = document.createElement("div");
         image.className = "game-image";
         const img = document.createElement("img");
-        img.src = game.image;
+        img.src = "images/cover/chess.jpg";
         img.alt = "Chess preview";
         img.onerror = () => {
           img.remove();
@@ -614,144 +649,28 @@
           image.appendChild(p);
         };
         image.appendChild(img);
-        const c = document.createElement("div");
-        c.className = "game-content";
-        c.innerHTML =
-          '<h2>Chess</h2><p class="description">The classic two-player strategy game of kings, queens, and tactical manoeuvring.</p><div class="game-meta"><span class="meta-tag">2 players</span><span class="meta-tag">Standard Chess</span><span class="meta-tag">Online</span><span class="meta-tag">Computer</span></div>';
-        const b = document.createElement("button");
-        b.className = "play-button";
-        b.textContent = "Play";
-        b.onclick = openSetup;
-        c.appendChild(b);
-        card.append(image, c);
+        const content = document.createElement("div");
+        content.className = "game-content";
+        content.innerHTML =
+          '<h2>Chess</h2><p class="description">The classic two-player strategy game.</p><div class="game-meta"><span class="meta-tag">2 players</span><span class="meta-tag">Standard Chess</span><span class="meta-tag">Local / Online</span></div><button class="play-button">Set up &amp; Play</button>';
+        content.querySelector("button").onclick = openSetup;
+        card.append(image, content);
         gamesGrid.appendChild(card);
-      }
-      function renderProfiles() {
-        profileList.innerHTML = "";
-        profiles.forEach((p) => {
-          const row = document.createElement("div");
-          row.className = "profile-row";
-          row.innerHTML = `<div class="avatar">${escapeHtml(p.avatar)}</div><div class="grow"><div class="player-name">${escapeHtml(p.name)}</div><div class="player-type">Local player</div></div>`;
-          const edit = document.createElement("button");
-          edit.className = "small";
-          edit.textContent = "Edit";
-          edit.onclick = () => openEditor(p.id);
-          row.appendChild(edit);
-          if (profiles.length > 1) {
-            const remove = document.createElement("button");
-            remove.className = "small danger";
-            remove.textContent = "×";
-            remove.onclick = () => removeProfile(p.id);
-            row.appendChild(remove);
-          }
-          profileList.appendChild(row);
-        });
-      }
-      function escapeHtml(v) {
-        return String(v).replace(
-          /[&<>\"]/g,
-          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
-        );
-      }
-      function openEditor(profileId = null) {
-        editingProfileId = profileId;
-        const p = profiles.find((x) => x.id === profileId) || {
-          id: null,
-          name: "Player",
-          avatar: AVATARS[profiles.length % AVATARS.length],
-        };
-        profileEditor.innerHTML = `<div style="margin-top:9px;padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px"><input id="profileNameInput" value="${escapeHtml(p.name)}" maxlength="30" style="width:100%;color:var(--text);background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:8px"><div style="display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin-top:8px" id="avatarChoices"></div><div class="row" style="margin-top:8px"><button id="saveProfile" class="small primary">Save</button><button id="cancelProfile" class="small">Cancel</button></div></div>`;
-        const choices = document.getElementById("avatarChoices");
-        AVATARS.forEach((a) => {
-          const x = document.createElement("button");
-          x.className = "small";
-          x.textContent = a;
-          x.onclick = () => {
-            document.getElementById("profileNameInput").dataset.avatar = a;
-          };
-          choices.appendChild(x);
-        });
-        document.getElementById("profileNameInput").dataset.avatar = p.avatar;
-        document.getElementById("saveProfile").onclick = () => {
-          const name =
-            document.getElementById("profileNameInput").value.trim() ||
-            "Player";
-          if (editingProfileId) {
-            const existing = profiles.find((x) => x.id === editingProfileId);
-            existing.name = name;
-            existing.avatar =
-              document.getElementById("profileNameInput").dataset.avatar ||
-              existing.avatar;
-          } else {
-            profiles.push({
-              id: id(),
-              name,
-              avatar:
-                document.getElementById("profileNameInput").dataset.avatar ||
-                "♟",
-            });
-          }
-          saveProfiles();
-          renderProfiles();
-          profileEditor.innerHTML = "";
-          sendIdentify();
-          renderSetup();
-        };
-        document.getElementById("cancelProfile").onclick = () => {
-          profileEditor.innerHTML = "";
-        };
-      }
-      function removeProfile(profileId) {
-        if (profiles.length <= 1) return;
-        profiles = profiles.filter((p) => p.id !== profileId);
-        saveProfiles();
-        renderProfiles();
-        sendIdentify();
-        renderSetup();
-      }
-      function renderOnline() {
-        onlineCodeDisplay.hidden = !onlineState.code;
-        onlineCode.textContent = onlineState.code || "";
-        const ps = onlineState.participants.filter((p) => p.connected);
-        onlineParticipants.innerHTML = "";
-        if (!ps.length) {
-          onlineParticipants.innerHTML =
-            '<div class="muted">Create or join a room to see connected players.</div>';
-        } else
-          ps.forEach((p) => {
-            const row = document.createElement("div");
-            row.className = "player-row";
-            row.innerHTML = `<div class="avatar">${escapeHtml(p.avatar || "🎮")}</div><div class="grow"><div class="player-name">${escapeHtml(p.name || "Player")}</div><div class="player-type">${p.clientId === onlineState.clientId ? "You • " : ""}${p.role === "host" ? "Host" : "Online player"}</div></div>`;
-            onlineParticipants.appendChild(row);
-          });
-        if (onlineState.connected) {
-          onlineCodeStatus.textContent = `Connected • ${ps.length} player${ps.length === 1 ? "" : "s"}`;
-          onlineCodeStatus.classList.add("ok");
-        } else {
-          onlineCodeStatus.textContent = roomCode()
-            ? `Room ${roomCode()}`
-            : "Not connected";
-          onlineCodeStatus.classList.remove("ok");
-        }
-        renderSetup();
       }
       function renderSetup() {
         renderProfiles();
         setupPlayers.innerHTML = "";
-        const me = onlineState.participants.find(
-          (p) => p.clientId === onlineState.clientId,
+        const host = onlineState.participants.find(
+          (p) => p.connected && p.role === "host",
         );
         const remote = onlineState.participants.find(
           (p) =>
             p.connected && p.clientId !== onlineState.clientId && !p.spectator,
         );
-        const host = onlineState.participants.find(
-          (p) => p.connected && p.role === "host",
-        );
         let white, black;
         if (onlineState.connected && onlineState.isHost) {
           white = {
-            name: profiles[0]?.name || "Host",
+            name: profiles[0]?.name || "Player 1",
             avatar: profiles[0]?.avatar || "♟",
             type: "You • White",
           };
@@ -761,13 +680,15 @@
                 avatar: remote.avatar,
                 type: "Online player • Black",
               }
-            : { name: "Computer", avatar: "🤖", type: "Computer • Black" };
+            : { name: "Waiting for player…", avatar: "…", type: "Waiting" };
         } else if (onlineState.connected && !onlineState.isHost) {
-          white = host
-            ? { name: host.name, avatar: host.avatar, type: "Host • White" }
-            : { name: "Host", avatar: "♟", type: "Host • White" };
+          white = {
+            name: host?.name || "Host",
+            avatar: host?.avatar || "♟",
+            type: "Host • White",
+          };
           black = {
-            name: profiles[0]?.name || "Player",
+            name: profiles[0]?.name || "Player 1",
             avatar: profiles[0]?.avatar || "♟",
             type: "You • Black",
           };
@@ -789,43 +710,47 @@
           setupPlayers.appendChild(row);
         }
         if (onlineState.connected && !onlineState.isHost) {
-          setupHint.textContent =
-            "The host controls the game setup and starts the game.";
+          setupHint.textContent = "Waiting for the host to start the game.";
           playButton.disabled = true;
         } else if (onlineState.connected && !remote) {
           setupHint.textContent =
-            "No other player is connected yet. The game will use the computer until another player joins.";
+            "Waiting for another player to join this room.";
+          playButton.disabled = true;
+        } else if (onlineState.connected) {
+          setupHint.textContent =
+            "Both players are connected. The host can start the game.";
           playButton.disabled = false;
         } else {
-          setupHint.textContent = onlineState.connected
-            ? "The connected player will take Black. Both screens will open the game when the host starts it."
-            : "Play locally against the computer.";
+          setupHint.textContent =
+            "Play locally against the computer, or create/join an online room.";
           playButton.disabled = false;
         }
       }
-      function wsUrl(code, token, role) {
-        const base = ONLINE_SERVER_URL.replace(/^http/i, "ws").replace(
-          /\/$/,
-          "",
-        );
-        const q = new URLSearchParams({
-          clientId: onlineState.clientId || id(),
-          role,
-        });
-        if (token) q.set("token", token);
-        return `${base}/ws/${encodeURIComponent(code)}?${q}`;
-      }
-      function closeSocket() {
-        if (onlineState.socket) {
-          try {
-            onlineState.socket.close();
-          } catch {}
+      function renderOnline() {
+        onlineCodeDisplay.hidden = !onlineState.code;
+        onlineCode.textContent = onlineState.code || "";
+        const ps = onlineState.participants.filter((p) => p.connected);
+        onlineParticipants.innerHTML = "";
+        if (!ps.length)
+          onlineParticipants.innerHTML =
+            '<div class="muted">No connected players yet.</div>';
+        else
+          for (const p of ps) {
+            const row = document.createElement("div");
+            row.className = "player-row";
+            row.innerHTML = `<div class="avatar">${escapeHtml(p.avatar || "🎮")}</div><div class="grow"><div class="player-name">${escapeHtml(p.name || "Player")}</div><div class="player-type">${p.clientId === onlineState.clientId ? "You • " : ""}${p.role === "host" ? "Host" : "Online player"}</div></div>`;
+            onlineParticipants.appendChild(row);
+          }
+        if (onlineState.connected) {
+          onlineCodeStatus.textContent = `Connected • ${ps.length} player${ps.length === 1 ? "" : "s"}`;
+          onlineCodeStatus.classList.add("ok");
+        } else {
+          onlineCodeStatus.textContent = roomCode()
+            ? `Room ${roomCode()}`
+            : "Not connected";
+          onlineCodeStatus.classList.remove("ok");
         }
-        onlineState.socket = null;
-        onlineState.connected = false;
-        onlineState.isHost = false;
-        onlineState.participants = [];
-        renderOnline();
+        renderSetup();
       }
       function sendIdentify() {
         if (
@@ -833,7 +758,7 @@
           onlineState.socket.readyState !== WebSocket.OPEN
         )
           return;
-        const p = profiles[0] || { id: "", name: "Player", avatar: "♟" };
+        const p = profiles[0] || { id: "", name: "Player 1", avatar: "♟" };
         onlineState.socket.send(
           JSON.stringify({
             type: "player:identify",
@@ -844,27 +769,32 @@
           }),
         );
       }
-      function connectRoom(code, { host = false } = {}) {
+      function wsUrl(code) {
+        const base = serverBase().replace(
+          /^https?:/i,
+          location.protocol === "https:" ? "wss:" : "ws:",
+        );
+        const q = new URLSearchParams({
+          clientId: onlineState.clientId || id(),
+          role: onlineState.isHost ? "host" : "player",
+        });
+        if (onlineState.isHost && onlineState.hostToken)
+          q.set("token", onlineState.hostToken);
+        return `${base}/ws/${encodeURIComponent(code)}?${q}`;
+      }
+      function connectRoom(code, host) {
         if (!configured()) {
-          error("Set ONLINE_SERVER_URL in index.html first.");
-          return;
-        }
-        if (!code) {
-          error("No room code.");
+          error(
+            "Set ONLINE_SERVER_URL in index.html to your Cloudflare Worker URL.",
+          );
           return;
         }
         closeSocket();
         onlineState.clientId = onlineState.clientId || id();
-        onlineState.isHost = host;
+        onlineState.isHost = !!host;
         persistOnline();
         onlineCodeStatus.textContent = "Connecting…";
-        const ws = new WebSocket(
-          wsUrl(
-            code,
-            host ? onlineState.hostToken : "",
-            host ? "host" : "player",
-          ),
-        );
+        const ws = new WebSocket(wsUrl(code));
         onlineState.socket = ws;
         ws.onopen = () => {
           onlineState.connected = true;
@@ -872,46 +802,44 @@
           sendIdentify();
           renderOnline();
         };
-        ws.onmessage = (event) => {
+        ws.onmessage = (e) => {
           let m;
           try {
-            m = JSON.parse(event.data);
+            m = JSON.parse(e.data);
           } catch {
             return;
           }
-          if (m.type === "room:hello") {
-            onlineState.participants = m.room?.participants || [];
-            onlineState.config = m.room?.config || null;
-            renderOnline();
-            if (m.room?.started && m.room?.config)
-              queueOnlineStart(m.room.config);
-            return;
+          switch (m.type) {
+            case "room:hello":
+              onlineState.participants = m.room?.participants || [];
+              onlineState.config = m.room?.config || null;
+              renderOnline();
+              if (m.room?.started && m.room?.config) startOnline(m.room.config);
+              break;
+            case "room:participants":
+              onlineState.participants = Array.isArray(m.participants)
+                ? m.participants
+                : [];
+              renderOnline();
+              break;
+            case "room:config":
+              onlineState.config = m.config || null;
+              renderSetup();
+              break;
+            case "game:start":
+              onlineState.config = m.config || onlineState.config;
+              if (onlineState.config) startOnline(onlineState.config);
+              break;
+            case "error":
+              error(m.message || "Server error");
+              break;
           }
-          if (m.type === "room:participants") {
-            onlineState.participants = Array.isArray(m.participants)
-              ? m.participants
-              : [];
-            renderOnline();
-            return;
-          }
-          if (m.type === "room:config") {
-            onlineState.config = m.config || null;
-            renderSetup();
-            return;
-          }
-          if (m.type === "game:start") {
-            onlineState.config = m.config || onlineState.config;
-            if (onlineState.config) queueOnlineStart(onlineState.config);
-            return;
-          }
-          if (m.type === "error") error(m.message || "Server error");
         };
         ws.onclose = () => {
-          if (onlineState.socket === ws) {
-            onlineState.connected = false;
-            onlineState.socket = null;
-            renderOnline();
-          }
+          if (onlineState.socket !== ws) return;
+          onlineState.connected = false;
+          onlineState.socket = null;
+          renderOnline();
         };
         ws.onerror = () => {
           if (onlineState.socket === ws)
@@ -920,7 +848,7 @@
             );
         };
       }
-      function queueOnlineStart(config) {
+      function startOnline(config) {
         sessionStorage.setItem(
           "gameLibraryOnlineConfig",
           JSON.stringify(config),
@@ -928,10 +856,11 @@
         const params = new URLSearchParams({
           online: "1",
           code: roomCode(),
-          server: ONLINE_SERVER_URL,
+          server: serverBase(),
           clientId: onlineState.clientId,
-          hostToken: onlineState.hostToken,
         });
+        if (onlineState.isHost && onlineState.hostToken)
+          params.set("hostToken", onlineState.hostToken);
         window.location.href = `chess/chess.html?${params}`;
       }
       async function createRoom() {
@@ -943,27 +872,34 @@
           return;
         }
         requestOnlineCodeButton.disabled = true;
+        onlineCodeStatus.textContent = "Creating room…";
         try {
           closeSocket();
-          onlineCodeStatus.textContent = "Creating room…";
-          const p = profiles[0] || { name: "Host", avatar: "♟" };
+          onlineState.clientId = onlineState.clientId || id();
+          const p = profiles[0] || { name: "Player 1", avatar: "♟" };
           const body = JSON.stringify({
             hostName: p.name,
             hostAvatar: p.avatar,
+            config: { game: "chess", variant: "standard" },
           });
-          let response = await fetch(
-            `${ONLINE_SERVER_URL.replace(/\/$/, "")}/api/rooms`,
-            {
+          const base = serverBase();
+          let response = await fetch(`${base}/api/rooms`, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=UTF-8" },
+            body,
+          });
+          if ([404, 405].includes(response.status))
+            response = await fetch(`${base}/api/rooms/new`, {
               method: "POST",
               headers: { "Content-Type": "text/plain;charset=UTF-8" },
               body,
-            },
-          );
-          if (response.status === 405) {
-            response = await fetch(
-              `${ONLINE_SERVER_URL.replace(/\/$/, "")}/api/rooms/new?hostName=${encodeURIComponent(p.name)}&hostAvatar=${encodeURIComponent(p.avatar)}`,
-            );
-          }
+            });
+          if ([404, 405].includes(response.status))
+            response = await fetch(base, {
+              method: "POST",
+              headers: { "Content-Type": "text/plain;charset=UTF-8" },
+              body,
+            });
           const data = await response.json().catch(() => ({}));
           if (!response.ok || !data.code || !data.hostToken)
             throw new Error(
@@ -972,14 +908,12 @@
           onlineState.code = String(data.code);
           onlineState.joinedCode = "";
           onlineState.hostToken = String(data.hostToken);
-          onlineState.clientId = onlineState.clientId || id();
-          onlineState.config = null;
+          onlineState.config = data.room?.config || null;
           persistOnline();
-          renderOnline();
-          connectRoom(onlineState.code, { host: true });
+          connectRoom(onlineState.code, true);
         } catch (e) {
-          error(e.message || String(e));
           onlineCodeStatus.textContent = "Room creation failed";
+          error(e.message || String(e));
         } finally {
           requestOnlineCodeButton.disabled = false;
         }
@@ -994,22 +928,19 @@
         }
         if (!configured()) {
           error(
-            "Replace YOUR-WORKER-URL in ONLINE_SERVER_URL with your Worker URL.",
+            "Replace YOUR-WORKER-URL in ONLINE_SERVER_URL with your Cloudflare Worker URL.",
           );
           return;
         }
         joinOnlineGroupButton.disabled = true;
         try {
-          closeSocket();
           onlineState.code = "";
           onlineState.joinedCode = code;
           onlineState.hostToken = "";
           onlineState.config = null;
           onlineState.clientId = onlineState.clientId || id();
           persistOnline();
-          connectRoom(code, { host: false });
-        } catch (e) {
-          error(e.message || String(e));
+          connectRoom(code, false);
         } finally {
           joinOnlineGroupButton.disabled = false;
         }
@@ -1019,7 +950,8 @@
           (p) =>
             p.connected && p.clientId !== onlineState.clientId && !p.spectator,
         );
-        const p = profiles[0] || { id: "", name: "Player", avatar: "♟" };
+        const p = profiles[0] || { name: "Player 1", avatar: "♟" };
+        if (!remote) return null;
         return {
           game: "chess",
           variant: "standard",
@@ -1032,96 +964,61 @@
               avatar: p.avatar,
               type: "human",
             },
-            ...(remote
-              ? [
-                  {
-                    seat: "black",
-                    clientId: remote.clientId,
-                    name: remote.name,
-                    avatar: remote.avatar,
-                    type: "human",
-                  },
-                ]
-              : [
-                  {
-                    seat: "black",
-                    clientId: "computer",
-                    name: "Computer",
-                    avatar: "🤖",
-                    type: "computer",
-                    difficulty: "normal",
-                  },
-                ]),
+            {
+              seat: "black",
+              clientId: remote.clientId,
+              name: remote.name,
+              avatar: remote.avatar,
+              type: "human",
+            },
           ],
-          hostComputers: !remote,
         };
       }
       function play() {
         if (!onlineState.connected) {
-          const config = {
-            game: "chess",
-            variant: "standard",
-            hostClientId: null,
-            players: [
-              {
-                seat: "white",
-                clientId: null,
-                name: profiles[0]?.name || "Player 1",
-                avatar: profiles[0]?.avatar || "♟",
-                type: "human",
-              },
-              {
-                seat: "black",
-                clientId: "computer",
-                name: "Computer",
-                avatar: "🤖",
-                type: "computer",
-                difficulty: "normal",
-              },
-            ],
-          };
-          sessionStorage.setItem(
-            "gameLibraryOnlineConfig",
-            JSON.stringify(config),
-          );
           window.location.href = "chess/chess.html";
           return;
         }
         if (!onlineState.isHost) return;
-        const remote = onlineState.participants.find(
-          (p) =>
-            p.connected && p.clientId !== onlineState.clientId && !p.spectator,
-        );
         const config = buildOnlineConfig();
-        if (!remote && onlineState.code) {
-          onlineState.config = config;
-          onlineState.socket.send(
-            JSON.stringify({ type: "room:config", config }),
+        if (!config) {
+          error(
+            "Wait for another player to connect before starting the online game.",
           );
-          onlineState.socket.send(JSON.stringify({ type: "game:start" }));
           return;
         }
         onlineState.config = config;
         onlineState.socket.send(
           JSON.stringify({ type: "room:config", config }),
         );
-        onlineState.socket.send(JSON.stringify({ type: "game:start" }));
+        onlineState.socket.send(JSON.stringify({ type: "game:start", config }));
       }
-      playersButton.onclick = openSetup;
-      closeSetup.onclick = closeSetupDrawer;
-      backdrop.onclick = closeSetupDrawer;
+      playersButton.onclick = () => {
+        setupDrawer.classList.add("open");
+        backdrop.classList.add("open");
+        setupDrawer.setAttribute("aria-hidden", "false");
+        renderSetup();
+        renderOnline();
+      };
+      closeSetup.onclick = () => {
+        setupDrawer.classList.remove("open");
+        backdrop.classList.remove("open");
+        setupDrawer.setAttribute("aria-hidden", "true");
+      };
+      backdrop.onclick = closeSetup.onclick;
       requestOnlineCodeButton.onclick = createRoom;
-      joinOnlineGroupButton.onclick = joinRoom;
       disconnectOnlineButton.onclick = () => {
         closeSocket();
         onlineState.code = "";
         onlineState.joinedCode = "";
         onlineState.hostToken = "";
+        onlineState.config = null;
         persistOnline();
         renderOnline();
       };
+      joinOnlineGroupButton.onclick = joinRoom;
       playButton.onclick = play;
-      addProfileButton.onclick = () => openEditor();
+      addProfileButton.onclick = () => openProfileEditor();
       joinOnlineCode.addEventListener(
         "input",
         () =>
@@ -1129,10 +1026,8 @@
             .replace(/\D/g, "")
             .slice(0, 4)),
       );
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") closeSetupDrawer();
-      });
       renderGames();
+      renderProfiles();
       renderOnline();
     </script>
   </body>
