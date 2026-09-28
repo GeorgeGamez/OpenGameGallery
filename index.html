@@ -932,7 +932,7 @@
           clientId: onlineState.clientId,
           hostToken: onlineState.hostToken,
         });
-        window.location.href = `chess.html?${params}`;
+        window.location.href = `chess/chess.html?${params}`;
       }
       async function createRoom() {
         error("");
@@ -1084,7 +1084,7 @@
             "gameLibraryOnlineConfig",
             JSON.stringify(config),
           );
-          window.location.href = "chess.html";
+          window.location.href = "chess/chess.html";
           return;
         }
         if (!onlineState.isHost) return;
