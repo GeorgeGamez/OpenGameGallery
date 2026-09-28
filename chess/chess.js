@@ -4,6 +4,7 @@ const PIECES = {
   w: { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" },
   b: { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" },
 };
+
 function inside(r, c) {
   return r >= 0 && r < 8 && c >= 0 && c < 8;
 }
@@ -24,11 +25,13 @@ function initialBoard() {
   }
   return b;
 }
+
 class ChessGame {
   constructor() {
     this.size = 8;
     this.reset();
   }
+
   reset() {
     this.board = initialBoard();
     this.turn = "w";
@@ -36,6 +39,7 @@ class ChessGame {
     this.sanHistory = [];
     this.captured = [];
     this.lastMove = null;
+    this.enPassant = null;
     this.castling = {
       w: {
         kingMoved: false,
@@ -55,6 +59,7 @@ class ChessGame {
       },
     };
   }
+
   clone() {
     return {
       board: cloneBoard(this.board),
@@ -64,9 +69,11 @@ class ChessGame {
       lastMove: this.lastMove
         ? { from: { ...this.lastMove.from }, to: { ...this.lastMove.to } }
         : null,
+      enPassant: this.enPassant ? { ...this.enPassant } : null,
       castling: JSON.parse(JSON.stringify(this.castling)),
     };
   }
+
   restore(s) {
     this.board = cloneBoard(s.board);
     this.turn = s.turn;
@@ -75,6 +82,7 @@ class ChessGame {
     this.lastMove = s.lastMove
       ? { from: { ...s.lastMove.from }, to: { ...s.lastMove.to } }
       : null;
+    this.enPassant = s.enPassant ? { ...s.enPassant } : null;
     this.castling = JSON.parse(
       JSON.stringify(
         s.castling || {
@@ -98,24 +106,27 @@ class ChessGame {
       ),
     );
   }
+
   undo() {
     if (!this.history.length) return false;
     this.restore(this.history.pop());
     return true;
   }
+
   findKing(color, b = this.board) {
     for (let r = 0; r < 8; r++)
       for (let c = 0; c < 8; c++)
         if (b[r][c]?.color === color && b[r][c].type === "k") return { r, c };
     return null;
   }
+
   attacked(r, c, by, b = this.board) {
-    const pawn = by === "w" ? r + 1 : r - 1;
+    const pawnRow = by === "w" ? r + 1 : r - 1;
     for (const dc of [-1, 1])
       if (
-        inside(pawn, c + dc) &&
-        b[pawn][c + dc]?.color === by &&
-        b[pawn][c + dc].type === "p"
+        inside(pawnRow, c + dc) &&
+        b[pawnRow][c + dc]?.color === by &&
+        b[pawnRow][c + dc].type === "p"
       )
         return true;
     for (const [dr, dc] of [
@@ -162,7 +173,7 @@ class ChessGame {
         ],
         ["b", "q"],
       ],
-    ])
+    ]) {
       for (const [dr, dc] of directions) {
         let nr = r + dr,
           nc = c + dc;
@@ -176,8 +187,15 @@ class ChessGame {
           nc += dc;
         }
       }
+    }
     return false;
   }
+
+  isInCheck(color) {
+    const k = this.findKing(color);
+    return !!k && this.attacked(k.r, k.c, opposite(color));
+  }
+
   moveList(r, c) {
     const p = this.board[r]?.[c];
     if (!p || p.color !== this.turn) return [];
@@ -188,24 +206,32 @@ class ChessGame {
       if (!t || t.color !== p.color)
         out.push({ from: { r, c }, to: { r: tr, c: tc }, ...x });
     };
+
     if (p.type === "p") {
-      const d = p.color === "w" ? -1 : 1,
-        s = p.color === "w" ? 6 : 1;
+      const d = p.color === "w" ? -1 : 1;
+      const start = p.color === "w" ? 6 : 1;
+      const promotionRow = p.color === "w" ? 0 : 7;
       if (inside(r + d, c) && !this.board[r + d][c]) {
-        add(r + d, c, { promotion: r + d === 0 || r + d === 7 });
-        if (r === s && !this.board[r + 2 * d][c]) add(r + 2 * d, c);
+        add(r + d, c, { promotion: r + d === promotionRow });
+        if (r === start && !this.board[r + 2 * d][c])
+          add(r + 2 * d, c, { doublePawn: true });
       }
       for (const dc of [-1, 1]) {
         const tr = r + d,
           tc = c + dc;
-        if (
-          inside(tr, tc) &&
-          this.board[tr][tc] &&
-          this.board[tr][tc].color !== p.color
+        if (!inside(tr, tc)) continue;
+        const t = this.board[tr][tc];
+        if (t && t.color !== p.color)
+          add(tr, tc, { promotion: tr === promotionRow });
+        else if (
+          this.enPassant &&
+          this.enPassant.r === tr &&
+          this.enPassant.c === tc
         )
-          add(tr, tc, { promotion: tr === 0 || tr === 7 });
+          add(tr, tc, { enPassant: true, capture: { r: r, c: tc } });
       }
     }
+
     if (p.type === "n")
       for (const [dr, dc] of [
         [-2, -1],
@@ -218,6 +244,7 @@ class ChessGame {
         [2, 1],
       ])
         add(r + dr, c + dc);
+
     if (["b", "r", "q"].includes(p.type)) {
       const ds = [];
       if (["b", "q"].includes(p.type))
@@ -239,15 +266,21 @@ class ChessGame {
         }
       }
     }
+
     if (p.type === "k") {
       for (let dr = -1; dr <= 1; dr++)
         for (let dc = -1; dc <= 1; dc++) if (dr || dc) add(r + dr, c + dc);
       const cs = this.castling[p.color];
       if (!cs.kingMoved && !this.attacked(r, c, opposite(p.color))) {
         for (const rk of cs.rooks) {
-          if (rk.moved || this.board[r][rk.col]?.type !== "r") continue;
-          const kingTarget = rk.col > cs.kingCol ? 6 : 2,
-            rookTarget = rk.col > cs.kingCol ? 5 : 3;
+          if (
+            rk.moved ||
+            this.board[r][rk.col]?.type !== "r" ||
+            this.board[r][rk.col]?.color !== p.color
+          )
+            continue;
+          const kingTarget = rk.col > cs.kingCol ? 6 : 2;
+          const rookTarget = rk.col > cs.kingCol ? 5 : 3;
           let clear = true;
           const min = Math.min(cs.kingCol, kingTarget, rk.col, rookTarget),
             max = Math.max(cs.kingCol, kingTarget, rk.col, rookTarget);
@@ -256,17 +289,17 @@ class ChessGame {
               clear = false;
               break;
             }
-          if (clear) {
-            const step = kingTarget > cs.kingCol ? 1 : -1;
-            for (
-              let col = cs.kingCol + step;
-              col !== kingTarget + step;
-              col += step
-            )
-              if (this.attacked(r, col, opposite(p.color))) {
-                clear = false;
-                break;
-              }
+          if (!clear) continue;
+          const step = kingTarget > cs.kingCol ? 1 : -1;
+          for (
+            let col = cs.kingCol + step;
+            col !== kingTarget + step;
+            col += step
+          ) {
+            if (this.attacked(r, col, opposite(p.color))) {
+              clear = false;
+              break;
+            }
           }
           if (clear)
             out.push({
@@ -279,6 +312,7 @@ class ChessGame {
     }
     return out;
   }
+
   legalMovesFrom(r, c) {
     const p = this.board[r]?.[c];
     if (!p || p.color !== this.turn) return [];
@@ -292,14 +326,27 @@ class ChessGame {
         b[r][m.castling.kingTarget] = king;
         b[r][m.castling.rookTarget] = rook;
       } else {
-        const piece = b[r][c];
         b[r][c] = null;
-        b[m.to.r][m.to.c] = piece;
+        if (m.enPassant && m.capture) b[m.capture.r][m.capture.c] = null;
+        b[m.to.r][m.to.c] = p;
       }
       const k = this.findKing(p.color, b);
       return !!k && !this.attacked(k.r, k.c, opposite(p.color), b);
     });
   }
+
+  allLegal(color = this.turn) {
+    const old = this.turn;
+    this.turn = color;
+    const out = [];
+    for (let r = 0; r < 8; r++)
+      for (let c = 0; c < 8; c++)
+        if (this.board[r][c]?.color === color)
+          out.push(...this.legalMovesFrom(r, c));
+    this.turn = old;
+    return out;
+  }
+
   makeMove(m, promotion = "q") {
     const legal = this.legalMovesFrom(m.from.r, m.from.c).find(
       (x) => x.to.r === m.to.r && x.to.c === m.to.c,
@@ -308,17 +355,23 @@ class ChessGame {
     this.history.push(this.clone());
     const p = this.board[legal.from.r][legal.from.c];
     let cap = null;
+
     if (legal.castling) {
       const rook = this.board[legal.from.r][legal.castling.rookFromCol];
       this.board[legal.from.r][legal.from.c] = null;
       this.board[legal.from.r][legal.castling.rookFromCol] = null;
-      this.board[legal.from.r][legal.castling.kingTarget] = p;
-      this.board[legal.from.r][legal.castling.rookTarget] = rook;
+      this.board[legal.from.r][legal.castling.kingTarget] = { ...p };
+      this.board[legal.from.r][legal.castling.rookTarget] = { ...rook };
       this.castling[p.color].kingMoved = true;
       this.sanHistory.push(legal.castling.kingTarget === 6 ? "O-O" : "O-O-O");
     } else {
-      cap = this.board[legal.to.r][legal.to.c];
+      cap =
+        legal.enPassant && legal.capture
+          ? this.board[legal.capture.r][legal.capture.c]
+          : this.board[legal.to.r][legal.to.c];
       this.board[legal.from.r][legal.from.c] = null;
+      if (legal.enPassant && legal.capture)
+        this.board[legal.capture.r][legal.capture.c] = null;
       this.board[legal.to.r][legal.to.c] = {
         ...p,
         type: legal.promotion ? promotion : p.type,
@@ -330,13 +383,23 @@ class ChessGame {
         );
         if (rs) rs.moved = true;
       }
+      if (cap && cap.type === "r") {
+        const enemy = cap.color,
+          rs = this.castling[enemy].rooks.find((x) => x.col === legal.to.c);
+        if (rs && legal.to.r === (enemy === "w" ? 7 : 0)) rs.moved = true;
+      }
       if (cap) this.captured.push(cap);
       this.sanHistory.push(this.san(p, legal, cap, promotion));
     }
+
+    this.enPassant = null;
+    if (p.type === "p" && Math.abs(legal.to.r - legal.from.r) === 2)
+      this.enPassant = { r: (legal.from.r + legal.to.r) / 2, c: legal.from.c };
     this.lastMove = { from: { ...legal.from }, to: { ...legal.to } };
     this.turn = opposite(this.turn);
     return true;
   }
+
   san(p, m, cap, promo) {
     const f = "abcdefgh";
     let s = p.type === "p" ? "" : p.type.toUpperCase();
@@ -346,21 +409,10 @@ class ChessGame {
     if (m.promotion) s += "=" + promo.toUpperCase();
     return s;
   }
-  allLegal(color) {
-    const old = this.turn;
-    this.turn = color;
-    const out = [];
-    for (let r = 0; r < 8; r++)
-      for (let c = 0; c < 8; c++)
-        if (this.board[r][c]?.color === color)
-          out.push(...this.legalMovesFrom(r, c));
-    this.turn = old;
-    return out;
-  }
+
   gameStatus() {
     const moves = this.allLegal(this.turn),
-      k = this.findKing(this.turn),
-      check = !!k && this.attacked(k.r, k.c, opposite(this.turn));
+      check = this.isInCheck(this.turn);
     if (!moves.length)
       return {
         over: true,
@@ -379,7 +431,7 @@ class ChessGame {
 
 const params = new URLSearchParams(location.search);
 const online = params.get("online") === "1";
-const serverUrl = (params.get("server") || "").replace(/\/$/, "");
+const serverUrl = (params.get("server") || "").replace(/\/+$/, "");
 const onlineCode = params.get("code") || "";
 const onlineToken = params.get("hostToken") || "";
 const clientId =
@@ -392,30 +444,7 @@ try {
   const stored = sessionStorage.getItem("gameLibraryOnlineConfig");
   if (stored) onlineConfig = JSON.parse(stored);
 } catch {}
-if (params.get("config")) {
-  try {
-    onlineConfig = JSON.parse(params.get("config"));
-  } catch {}
-}
 
-const manager = { game: new ChessGame() };
-let selected = null,
-  pendingPromotion = null,
-  keyboardBuffer = "",
-  boardFlipped = false,
-  computerMoveTimer = null,
-  onlineSocket = null,
-  onlineConnected = false,
-  onlineRevision = 0,
-  onlineSelf = null;
-const boardEl = document.getElementById("board"),
-  statusEl = document.getElementById("status"),
-  moveListEl = document.getElementById("moveList"),
-  capturedPanel = document.getElementById("capturedPanel"),
-  playerListEl = document.getElementById("playerList"),
-  onlineBar = document.getElementById("onlineBar"),
-  promotionModal = document.getElementById("promotionModal"),
-  promotionOptions = document.getElementById("promotionOptions");
 const defaultProfiles = (() => {
   try {
     const p = JSON.parse(localStorage.getItem("gameLibraryProfiles") || "[]");
@@ -445,32 +474,53 @@ function gamePlayers() {
   ];
 }
 function selfPlayer() {
-  const players = gamePlayers();
   return online
-    ? players.find((p) => p.clientId === clientId) || null
-    : players[0];
+    ? gamePlayers().find((p) => p.clientId === clientId) || null
+    : gamePlayers()[0];
 }
 function playerInfoByColor(color) {
-  const players = gamePlayers();
-  const seat = color === "w" ? "white" : "black";
-  return players.find((p) => p.seat === seat) || players[0];
+  return (
+    gamePlayers().find((p) => p.seat === (color === "w" ? "white" : "black")) ||
+    gamePlayers()[0]
+  );
 }
+function escapeHtml(v) {
+  return String(v).replace(
+    /[&<>\"]/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+  );
+}
+
+const manager = { game: new ChessGame() };
+let selected = null,
+  pendingPromotion = null,
+  keyboardBuffer = "",
+  boardFlipped = false,
+  computerMoveTimer = null,
+  onlineSocket = null,
+  onlineConnected = false,
+  onlineSelf = null;
+const boardEl = document.getElementById("board"),
+  statusEl = document.getElementById("status"),
+  moveListEl = document.getElementById("moveList"),
+  capturedPanel = document.getElementById("capturedPanel"),
+  playerListEl = document.getElementById("playerList"),
+  onlineBar = document.getElementById("onlineBar"),
+  promotionModal = document.getElementById("promotionModal"),
+  promotionOptions = document.getElementById("promotionOptions");
+
 function isMyTurn() {
   if (!online) return manager.game.turn === "w";
   const p = selfPlayer();
   return !!p && p.seat === (manager.game.turn === "w" ? "white" : "black");
 }
 function isComputerTurn() {
-  if (online) return false;
-  return manager.game.turn === "b";
+  return !online && manager.game.turn === "b";
 }
 function send(msg) {
   if (!onlineSocket || onlineSocket.readyState !== WebSocket.OPEN) return false;
   onlineSocket.send(JSON.stringify(msg));
   return true;
-}
-function statePayload() {
-  return manager.game.clone();
 }
 function applyState(state) {
   if (!state?.board) return;
@@ -479,42 +529,11 @@ function applyState(state) {
   selected = null;
   pendingPromotion = null;
   promotionModal.classList.remove("open");
-  render(false);
+  render();
 }
 function publishState() {
-  if (!online || !selfPlayer() || selfPlayer().seat !== "white") return;
-  send({ type: "game:state", state: statePayload() });
-}
-function onlineMove(move, promotion) {
-  send({
-    type: "game:move",
-    seat: manager.game.turn === "w" ? "white" : "black",
-    move: { from: move.from, to: move.to, promotion: promotion || null },
-  });
-}
-function renderPlayers() {
-  playerListEl.innerHTML = "";
-  const players = gamePlayers();
-  for (const p of players) {
-    const row = document.createElement("div");
-    row.className = "player-row";
-    if ((p.seat === "white" ? "w" : "b") === manager.game.turn)
-      row.classList.add("current");
-    row.innerHTML = `<div class="player-avatar">${escapeHtml(p.avatar || "♟")}</div><div class="player-details"><div class="player-name">${escapeHtml(p.name || "Player")}</div><div class="player-type">${p.seat === "white" ? "White" : "Black"}${p.type === "computer" ? " • Computer" : online && p.clientId === clientId ? " • You" : " • Player"}</div></div>`;
-    playerListEl.appendChild(row);
-  }
-  if (online) {
-    onlineBar.hidden = false;
-    onlineBar.innerHTML = onlineConnected
-      ? `<strong>Online</strong> • Room ${escapeHtml(onlineCode)} • ${onlineSelf?.name ? `Playing as ${escapeHtml(onlineSelf.name)}` : "Connected"}`
-      : `Connecting to room ${escapeHtml(onlineCode)}…`;
-  } else onlineBar.hidden = true;
-}
-function escapeHtml(v) {
-  return String(v).replace(
-    /[&<>\"]/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
-  );
+  if (online && !onlineToken) return;
+  send({ type: "game:state", state: manager.game.clone() });
 }
 function renderCoordinates() {
   const rows = document.getElementById("rowLabels"),
@@ -532,7 +551,24 @@ function renderCoordinates() {
     cols.appendChild(x);
   }
 }
-function render(sendState = false) {
+function renderPlayers() {
+  playerListEl.innerHTML = "";
+  for (const p of gamePlayers()) {
+    const row = document.createElement("div");
+    row.className = "player-row";
+    if ((p.seat === "white" ? "w" : "b") === manager.game.turn)
+      row.classList.add("current");
+    row.innerHTML = `<div class="player-avatar">${escapeHtml(p.avatar || "♟")}</div><div class="player-details"><div class="player-name">${escapeHtml(p.name || "Player")}</div><div class="player-type">${p.seat === "white" ? "White" : "Black"}${p.type === "computer" ? " • Computer" : online && p.clientId === clientId ? " • You" : " • Player"}</div></div>`;
+    playerListEl.appendChild(row);
+  }
+  if (online) {
+    onlineBar.hidden = false;
+    onlineBar.innerHTML = onlineConnected
+      ? `<strong>Online</strong> • Room ${escapeHtml(onlineCode)} • ${onlineSelf?.name ? `Playing as ${escapeHtml(onlineSelf.name)}` : "Connected"}`
+      : `Connecting to room ${escapeHtml(onlineCode)}…`;
+  } else onlineBar.hidden = true;
+}
+function render() {
   const g = manager.game,
     s = g.gameStatus();
   renderCoordinates();
@@ -556,7 +592,8 @@ function render(sendState = false) {
       const m = legal.find((x) => x.to.r === r && x.to.c === c);
       if (m) {
         const mark = document.createElement("span");
-        mark.className = g.board[r][c] ? "legal-capture" : "legal-dot";
+        mark.className =
+          g.board[r][c] || m.enPassant ? "legal-capture" : "legal-dot";
         sq.appendChild(mark);
       }
       const p = g.board[r][c];
@@ -573,14 +610,12 @@ function render(sendState = false) {
   statusEl.textContent = `${current?.name || "Player"}: ${s.text}`;
   statusEl.classList.toggle("ok", online && onlineConnected && isMyTurn());
   statusEl.classList.remove("error");
-  if (online && !onlineConnected) {
+  if (online && !onlineConnected)
     statusEl.textContent += ` • connecting to room ${onlineCode}`;
-  }
   renderMoves();
   renderCaptured();
   renderPlayers();
   document.getElementById("undoBtn").disabled = online || !g.history.length;
-  if (sendState) publishState();
   scheduleComputerMove();
 }
 function clickSquare(r, c) {
@@ -615,14 +650,18 @@ function clickSquare(r, c) {
   commitMove(move, null);
 }
 function commitMove(move, promotion) {
-  const color = manager.game.turn;
-  const ok = manager.game.makeMove(move, promotion || "q");
-  if (!ok) return;
+  const before = manager.game.turn;
+  if (!manager.game.makeMove(move, promotion || "q")) return;
   selected = null;
   pendingPromotion = null;
   promotionModal.classList.remove("open");
-  render(true);
-  if (online) onlineMove(move, promotion);
+  render();
+  if (online)
+    send({
+      type: "game:move",
+      move: { from: move.from, to: move.to, promotion: promotion || null },
+    });
+  if (online && onlineToken && before === "w") publishState();
 }
 function openPromotion(color) {
   promotionOptions.innerHTML = "";
@@ -683,7 +722,10 @@ function scheduleComputerMove() {
 }
 function connectOnline() {
   if (!online || !serverUrl || !onlineCode) return;
-  const base = serverUrl.replace(/^http/i, "ws");
+  const base = serverUrl.replace(
+    /^https?:/i,
+    location.protocol === "https:" ? "wss:" : "ws:",
+  );
   const q = new URLSearchParams({
     clientId,
     role: onlineToken ? "host" : "player",
@@ -693,7 +735,7 @@ function connectOnline() {
   onlineSocket = ws;
   ws.onopen = () => {
     onlineConnected = true;
-    const me = defaultProfiles[0] || { id: "", name: "Player", avatar: "♟" };
+    const me = defaultProfiles[0] || { id: "", name: "Player 1", avatar: "♟" };
     send({
       type: "player:identify",
       profileId: me.id,
@@ -701,7 +743,7 @@ function connectOnline() {
       avatar: me.avatar,
       spectator: false,
     });
-    render(false);
+    render();
   };
   ws.onmessage = (e) => {
     let m;
@@ -711,22 +753,21 @@ function connectOnline() {
       return;
     }
     if (m.type === "room:hello") {
-      onlineSelf = m.self || selfPlayer();
+      onlineSelf = m.self || null;
       if (m.room?.config) onlineConfig = m.room.config;
-      if (m.room?.stateAvailable && m.room?.gameState)
-        applyState(m.room.gameState);
-      render(false);
+      render();
+      if (m.room?.stateAvailable) send({ type: "game:state:request" });
       return;
     }
     if (m.type === "room:participants") {
       onlineSelf =
         m.participants?.find((p) => p.clientId === clientId) || onlineSelf;
-      render(false);
+      render();
       return;
     }
     if (m.type === "room:config") {
       onlineConfig = m.config || onlineConfig;
-      render(false);
+      render();
       return;
     }
     if (m.type === "game:state") {
@@ -735,20 +776,26 @@ function connectOnline() {
     }
     if (m.type === "game:move") {
       if (m.sender?.clientId === clientId) return;
-      const move = m.payload?.move;
-      if (move) {
-        const before = manager.game.turn;
-        const ok = manager.game.makeMove(move, move.promotion || "q");
-        if (ok) {
-          selected = null;
-          pendingPromotion = null;
-          promotionModal.classList.remove("open");
-          render(false);
-          if (manager.game.turn === before)
-            manager.game.turn = opposite(before);
-          if (onlineToken && selfPlayer()?.seat === "white") publishState();
-        }
+      const mv = m.payload?.move;
+      if (!mv) return;
+      const before = manager.game.turn;
+      if (manager.game.makeMove(mv, mv.promotion || "q")) {
+        selected = null;
+        pendingPromotion = null;
+        promotionModal.classList.remove("open");
+        render();
+        if (onlineToken && before === "b") publishState();
       }
+    }
+    return;
+    if (m.type === "game:start") {
+      onlineConfig = m.config || onlineConfig;
+      sessionStorage.setItem(
+        "gameLibraryOnlineConfig",
+        JSON.stringify(onlineConfig || {}),
+      );
+      render();
+      return;
     }
     if (m.type === "error") {
       onlineConnected = false;
@@ -759,7 +806,8 @@ function connectOnline() {
   };
   ws.onclose = () => {
     onlineConnected = false;
-    render(false);
+    onlineSocket = null;
+    render();
   };
   ws.onerror = () => {
     onlineConnected = false;
@@ -772,25 +820,25 @@ document.getElementById("newGameBtn").onclick = () =>
   (location.href = "../index.html");
 document.getElementById("clearBtn").onclick = () => {
   if (online) {
-    if (!selfPlayer()?.seat || selfPlayer().seat !== "white") return;
+    if (!onlineToken) return;
     manager.game.reset();
     selected = null;
     pendingPromotion = null;
-    render(true);
+    render();
+    publishState();
     return;
   }
-  clearTimeout(computerMoveTimer);
   manager.game.reset();
   selected = null;
   pendingPromotion = null;
-  render(false);
+  render();
 };
 document.getElementById("undoBtn").onclick = () => {
   if (online) return;
   if (manager.game.undo()) {
     selected = null;
-    render(false);
+    render();
   }
 };
-render(false);
+render();
 connectOnline();
