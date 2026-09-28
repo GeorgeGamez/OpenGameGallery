@@ -632,6 +632,13 @@
         };
         $("cancelProfile").onclick = () => (profileEditor.innerHTML = "");
       }
+      function openSetup() {
+        setupDrawer.classList.add("open");
+        backdrop.classList.add("open");
+        setupDrawer.setAttribute("aria-hidden", "false");
+        renderSetup();
+        renderOnline();
+      }
       function renderGames() {
         gamesGrid.innerHTML = "";
         const card = document.createElement("article");
@@ -993,13 +1000,7 @@
         );
         onlineState.socket.send(JSON.stringify({ type: "game:start", config }));
       }
-      playersButton.onclick = () => {
-        setupDrawer.classList.add("open");
-        backdrop.classList.add("open");
-        setupDrawer.setAttribute("aria-hidden", "false");
-        renderSetup();
-        renderOnline();
-      };
+      playersButton.onclick = openSetup;
       closeSetup.onclick = () => {
         setupDrawer.classList.remove("open");
         backdrop.classList.remove("open");
