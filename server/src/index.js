@@ -277,6 +277,8 @@ export class GameRoom extends DurableObject {
       participants: [],
       started: false,
       state: null,
+      matchId: null,
+      resultRecorded: false,
       revision: 0,
     };
 
@@ -373,6 +375,7 @@ export class GameRoom extends DurableObject {
         role: attachment.role,
         playerToken: crypto.randomUUID(),
         spectator: false,
+        wins: 0,
         connected: true,
         lastSeen: new Date().toISOString(),
       });
@@ -489,17 +492,102 @@ export class GameRoom extends DurableObject {
           break;
         }
         room.started = true;
-        // Every explicit game:start is a new match. The host will publish
-        // the initial authoritative board after chess.html connects.
+        // Every explicit game:start is a new match. Wins remain attached to
+        // the room participants, while the board/result belong to this match.
         if (data.resetState !== false) {
           room.state = null;
         }
+        room.matchId = crypto.randomUUID();
+        room.resultRecorded = false;
         room.revision += 1;
         await this.saveState(room);
         this.broadcast({
           type: "game:start",
           config: room.config,
           state: room.state,
+          matchId: room.matchId,
+          revision: room.revision,
+        });
+        break;
+
+      case "game:result": {
+        if (!attachment.isHost) {
+          sendJson(ws, {
+            type: "error",
+            code: "HOST_ONLY",
+            message: "Only the host may record the game result.",
+          });
+          break;
+        }
+
+        if (!room.started || !room.matchId || String(data.matchId || "") !== room.matchId) {
+          sendJson(ws, {
+            type: "error",
+            code: "STALE_MATCH",
+            message: "The game result does not belong to the current match.",
+          });
+          break;
+        }
+
+        if (room.resultRecorded) break;
+
+        const winnerClientId = data.draw ? null : String(data.winnerClientId || "");
+        const configuredWinner = room.config?.players?.find(
+          (player) => String(player?.clientId || "") === winnerClientId,
+        );
+
+        if (!data.draw && !configuredWinner) {
+          sendJson(ws, {
+            type: "error",
+            code: "INVALID_WINNER",
+            message: "The reported winner is not a player in this match.",
+          });
+          break;
+        }
+
+        let winner = null;
+        if (winnerClientId) {
+          winner = room.participants.find((p) => p.clientId === winnerClientId);
+          if (!winner) {
+            sendJson(ws, {
+              type: "error",
+              code: "UNKNOWN_WINNER",
+              message: "The reported winner is not connected to this room.",
+            });
+            break;
+          }
+          winner.wins = Number(winner.wins) || 0;
+          winner.wins += 1;
+        }
+
+        room.resultRecorded = true;
+        room.revision += 1;
+        await this.saveState(room);
+        this.broadcast({
+          type: "game:result",
+          matchId: room.matchId,
+          winnerClientId: winnerClientId || null,
+          draw: !winnerClientId,
+          wins: publicParticipants(room).map((p) => ({
+            clientId: p.clientId,
+            wins: p.wins,
+          })),
+          revision: room.revision,
+        });
+        break;
+      }
+
+      case "game:back":
+        // Returning home ends the current match for everyone, but preserves
+        // player identities and accumulated online wins.
+        room.started = false;
+        room.state = null;
+        room.matchId = null;
+        room.resultRecorded = false;
+        room.revision += 1;
+        await this.saveState(room);
+        this.broadcast({
+          type: "game:back",
           revision: room.revision,
         });
         break;
@@ -682,6 +770,7 @@ function publicParticipant(participant) {
     role: participant.role,
     spectator: participant.spectator,
     connected: participant.connected,
+    wins: Number(participant.wins) || 0,
   };
 }
 
@@ -697,6 +786,7 @@ function publicRoom(room) {
     config: room.config,
     participants: publicParticipants(room),
     started: room.started,
+    matchId: room.matchId || null,
     stateAvailable: room.state !== null,
     revision: room.revision,
   };
