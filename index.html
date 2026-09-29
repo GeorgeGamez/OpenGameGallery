@@ -345,6 +345,40 @@
       .error[hidden] {
         display: none;
       }
+      .debug-panel {
+        margin-top: 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #16181d;
+        overflow: hidden;
+      }
+      .debug-panel summary {
+        cursor: pointer;
+        padding: 8px 10px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .debug-body {
+        padding: 10px;
+        border-top: 1px solid var(--border);
+      }
+      .debug-output {
+        margin: 0;
+        max-height: 260px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font:
+          11px/1.45 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+        color: #d9dee7;
+      }
+      .debug-button {
+        width: 100%;
+        margin-bottom: 9px;
+      }
       .seat {
         font-weight: 700;
         width: 52px;
@@ -432,6 +466,17 @@
               <div id="onlineParticipants" class="players-list"></div>
             </div>
             <div id="onlineError" class="error" hidden></div>
+            <details class="debug-panel">
+              <summary>Connection diagnostics</summary>
+              <div class="debug-body">
+                <button id="runDiagnostics" class="small debug-button">
+                  Run diagnostics
+                </button>
+                <pre id="debugOutput" class="debug-output">
+No diagnostics run yet.</pre
+                >
+              </div>
+            </details>
           </div>
         </section>
         <section class="section">
@@ -477,7 +522,9 @@
         onlineError = $("onlineError"),
         profileList = $("profileList"),
         addProfileButton = $("addProfile"),
-        profileEditor = $("profileEditor");
+        profileEditor = $("profileEditor"),
+        runDiagnosticsButton = $("runDiagnostics"),
+        debugOutput = $("debugOutput");
       let profiles = loadProfiles(),
         editingProfileId = null;
       const onlineState = {
@@ -759,6 +806,110 @@
         }
         renderSetup();
       }
+      function setDebug(text) {
+        debugOutput.textContent = text;
+      }
+      async function readResponse(response) {
+        const body = await response.text();
+        const headers = {};
+        for (const [k, v] of response.headers.entries()) headers[k] = v;
+        return {
+          status: response.status,
+          statusText: response.statusText,
+          headers,
+          body: body.slice(0, 4000),
+        };
+      }
+      async function probeFetch(label, url, options = {}) {
+        const started = performance.now();
+        try {
+          const response = await fetch(url, options);
+          const info = await readResponse(response);
+          return {
+            label,
+            url,
+            ms: Math.round(performance.now() - started),
+            ok: response.ok,
+            ...info,
+          };
+        } catch (e) {
+          return {
+            label,
+            url,
+            ms: Math.round(performance.now() - started),
+            networkError: String(e),
+          };
+        }
+      }
+      async function runDiagnostics() {
+        if (!configured()) {
+          setDebug(
+            `ONLINE_SERVER_URL is not configured.\n\nCurrent value: ${RAW_ONLINE_SERVER_URL}`,
+          );
+          return;
+        }
+        runDiagnosticsButton.disabled = true;
+        const base = serverBase();
+        const body = JSON.stringify({
+          hostName: "Diagnostics",
+          hostAvatar: "🛠",
+          config: { game: "chess", variant: "standard" },
+        });
+        const results = [];
+        results.push(await probeFetch("Worker root", base));
+        results.push(await probeFetch("Debug endpoint", `${base}/api/debug`));
+        results.push(
+          await probeFetch("OPTIONS /api/rooms", `${base}/api/rooms`, {
+            method: "OPTIONS",
+          }),
+        );
+        results.push(
+          await probeFetch("POST /api/rooms", `${base}/api/rooms`, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=UTF-8" },
+            body,
+          }),
+        );
+        let wsResult = {
+          label: "WebSocket",
+          url: `${wsBaseForDiagnostics(base)}/ws/0000?clientId=diagnostics&role=player`,
+        };
+        try {
+          const testUrl =
+            wsBaseForDiagnostics(base) +
+            "/ws/0000?clientId=diagnostics&role=player";
+          const ws = new WebSocket(testUrl);
+          await new Promise((resolve) => {
+            let done = false;
+            const finish = (x) => {
+              if (done) return;
+              done = true;
+              clearTimeout(timer);
+              resolve(x);
+            };
+            const timer = setTimeout(() => finish({ state: "timeout" }), 3500);
+            ws.onopen = () => finish({ state: "open" });
+            ws.onclose = (e) =>
+              finish({ state: "closed", code: e.code, reason: e.reason });
+            ws.onerror = () => finish({ state: "error" });
+          });
+          try {
+            ws.close();
+          } catch {}
+          wsResult = { label: "WebSocket", url: testUrl, result: wsResult };
+        } catch (e) {
+          wsResult = { ...wsResult, error: String(e) };
+        }
+        results.push(wsResult);
+        setDebug(
+          `Worker base: ${base}\n\n` +
+            results.map((r) => JSON.stringify(r, null, 2)).join("\n\n"),
+        );
+        runDiagnosticsButton.disabled = false;
+      }
+      function wsBaseForDiagnostics(base) {
+        return base.replace(/^https:/i, "wss:").replace(/^http:/i, "ws:");
+      }
       function sendIdentify() {
         if (
           !onlineState.socket ||
@@ -880,38 +1031,49 @@
         }
         requestOnlineCodeButton.disabled = true;
         onlineCodeStatus.textContent = "Creating room…";
+        const base = serverBase();
+        const url = `${base}/api/rooms`;
+        const body = JSON.stringify({
+          hostName: profiles[0]?.name || "Player 1",
+          hostAvatar: profiles[0]?.avatar || "♟",
+          config: { game: "chess", variant: "standard" },
+        });
         try {
           closeSocket();
           onlineState.clientId = onlineState.clientId || id();
-          const p = profiles[0] || { name: "Player 1", avatar: "♟" };
-          const body = JSON.stringify({
-            hostName: p.name,
-            hostAvatar: p.avatar,
-            config: { game: "chess", variant: "standard" },
-          });
-          const base = serverBase();
-          let response = await fetch(`${base}/api/rooms`, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=UTF-8" },
-            body,
-          });
-          if ([404, 405].includes(response.status))
-            response = await fetch(`${base}/api/rooms/new`, {
+          const started = performance.now();
+          let response;
+          try {
+            response = await fetch(url, {
               method: "POST",
               headers: { "Content-Type": "text/plain;charset=UTF-8" },
               body,
             });
-          if ([404, 405].includes(response.status))
-            response = await fetch(base, {
-              method: "POST",
-              headers: { "Content-Type": "text/plain;charset=UTF-8" },
-              body,
-            });
-          const data = await response.json().catch(() => ({}));
-          if (!response.ok || !data.code || !data.hostToken)
+          } catch (fetchError) {
+            const detail = `CREATE ROOM NETWORK ERROR\n\nURL: ${url}\nError: ${String(fetchError)}\nTime: ${new Date().toISOString()}`;
+            setDebug(detail);
             throw new Error(
-              data.error || `Server returned HTTP ${response.status}.`,
+              `Network error contacting ${url}. See Connection diagnostics for details.`,
             );
+          }
+          const info = await readResponse(response);
+          setDebug(
+            `CREATE ROOM REQUEST\n\nURL: ${url}\nElapsed: ${Math.round(performance.now() - started)} ms\n\n${JSON.stringify(info, null, 2)}`,
+          );
+          if (!response.ok) {
+            throw new Error(
+              `Server returned HTTP ${response.status}${response.statusText ? ` (${response.statusText})` : ""}. See Connection diagnostics for the exact response.`,
+            );
+          }
+          let data = {};
+          try {
+            data = JSON.parse(info.body || "{}");
+          } catch {}
+          if (!data.code || !data.hostToken) {
+            throw new Error(
+              "The Worker responded successfully, but did not return a room code and host token. See Connection diagnostics.",
+            );
+          }
           onlineState.code = String(data.code);
           onlineState.joinedCode = "";
           onlineState.hostToken = String(data.hostToken);
@@ -1018,6 +1180,7 @@
         renderOnline();
       };
       joinOnlineGroupButton.onclick = joinRoom;
+      runDiagnosticsButton.onclick = runDiagnostics;
       playButton.onclick = play;
       addProfileButton.onclick = () => openProfileEditor();
       joinOnlineCode.addEventListener(
