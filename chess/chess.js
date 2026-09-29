@@ -878,6 +878,15 @@ function humanSetupOptions() {
     .map((p) => ({ value: `client:${p.clientId}`, label: p.clientId === ONLINE_CLIENT_ID ? `${p.name || "Player"} (You)` : (p.name || "Player") }));
 }
 
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"]/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+  })[c]);
+}
+
 function setupOptionValue(player, fallbackSeat) {
   if (!player) return `computer:${fallbackSeat}`;
   if (player.type === "computer") return "computer";
@@ -1430,10 +1439,11 @@ const capturedPanel = document.getElementById("capturedPanel");
 const promotionModal = document.getElementById("promotionModal");
 const promotionOptions = document.getElementById("promotionOptions");
 
-const displayGameName = GameRegistry.chess.variants[manager.variantId].name === "Chess960" ? "Chess960" : "Chess";
+const displayGameName = "Chess";
+const displayVariantName = GameRegistry.chess.variants[manager.variantId].name;
 document.getElementById("pageTitle").textContent = displayGameName;
 document.getElementById("gameName").textContent = displayGameName;
-document.getElementById("variantName").textContent = GameRegistry.chess.variants[manager.variantId].name;
+document.getElementById("variantName").textContent = displayVariantName;
 
 function render() {
   const g = manager.game, s = g.gameStatus(), size = g.size;
