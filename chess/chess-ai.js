@@ -91,7 +91,12 @@ const ChessAI = (() => {
     }
 
     if (piece?.type === "n" || piece?.type === "b") {
-      if (move.to.r >= 2 && move.to.r <= 5 && move.to.c >= 2 && move.to.c <= 5) {
+      if (
+        move.to.r >= 2 &&
+        move.to.r <= 5 &&
+        move.to.c >= 2 &&
+        move.to.c <= 5
+      ) {
         score += 40;
       }
     }
@@ -102,18 +107,17 @@ const ChessAI = (() => {
   }
 
   function orderedMoves(game, moves) {
-    return [...moves].sort(
-      (a, b) => moveScore(game, b) - moveScore(game, a),
-    );
+    return [...moves].sort((a, b) => moveScore(game, b) - moveScore(game, a));
   }
 
   function choosePromotion(game, move) {
     if (!move.promotion) return "q";
 
     const piece = game.board[move.from.r]?.[move.from.c];
-    const choices = typeof game.getPromotionChoices === "function"
-      ? game.getPromotionChoices(piece?.color, move)
-      : ["q", "r", "b", "n"];
+    const choices =
+      typeof game.getPromotionChoices === "function"
+        ? game.getPromotionChoices(piece?.color, move)
+        : ["q", "r", "b", "n"];
 
     if (!choices.length) return null;
 
@@ -134,7 +138,13 @@ const ChessAI = (() => {
         // Encourage occupying the centre with pawns and minor pieces.
         if (game.size === 8 || game.size === 10) {
           if (CENTER.has(`${r},${c}`)) value += 25;
-          if ((piece.type === "n" || piece.type === "b") && r >= 2 && r <= 5 && c >= 2 && c <= 5) {
+          if (
+            (piece.type === "n" || piece.type === "b") &&
+            r >= 2 &&
+            r <= 5 &&
+            c >= 2 &&
+            c <= 5
+          ) {
             value += 10;
           }
         }
@@ -154,7 +164,8 @@ const ChessAI = (() => {
     const enemyKing = game.findKing(enemy);
 
     if (rootKing && game.attacked(rootKing.r, rootKing.c, enemy)) score -= 35;
-    if (enemyKing && game.attacked(enemyKing.r, enemyKing.c, rootColor)) score += 35;
+    if (enemyKing && game.attacked(enemyKing.r, enemyKing.c, rootColor))
+      score += 35;
 
     return score;
   }
@@ -330,16 +341,11 @@ const ChessAI = (() => {
       const snapshot = game.clone();
       const historyLength = game.history.length;
       const promotion = choosePromotion(game, move);
-    const ok = promotion !== null && game.makeMove(move, promotion);
+      const ok = promotion !== null && game.makeMove(move, promotion);
 
       if (!ok) continue;
 
-      const vector = fourSearch(
-        game,
-        depth - 1,
-        rootColor,
-        nodeState,
-      );
+      const vector = fourSearch(game, depth - 1, rootColor, nodeState);
 
       game.restore(snapshot);
       game.history.length = historyLength;
@@ -370,7 +376,7 @@ const ChessAI = (() => {
       const snapshot = game.clone();
       const historyLength = game.history.length;
       const promotion = choosePromotion(game, move);
-    const ok = promotion !== null && game.makeMove(move, promotion);
+      const ok = promotion !== null && game.makeMove(move, promotion);
 
       if (!ok) continue;
 
@@ -473,7 +479,8 @@ const ChessAI = (() => {
       const winner = THREE_COLORS_LOCAL[(game.turnIndex + 2) % 3];
       return Object.fromEntries(
         THREE_COLORS_LOCAL.map((color) => [
-          color, color === winner ? 1000000 : -500000,
+          color,
+          color === winner ? 1000000 : -500000,
         ]),
       );
     }
@@ -548,7 +555,11 @@ const ChessAI = (() => {
     if (!scored.length) return null;
     scored.sort((a, b) => b.score - a.score);
 
-    if (settings.randomness > 0 && scored.length > 1 && Math.random() < settings.randomness) {
+    if (
+      settings.randomness > 0 &&
+      scored.length > 1 &&
+      Math.random() < settings.randomness
+    ) {
       const poolSize = Math.min(3, scored.length);
       return scored[Math.floor(Math.random() * poolSize)].move;
     }
@@ -597,7 +608,11 @@ const ChessAI = (() => {
 
     // Easy/Normal retain a small amount of variety. The engine still strongly
     // prefers its best moves, but it does not play identically every game.
-    if (settings.randomness > 0 && scored.length > 1 && Math.random() < settings.randomness) {
+    if (
+      settings.randomness > 0 &&
+      scored.length > 1 &&
+      Math.random() < settings.randomness
+    ) {
       const poolSize = Math.min(3, scored.length);
       return scored[Math.floor(Math.random() * poolSize)].move;
     }
@@ -608,7 +623,9 @@ const ChessAI = (() => {
   function findFallbackMove(game) {
     if (!game) return null;
     const moves = allMoves(game);
-    return moves.length ? moves[Math.floor(Math.random() * moves.length)] : null;
+    return moves.length
+      ? moves[Math.floor(Math.random() * moves.length)]
+      : null;
   }
 
   return {
