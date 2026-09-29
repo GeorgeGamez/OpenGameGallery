@@ -258,7 +258,7 @@
         flex-direction: column;
         gap: 7px;
       }
-      .profile-row,
+.profile-row,
       .player-row,
       .setup-slot {
         display: flex;
@@ -430,7 +430,7 @@
         <div class="header-row">
           <div>
             <h1>Game Library</h1>
-            <p>Standard Chess — local, computer, and online play</p>
+            <p>Chess — local, computer, and online play</p>
           </div>
           <button id="playersButton" class="top-tab">
             Players &amp; Online
@@ -444,17 +444,12 @@
     <aside id="setupDrawer" class="drawer" aria-hidden="true">
       <div class="drawer-header">
         <div>
-          <h2>Chess setup</h2>
-          <p>Standard Chess</p>
+          <h2>Players &amp; Online</h2>
+          <p>Set up player profiles and your online room here. Games are selected from the library.</p>
         </div>
         <button id="closeSetup" class="small" aria-label="Close">×</button>
       </div>
       <div class="drawer-body">
-        <section class="section">
-          <h3>Players</h3>
-          <div class="setup-players" id="setupPlayers"></div>
-          <div class="muted" id="setupHint" style="margin-top: 9px"></div>
-        </section>
         <section class="section">
           <h3>Online group</h3>
           <div class="online-box">
@@ -496,9 +491,9 @@ No diagnostics run yet.</pre
           </div>
         </section>
         <section class="section">
-          <h3>Local profile</h3>
+          <h3>Player profiles</h3>
           <div class="muted" style="margin-bottom: 9px">
-            The first profile on this device controls the local player.
+            Profiles are selected here. The selected profile is used for your online identity and can be assigned to either side in a game.
           </div>
           <div id="profileList" class="profile-list"></div>
           <button
@@ -511,9 +506,6 @@ No diagnostics run yet.</pre
           <div id="profileEditor"></div>
         </section>
       </div>
-      <div class="drawer-footer">
-        <button id="playButton" class="primary">Play</button>
-      </div>
     </aside>
     <script>
       "use strict";
@@ -525,9 +517,6 @@ No diagnostics run yet.</pre
         backdrop = $("backdrop"),
         setupDrawer = $("setupDrawer"),
         closeSetup = $("closeSetup"),
-        setupPlayers = $("setupPlayers"),
-        setupHint = $("setupHint"),
-        playButton = $("playButton"),
         requestOnlineCodeButton = $("requestOnlineCode"),
         disconnectOnlineButton = $("disconnectOnline"),
         onlineCodeDisplay = $("onlineCodeDisplay"),
@@ -544,7 +533,12 @@ No diagnostics run yet.</pre
         debugOutput = $("debugOutput"),
         onlineWinsCorner = $("onlineWinsCorner");
       let profiles = loadProfiles(),
-        editingProfileId = null;
+        editingProfileId = null,
+        activeProfileId = localStorage.getItem("gameLibraryActiveProfileId") || profiles[0]?.id || "";
+      if (!profiles.some((p) => p.id === activeProfileId)) {
+        activeProfileId = profiles[0]?.id || "";
+        localStorage.setItem("gameLibraryActiveProfileId", activeProfileId);
+      }
       const onlineState = {
         code: sessionStorage.getItem("gameLibraryOnlineCode") || "",
         joinedCode: sessionStorage.getItem("gameLibraryOnlineJoinedCode") || "",
@@ -651,9 +645,18 @@ No diagnostics run yet.</pre
       function renderProfiles() {
         profileList.innerHTML = "";
         for (const p of profiles) {
-          const row = document.createElement("div");
-          row.className = "profile-row";
-          row.innerHTML = `<div class="avatar">${escapeHtml(p.avatar || "♟")}</div><div class="grow"><div class="player-name">${escapeHtml(p.name)}</div><div class="player-type">Local profile</div></div>`;
+          const row = document.createElement("button");
+          row.type = "button";
+          row.className = "profile-row" + (p.id === activeProfileId ? " current" : "");
+          row.style.textAlign = "left";
+          row.innerHTML = `<div class="avatar">${escapeHtml(p.avatar || "♟")}</div><div class="grow"><div class="player-name">${escapeHtml(p.name)}</div><div class="player-type">${p.id === activeProfileId ? "Active profile • Click to edit" : "Click to use this profile"}</div></div>`;
+          row.onclick = () => {
+            activeProfileId = p.id;
+            localStorage.setItem("gameLibraryActiveProfileId", activeProfileId);
+            sendIdentify();
+            renderProfiles();
+          };
+          row.oncontextmenu = (event) => { event.preventDefault(); openProfileEditor(p.id); };
           profileList.appendChild(row);
         }
       }
@@ -683,17 +686,21 @@ No diagnostics run yet.</pre
               x.name = name;
               x.avatar = avatar;
             }
-          } else
-            profiles.push({
+          } else {
+            const created = {
               id: "p_" + Math.random().toString(36).slice(2, 10),
               name,
               avatar,
-            });
+            };
+            profiles.push(created);
+            activeProfileId = created.id;
+            localStorage.setItem("gameLibraryActiveProfileId", activeProfileId);
+          }
           saveProfiles();
           profileEditor.innerHTML = "";
           renderProfiles();
           sendIdentify();
-          renderSetup();
+          renderProfiles();
         };
         $("cancelProfile").onclick = () => (profileEditor.innerHTML = "");
       }
@@ -701,103 +708,75 @@ No diagnostics run yet.</pre
         setupDrawer.classList.add("open");
         backdrop.classList.add("open");
         setupDrawer.setAttribute("aria-hidden", "false");
-        renderSetup();
+        renderProfiles();
         renderOnline();
       }
+      function selectedProfile() {
+        return profiles.find((p) => p.id === activeProfileId) || profiles[0] || { name: "Player 1", avatar: "♟", id: "" };
+      }
+
+      function openGame(gameId, variantId) {
+        const go = () => {
+          const params = new URLSearchParams({ game: gameId, variant: variantId });
+          if (onlineState.connected) {
+            params.set("online", "1");
+            params.set("onlineCode", roomCode());
+            params.set("onlineServer", serverBase());
+            params.set("onlineClientId", onlineState.clientId);
+            if (onlineState.isHost && onlineState.hostToken) params.set("hostToken", onlineState.hostToken);
+          }
+          window.location.href = `chess/chess.html?${params}`;
+        };
+
+        if (!onlineState.connected) {
+          go();
+          return;
+        }
+
+        if (!onlineState.isHost) {
+          error("The host selects the game for the online room.");
+          return;
+        }
+
+        onlineState.socket?.send(JSON.stringify({ type: "game:select", game: gameId, variant: variantId }));
+        go();
+      }
+
       function renderGames() {
         gamesGrid.innerHTML = "";
-        const card = document.createElement("article");
-        card.className = "game-card";
-        const image = document.createElement("div");
-        image.className = "game-image";
-        const img = document.createElement("img");
-        img.src = "images/cover/chess.jpg";
-        img.alt = "Chess preview";
-        img.onerror = () => {
-          img.remove();
-          const p = document.createElement("div");
-          p.className = "placeholder-image";
-          p.textContent = "♟";
-          image.appendChild(p);
-        };
-        image.appendChild(img);
-        const content = document.createElement("div");
-        content.className = "game-content";
-        content.innerHTML =
-          '<h2>Chess</h2><p class="description">The classic two-player strategy game.</p><div class="game-meta"><span class="meta-tag">2 players</span><span class="meta-tag">Standard Chess</span><span class="meta-tag">Local / Online</span></div><button class="play-button">Set up &amp; Play</button>';
-        content.querySelector("button").onclick = openSetup;
-        card.append(image, content);
-        gamesGrid.appendChild(card);
-      }
-      function renderSetup() {
-        renderProfiles();
-        setupPlayers.innerHTML = "";
-        const host = onlineState.participants.find(
-          (p) => p.connected && p.role === "host",
-        );
-        const remote = onlineState.participants.find(
-          (p) =>
-            p.connected && p.clientId !== onlineState.clientId && !p.spectator,
-        );
-        let white, black;
-        if (onlineState.connected && onlineState.isHost) {
-          white = {
-            name: profiles[0]?.name || "Player 1",
-            avatar: profiles[0]?.avatar || "♟",
-            type: "You • White",
+        const games = [
+          { id: "chess", variant: "standard", name: "Chess", description: "The classic two-player strategy game.", tags: ["2 players", "Standard Chess", "Local / Computer / Online"] },
+          { id: "chess", variant: "chess960", name: "Chess960", description: "Chess with a randomized starting back rank and Chess960 castling rules.", tags: ["2 players", "Chess960", "Local / Computer / Online"] },
+        ];
+
+        for (const game of games) {
+          const card = document.createElement("article");
+          card.className = "game-card";
+          const image = document.createElement("div");
+          image.className = "game-image";
+          const img = document.createElement("img");
+          img.src = "images/cover/chess.jpg";
+          img.alt = `${game.name} preview`;
+          img.onerror = () => {
+            img.remove();
+            const placeholder = document.createElement("div");
+            placeholder.className = "placeholder-image";
+            placeholder.textContent = game.variant === "chess960" ? "960" : "♟";
+            image.appendChild(placeholder);
           };
-          black = remote
-            ? {
-                name: remote.name,
-                avatar: remote.avatar,
-                type: "Online player • Black",
-              }
-            : { name: "Waiting for player…", avatar: "…", type: "Waiting" };
-        } else if (onlineState.connected && !onlineState.isHost) {
-          white = {
-            name: host?.name || "Host",
-            avatar: host?.avatar || "♟",
-            type: "Host • White",
-          };
-          black = {
-            name: profiles[0]?.name || "Player 1",
-            avatar: profiles[0]?.avatar || "♟",
-            type: "You • Black",
-          };
-        } else {
-          white = {
-            name: profiles[0]?.name || "Player 1",
-            avatar: profiles[0]?.avatar || "♟",
-            type: "Local • White",
-          };
-          black = { name: "Computer", avatar: "🤖", type: "Computer • Black" };
-        }
-        for (const [seat, p] of [
-          ["White", white],
-          ["Black", black],
-        ]) {
-          const row = document.createElement("div");
-          row.className = "setup-slot";
-          row.innerHTML = `<div class="seat">${seat}</div><div class="avatar">${escapeHtml(p.avatar)}</div><div class="grow"><div class="player-name">${escapeHtml(p.name)}</div><div class="player-type">${escapeHtml(p.type)}</div></div>`;
-          setupPlayers.appendChild(row);
-        }
-        if (onlineState.connected && !onlineState.isHost) {
-          setupHint.textContent = "Waiting for the host to start the game.";
-          playButton.disabled = true;
-        } else if (onlineState.connected && !remote) {
-          setupHint.textContent =
-            "Waiting for another player to join this room.";
-          playButton.disabled = true;
-        } else if (onlineState.connected) {
-          setupHint.textContent =
-            "Both players are connected. The host can start the game.";
-          playButton.disabled = false;
-        } else {
-          setupHint.textContent =
-            "Play locally against the computer, or create/join an online room.";
-          playButton.disabled = false;
+          image.appendChild(img);
+          const content = document.createElement("div");
+          content.className = "game-content";
+          const tags = game.tags.map((tag) => `<span class="meta-tag">${escapeHtml(tag)}</span>`).join("");
+          content.innerHTML = `<h2>${escapeHtml(game.name)}</h2><p class="description">${escapeHtml(game.description)}</p><div class="game-meta">${tags}</div><button class="play-button">${onlineState.connected && !onlineState.isHost ? "Waiting for host" : "Set up &amp; Play"}</button>`;
+          const button = content.querySelector("button");
+          button.disabled = onlineState.connected && !onlineState.isHost;
+          button.onclick = () => openGame(game.id, game.variant);
+          card.append(image, content);
+          gamesGrid.appendChild(card);
         }
       }
+
       function renderOnline() {
         onlineCodeDisplay.hidden = !onlineState.code;
         onlineCode.textContent = onlineState.code || "";
@@ -829,7 +808,7 @@ No diagnostics run yet.</pre
           onlineCodeStatus.classList.remove("ok");
           onlineWinsCorner.hidden = true;
         }
-        renderSetup();
+        renderGames();
       }
       function setDebug(text) {
         debugOutput.textContent = text;
@@ -941,7 +920,7 @@ No diagnostics run yet.</pre
           onlineState.socket.readyState !== WebSocket.OPEN
         )
           return;
-        const p = profiles[0] || { id: "", name: "Player 1", avatar: "♟" };
+        const p = selectedProfile();
         onlineState.socket.send(
           JSON.stringify({
             type: "player:identify",
@@ -1009,11 +988,21 @@ No diagnostics run yet.</pre
               break;
             case "room:config":
               onlineState.config = m.config || null;
-              renderSetup();
+              renderOnline();
+              break;
+            case "game:select":
+              onlineState.config = { ...(onlineState.config || {}), game: m.game || "chess", variant: m.variant || "standard" };
+              try { sessionStorage.setItem("gameLibrarySelectedGame", JSON.stringify({ game: onlineState.config.game, variant: onlineState.config.variant })); } catch {}
+              if (onlineState.connected && !onlineState.isHost) {
+                const params = new URLSearchParams({ game: onlineState.config.game || "chess", variant: onlineState.config.variant || "standard", online: "1", onlineCode: roomCode(), onlineServer: serverBase(), onlineClientId: onlineState.clientId });
+                window.location.href = `chess/chess.html?${params}`;
+              }
+              renderOnline();
+              renderGames();
               break;
             case "game:start":
               onlineState.config = m.config || onlineState.config;
-              if (onlineState.config) startOnline(onlineState.config);
+              renderOnline();
               break;
             case "error":
               error(m.message || "Server error");
@@ -1033,21 +1022,6 @@ No diagnostics run yet.</pre
             );
         };
       }
-      function startOnline(config) {
-        sessionStorage.setItem(
-          "gameLibraryOnlineConfig",
-          JSON.stringify(config),
-        );
-        const params = new URLSearchParams({
-          online: "1",
-          onlineCode: roomCode(),
-          onlineServer: serverBase(),
-          onlineClientId: onlineState.clientId,
-        });
-        if (onlineState.isHost && onlineState.hostToken)
-          params.set("hostToken", onlineState.hostToken);
-        window.location.href = `chess/chess.html?${params}`;
-      }
       async function createRoom() {
         error("");
         if (!configured()) {
@@ -1060,10 +1034,11 @@ No diagnostics run yet.</pre
         onlineCodeStatus.textContent = "Creating room…";
         const base = serverBase();
         const url = `${base}/api/rooms`;
+        const p = selectedProfile();
         const body = JSON.stringify({
-          hostName: profiles[0]?.name || "Player 1",
-          hostAvatar: profiles[0]?.avatar || "♟",
-          config: { game: "chess", variant: "standard" },
+          hostName: p.name || "Player 1",
+          hostAvatar: p.avatar || "♟",
+          config: {},
         });
         try {
           closeSocket();
@@ -1141,56 +1116,6 @@ No diagnostics run yet.</pre
           joinOnlineGroupButton.disabled = false;
         }
       }
-      function buildOnlineConfig() {
-        const remote = onlineState.participants.find(
-          (p) =>
-            p.connected && p.clientId !== onlineState.clientId && !p.spectator,
-        );
-        const p = profiles[0] || { name: "Player 1", avatar: "♟" };
-        if (!remote) return null;
-        return {
-          game: "chess",
-          variant: "standard",
-          hostClientId: onlineState.clientId,
-          players: [
-            {
-              seat: "white",
-              clientId: onlineState.clientId,
-              name: p.name,
-              avatar: p.avatar,
-              type: "human",
-            },
-            {
-              seat: "black",
-              clientId: remote.clientId,
-              name: remote.name,
-              avatar: remote.avatar,
-              type: "human",
-            },
-          ],
-        };
-      }
-      function play() {
-        if (!onlineState.connected) {
-          window.location.href = "chess/chess.html";
-          return;
-        }
-        if (!onlineState.isHost) return;
-        const config = buildOnlineConfig();
-        if (!config) {
-          error(
-            "Wait for another player to connect before starting the online game.",
-          );
-          return;
-        }
-        onlineState.config = config;
-        onlineState.socket.send(
-          JSON.stringify({ type: "room:config", config }),
-        );
-        onlineState.socket.send(
-          JSON.stringify({ type: "game:start", config, resetState: true }),
-        );
-      }
       playersButton.onclick = openSetup;
       closeSetup.onclick = () => {
         setupDrawer.classList.remove("open");
@@ -1205,12 +1130,13 @@ No diagnostics run yet.</pre
         onlineState.joinedCode = "";
         onlineState.hostToken = "";
         onlineState.config = null;
+        try { sessionStorage.removeItem("gameLibrarySelectedGame"); } catch {}
         persistOnline();
         renderOnline();
+        renderGames();
       };
       joinOnlineGroupButton.onclick = joinRoom;
       runDiagnosticsButton.onclick = runDiagnostics;
-      playButton.onclick = play;
       addProfileButton.onclick = () => openProfileEditor();
 
       // Keep the online room across trips between the Game Library and the
