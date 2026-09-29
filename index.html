@@ -501,7 +501,8 @@ No diagnostics run yet.</pre
     </aside>
     <script>
       "use strict";
-      const RAW_ONLINE_SERVER_URL = "opengamegallery.george-arps.workers.dev";
+      const RAW_ONLINE_SERVER_URL =
+        "https://opengamegallery.george-arps.workers.dev";
       const $ = (id) => document.getElementById(id);
       const gamesGrid = $("gamesGrid"),
         playersButton = $("playersButton"),
@@ -586,11 +587,16 @@ No diagnostics run yet.</pre
       function configured() {
         return (
           RAW_ONLINE_SERVER_URL &&
-          !RAW_ONLINE_SERVER_URL.includes("YOUR-WORKER-URL")
+          !RAW_ONLINE_SERVER_URL.includes("YOUR-WORKER-URL") &&
+          RAW_ONLINE_SERVER_URL.trim().length > 0
         );
       }
       function serverBase() {
-        let u = RAW_ONLINE_SERVER_URL.trim().replace(/\/+$/, "");
+        let u = RAW_ONLINE_SERVER_URL.trim();
+        if (!/^https?:\/\//i.test(u)) {
+          u = "https://" + u;
+        }
+        u = u.replace(/\/+$/, "");
         u = u.replace(/\/(?:api\/rooms(?:\/[^/]+)?|api|ws(?:\/[^/]+)?)$/i, "");
         return u;
       }
