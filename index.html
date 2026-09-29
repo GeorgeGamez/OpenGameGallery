@@ -973,7 +973,9 @@ No diagnostics run yet.</pre
               onlineState.participants = m.room?.participants || [];
               onlineState.config = m.room?.config || null;
               renderOnline();
-              if (m.room?.started && m.room?.config) startOnline(m.room.config);
+              // Returning to the Game Library reconnects to the existing room,
+              // but does not reopen the previous match automatically. A fresh
+              // game:start message starts the next match.
               break;
             case "room:participants":
               onlineState.participants = Array.isArray(m.participants)
@@ -1161,7 +1163,9 @@ No diagnostics run yet.</pre
         onlineState.socket.send(
           JSON.stringify({ type: "room:config", config }),
         );
-        onlineState.socket.send(JSON.stringify({ type: "game:start", config }));
+        onlineState.socket.send(
+          JSON.stringify({ type: "game:start", config, resetState: true }),
+        );
       }
       playersButton.onclick = openSetup;
       closeSetup.onclick = () => {
@@ -1184,6 +1188,24 @@ No diagnostics run yet.</pre
       runDiagnosticsButton.onclick = runDiagnostics;
       playButton.onclick = play;
       addProfileButton.onclick = () => openProfileEditor();
+
+      // Keep the online room across trips between the Game Library and the
+      // game page. The WebSocket closes during navigation, but the room
+      // identity and host credentials remain in sessionStorage so this page
+      // can reconnect automatically.
+      function reconnectSavedRoom() {
+        const savedCode =
+          onlineState.code || onlineState.joinedCode || "";
+        if (!savedCode || onlineState.connected) return;
+
+        const host = Boolean(onlineState.code && onlineState.hostToken);
+        onlineState.isHost = host;
+        onlineState.code = host ? savedCode : "";
+        onlineState.joinedCode = host ? "" : savedCode;
+        persistOnline();
+        onlineCodeStatus.textContent = `Reconnecting to room ${savedCode}…`;
+        connectRoom(savedCode, host);
+      }
       joinOnlineCode.addEventListener(
         "input",
         () =>
@@ -1194,6 +1216,7 @@ No diagnostics run yet.</pre
       renderGames();
       renderProfiles();
       renderOnline();
+      reconnectSavedRoom();
     </script>
   </body>
 </html>
