@@ -1002,6 +1002,12 @@ function connectOnlineGame() {
       if (message.room?.config?.players?.length) {
         onlineConfig = message.room.config;
         gamePlayers = parseOnlinePlayers(onlineConfig);
+        try {
+          sessionStorage.setItem(
+            "gameLibraryOnlineConfig",
+            JSON.stringify(onlineConfig),
+          );
+        } catch {}
       }
 
       refreshOnlinePlayerNames();
@@ -1032,10 +1038,20 @@ function connectOnlineGame() {
 
     if (message.type === "game:start") {
       onlineConfig = message.config || onlineConfig;
-      if (onlineConfig?.players?.length) gamePlayers = parseOnlinePlayers(onlineConfig);
+      if (onlineConfig?.players?.length) {
+        gamePlayers = parseOnlinePlayers(onlineConfig);
+        try {
+          sessionStorage.setItem(
+            "gameLibraryOnlineConfig",
+            JSON.stringify(onlineConfig),
+          );
+        } catch {}
+      }
       refreshOnlinePlayerNames();
       renderPlayers();
-      if (message.state) applyRemoteState(message.state);
+      if (message.state) {
+        applyRemoteState(message.state);
+      }
       return;
     }
 
@@ -1258,7 +1274,7 @@ list.appendChild(x);
   }
 }
 
-document.getElementById("newGameBtn").onclick = () => { window.location.href = "index.html"; };
+document.getElementById("newGameBtn").onclick = () => { window.location.href = "../index.html"; };
 document.getElementById("clearBtn").onclick = () => {
   clearTimeout(computerMoveTimer); computerMovePending = false;
   if (ONLINE_MODE && !ONLINE_HOST_TOKEN) return;
