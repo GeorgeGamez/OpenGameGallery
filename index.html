@@ -60,6 +60,21 @@
         max-width: 1100px;
         margin: auto;
       }
+      .online-wins-corner {
+        position: fixed;
+        top: 76px;
+        right: 18px;
+        z-index: 10;
+        padding: 7px 11px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--panel);
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 700;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+      }
+      .online-wins-corner[hidden] { display: none; }
       .header-row {
         display: flex;
         align-items: center;
@@ -423,6 +438,7 @@
         </div>
       </div>
     </header>
+    <div id="onlineWinsCorner" class="online-wins-corner" hidden>Online wins: 0</div>
     <main><div id="gamesGrid" class="games-grid"></div></main>
     <div id="backdrop" class="drawer-backdrop"></div>
     <aside id="setupDrawer" class="drawer" aria-hidden="true">
@@ -525,7 +541,8 @@ No diagnostics run yet.</pre
         addProfileButton = $("addProfile"),
         profileEditor = $("profileEditor"),
         runDiagnosticsButton = $("runDiagnostics"),
-        debugOutput = $("debugOutput");
+        debugOutput = $("debugOutput"),
+        onlineWinsCorner = $("onlineWinsCorner");
       let profiles = loadProfiles(),
         editingProfileId = null;
       const onlineState = {
@@ -799,11 +816,18 @@ No diagnostics run yet.</pre
         if (onlineState.connected) {
           onlineCodeStatus.textContent = `Connected • ${ps.length} player${ps.length === 1 ? "" : "s"}`;
           onlineCodeStatus.classList.add("ok");
+          const me = onlineState.participants.find(
+            (p) => p.clientId === onlineState.clientId,
+          );
+          const wins = Number.isFinite(Number(me?.wins)) ? Number(me.wins) : 0;
+          onlineWinsCorner.textContent = `Online wins: ${wins}`;
+          onlineWinsCorner.hidden = false;
         } else {
           onlineCodeStatus.textContent = roomCode()
             ? `Room ${roomCode()}`
             : "Not connected";
           onlineCodeStatus.classList.remove("ok");
+          onlineWinsCorner.hidden = true;
         }
         renderSetup();
       }
