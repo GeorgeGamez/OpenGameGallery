@@ -587,16 +587,11 @@ No diagnostics run yet.</pre
       function configured() {
         return (
           RAW_ONLINE_SERVER_URL &&
-          !RAW_ONLINE_SERVER_URL.includes("YOUR-WORKER-URL") &&
-          RAW_ONLINE_SERVER_URL.trim().length > 0
+          !RAW_ONLINE_SERVER_URL.includes("YOUR-WORKER-URL")
         );
       }
       function serverBase() {
-        let u = RAW_ONLINE_SERVER_URL.trim();
-        if (!/^https?:\/\//i.test(u)) {
-          u = "https://" + u;
-        }
-        u = u.replace(/\/+$/, "");
+        let u = RAW_ONLINE_SERVER_URL.trim().replace(/\/+$/, "");
         u = u.replace(/\/(?:api\/rooms(?:\/[^/]+)?|api|ws(?:\/[^/]+)?)$/i, "");
         return u;
       }
