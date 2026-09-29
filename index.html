@@ -529,10 +529,10 @@ No diagnostics run yet.</pre
       let profiles = loadProfiles(),
         editingProfileId = null;
       const onlineState = {
-        code: localStorage.getItem("gameLibraryOnlineCode") || "",
-        joinedCode: localStorage.getItem("gameLibraryOnlineJoinedCode") || "",
-        hostToken: localStorage.getItem("gameLibraryOnlineHostToken") || "",
-        clientId: localStorage.getItem("gameLibraryOnlineClientId") || "",
+        code: sessionStorage.getItem("gameLibraryOnlineCode") || "",
+        joinedCode: sessionStorage.getItem("gameLibraryOnlineJoinedCode") || "",
+        hostToken: sessionStorage.getItem("gameLibraryOnlineHostToken") || "",
+        clientId: sessionStorage.getItem("gameLibraryOnlineClientId") || "",
         connected: false,
         isHost: false,
         socket: null,
@@ -599,22 +599,22 @@ No diagnostics run yet.</pre
         return onlineState.code || onlineState.joinedCode || "";
       }
       function persistOnline() {
-        localStorage.setItem("gameLibraryOnlineClientId", onlineState.clientId);
+        sessionStorage.setItem("gameLibraryOnlineClientId", onlineState.clientId);
         if (onlineState.code)
-          localStorage.setItem("gameLibraryOnlineCode", onlineState.code);
-        else localStorage.removeItem("gameLibraryOnlineCode");
+          sessionStorage.setItem("gameLibraryOnlineCode", onlineState.code);
+        else sessionStorage.removeItem("gameLibraryOnlineCode");
         if (onlineState.hostToken)
-          localStorage.setItem(
+          sessionStorage.setItem(
             "gameLibraryOnlineHostToken",
             onlineState.hostToken,
           );
-        else localStorage.removeItem("gameLibraryOnlineHostToken");
+        else sessionStorage.removeItem("gameLibraryOnlineHostToken");
         if (onlineState.joinedCode)
-          localStorage.setItem(
+          sessionStorage.setItem(
             "gameLibraryOnlineJoinedCode",
             onlineState.joinedCode,
           );
-        else localStorage.removeItem("gameLibraryOnlineJoinedCode");
+        else sessionStorage.removeItem("gameLibraryOnlineJoinedCode");
       }
       function error(msg) {
         onlineError.textContent = msg || "";
@@ -1014,9 +1014,9 @@ No diagnostics run yet.</pre
         );
         const params = new URLSearchParams({
           online: "1",
-          code: roomCode(),
-          server: serverBase(),
-          clientId: onlineState.clientId,
+          onlineCode: roomCode(),
+          onlineServer: serverBase(),
+          onlineClientId: onlineState.clientId,
         });
         if (onlineState.isHost && onlineState.hostToken)
           params.set("hostToken", onlineState.hostToken);
