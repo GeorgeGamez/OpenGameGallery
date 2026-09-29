@@ -13,7 +13,7 @@ function corsHeaders(request) {
     "Access-Control-Allow-Methods": ALLOWED_METHODS,
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Max-Age": "86400",
-    "Vary": "Origin"
+    Vary: "Origin",
   };
 }
 
@@ -27,13 +27,13 @@ function json(data, init = {}, request = null) {
 
   return new Response(JSON.stringify(data), {
     ...init,
-    headers
+    headers,
   });
 }
 
 function textResponse(message, status = 200, request = null) {
   const headers = new Headers({
-    "Content-Type": "text/plain; charset=utf-8"
+    "Content-Type": "text/plain; charset=utf-8",
   });
 
   for (const [key, value] of Object.entries(corsHeaders(request))) {
@@ -44,18 +44,22 @@ function textResponse(message, status = 200, request = null) {
 }
 
 function normalizeCode(value) {
-  return String(value || "").trim().toUpperCase();
+  return String(value || "")
+    .trim()
+    .toUpperCase();
 }
 
 function isValidCode(code) {
-  return code.length === CODE_LENGTH &&
-    [...code].every(character => CODE_ALPHABET.includes(character));
+  return (
+    code.length === CODE_LENGTH &&
+    [...code].every((character) => CODE_ALPHABET.includes(character))
+  );
 }
 
 function generateCode() {
   const bytes = crypto.getRandomValues(new Uint8Array(CODE_LENGTH));
   return [...bytes]
-    .map(byte => CODE_ALPHABET[byte % CODE_ALPHABET.length])
+    .map((byte) => CODE_ALPHABET[byte % CODE_ALPHABET.length])
     .join("");
 }
 
@@ -69,12 +73,15 @@ async function createRoom(env, request) {
   try {
     body = await request.json();
   } catch {
-    return json({ error: "Request body must be valid JSON." }, { status: 400 }, request);
+    return json(
+      { error: "Request body must be valid JSON." },
+      { status: 400 },
+      request,
+    );
   }
 
-  const requestedConfig = body?.config && typeof body.config === "object"
-    ? body.config
-    : {};
+  const requestedConfig =
+    body?.config && typeof body.config === "object" ? body.config : {};
 
   for (let attempt = 0; attempt < MAX_CREATE_ATTEMPTS; attempt++) {
     const code = generateCode();
@@ -86,8 +93,8 @@ async function createRoom(env, request) {
         code,
         config: requestedConfig,
         hostName: body?.hostName || "Host",
-        hostAvatar: body?.hostAvatar || "🎮"
-      })
+        hostAvatar: body?.hostAvatar || "🎮",
+      }),
     });
 
     if (response.status === 201) {
@@ -104,7 +111,7 @@ async function createRoom(env, request) {
   return json(
     { error: "Could not find an unused four-digit room code. Try again." },
     { status: 503 },
-    request
+    request,
   );
 }
 
@@ -115,7 +122,7 @@ export default {
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
-        headers: corsHeaders(request)
+        headers: corsHeaders(request),
       });
     }
 
@@ -123,7 +130,7 @@ export default {
       return textResponse(
         "Game Library multiplayer server is running.\n\nEndpoints:\nPOST /api/rooms\nGET /api/rooms/:code\nGET /ws/:code\n",
         200,
-        request
+        request,
       );
     }
 
@@ -147,7 +154,7 @@ export default {
           durableObjectConfigured: Boolean(env.GAME_ROOM),
         },
         {},
-        request
+        request,
       );
     }
 
@@ -193,7 +200,7 @@ export default {
     }
 
     return textResponse("Not found.", 404, request);
-  }
+  },
 };
 
 export class GameRoom extends DurableObject {
@@ -236,7 +243,10 @@ export class GameRoom extends DurableObject {
       return this.roomInfoResponse();
     }
 
-    if (url.pathname === "/websocket" || request.headers.get("Upgrade")?.toLowerCase() === "websocket") {
+    if (
+      url.pathname === "/websocket" ||
+      request.headers.get("Upgrade")?.toLowerCase() === "websocket"
+    ) {
       return this.acceptConnection(request);
     }
 
@@ -267,19 +277,22 @@ export class GameRoom extends DurableObject {
       participants: [],
       started: false,
       state: null,
-      revision: 0
+      revision: 0,
     };
 
     await this.saveState(room);
 
-    return new Response(JSON.stringify({
-      code: room.code,
-      hostToken,
-      room: publicRoom(room)
-    }), {
-      status: 201,
-      headers: { "Content-Type": "application/json" }
-    });
+    return new Response(
+      JSON.stringify({
+        code: room.code,
+        hostToken,
+        room: publicRoom(room),
+      }),
+      {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 
   async roomInfoResponse() {
@@ -288,13 +301,13 @@ export class GameRoom extends DurableObject {
     if (!room) {
       return new Response(JSON.stringify({ error: "Room not found." }), {
         status: 404,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       });
     }
 
     return new Response(JSON.stringify({ room: publicRoom(room) }), {
       status: 200,
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
     });
   }
 
@@ -321,19 +334,19 @@ export class GameRoom extends DurableObject {
     server.serializeAttachment({
       clientId,
       isHost: Boolean(isHost),
-      role: isHost ? "host" : role
+      role: isHost ? "host" : role,
     });
 
     await this.handleConnect(server, {
       clientId,
       role: isHost ? "host" : role,
       isHost: Boolean(isHost),
-      url
+      url,
     });
 
     return new Response(null, {
       status: 101,
-      webSocket: client
+      webSocket: client,
     });
   }
 
@@ -342,7 +355,9 @@ export class GameRoom extends DurableObject {
     if (!room) return;
 
     const attachment = connection;
-    const existing = room.participants.find(p => p.clientId === attachment.clientId);
+    const existing = room.participants.find(
+      (p) => p.clientId === attachment.clientId,
+    );
 
     if (existing) {
       existing.connected = true;
@@ -359,7 +374,7 @@ export class GameRoom extends DurableObject {
         playerToken: crypto.randomUUID(),
         spectator: false,
         connected: true,
-        lastSeen: new Date().toISOString()
+        lastSeen: new Date().toISOString(),
       });
     }
 
@@ -372,13 +387,17 @@ export class GameRoom extends DurableObject {
     sendJson(ws, {
       type: "room:hello",
       room: publicRoom(room),
-      self: room.participants.find(p => p.clientId === attachment.clientId)
+      state: room.state,
+      self: room.participants.find((p) => p.clientId === attachment.clientId),
     });
 
-    this.broadcast({
-      type: "room:participants",
-      participants: publicParticipants(room)
-    }, ws);
+    this.broadcast(
+      {
+        type: "room:participants",
+        participants: publicParticipants(room),
+      },
+      ws,
+    );
   }
 
   async webSocketMessage(ws, message) {
@@ -387,7 +406,11 @@ export class GameRoom extends DurableObject {
     try {
       data = JSON.parse(typeof message === "string" ? message : "");
     } catch {
-      sendJson(ws, { type: "error", code: "INVALID_JSON", message: "Message must be JSON." });
+      sendJson(ws, {
+        type: "error",
+        code: "INVALID_JSON",
+        message: "Message must be JSON.",
+      });
       return;
     }
 
@@ -399,13 +422,23 @@ export class GameRoom extends DurableObject {
 
     const room = await this.getState();
     if (!room) {
-      sendJson(ws, { type: "error", code: "ROOM_NOT_FOUND", message: "Room no longer exists." });
+      sendJson(ws, {
+        type: "error",
+        code: "ROOM_NOT_FOUND",
+        message: "Room no longer exists.",
+      });
       return;
     }
 
-    const participant = room.participants.find(p => p.clientId === attachment.clientId);
+    const participant = room.participants.find(
+      (p) => p.clientId === attachment.clientId,
+    );
     if (!participant) {
-      sendJson(ws, { type: "error", code: "NOT_REGISTERED", message: "Connection is not registered." });
+      sendJson(ws, {
+        type: "error",
+        code: "NOT_REGISTERED",
+        message: "Connection is not registered.",
+      });
       return;
     }
 
@@ -425,13 +458,21 @@ export class GameRoom extends DurableObject {
 
       case "room:config":
         if (!attachment.isHost) {
-          sendJson(ws, { type: "error", code: "HOST_ONLY", message: "Only the host may change room configuration." });
+          sendJson(ws, {
+            type: "error",
+            code: "HOST_ONLY",
+            message: "Only the host may change room configuration.",
+          });
           break;
         }
         room.config = sanitizeConfig(data.config);
         room.revision += 1;
         await this.saveState(room);
-        this.broadcast({ type: "room:config", config: room.config, revision: room.revision });
+        this.broadcast({
+          type: "room:config",
+          config: room.config,
+          revision: room.revision,
+        });
         break;
 
       case "player:spectator":
@@ -440,7 +481,11 @@ export class GameRoom extends DurableObject {
 
       case "game:start":
         if (!attachment.isHost) {
-          sendJson(ws, { type: "error", code: "HOST_ONLY", message: "Only the host may start the game." });
+          sendJson(ws, {
+            type: "error",
+            code: "HOST_ONLY",
+            message: "Only the host may start the game.",
+          });
           break;
         }
         room.started = true;
@@ -449,13 +494,18 @@ export class GameRoom extends DurableObject {
         this.broadcast({
           type: "game:start",
           config: room.config,
-          revision: room.revision
+          state: room.state,
+          revision: room.revision,
         });
         break;
 
       case "game:move":
         if (!room.started) {
-          sendJson(ws, { type: "error", code: "GAME_NOT_STARTED", message: "The game has not started." });
+          sendJson(ws, {
+            type: "error",
+            code: "GAME_NOT_STARTED",
+            message: "The game has not started.",
+          });
           break;
         }
         await this.relayGameEvent(room, participant, "game:move", data);
@@ -463,17 +513,24 @@ export class GameRoom extends DurableObject {
 
       case "game:state":
         if (!attachment.isHost) {
-          sendJson(ws, { type: "error", code: "HOST_ONLY", message: "Only the host may publish the authoritative game state." });
+          sendJson(ws, {
+            type: "error",
+            code: "HOST_ONLY",
+            message: "Only the host may publish the authoritative game state.",
+          });
           break;
         }
         room.state = data.state ?? null;
         room.revision += 1;
         await this.saveState(room);
-        this.broadcast({
-          type: "game:state",
-          state: room.state,
-          revision: room.revision
-        }, ws);
+        this.broadcast(
+          {
+            type: "game:state",
+            state: room.state,
+            revision: room.revision,
+          },
+          ws,
+        );
         break;
 
       case "game:event":
@@ -484,7 +541,7 @@ export class GameRoom extends DurableObject {
         sendJson(ws, {
           type: "error",
           code: "UNKNOWN_MESSAGE",
-          message: `Unknown message type: ${type || "(missing)"}`
+          message: `Unknown message type: ${type || "(missing)"}`,
         });
         break;
     }
@@ -511,12 +568,12 @@ export class GameRoom extends DurableObject {
 
     sendJson(ws, {
       type: "player:identified",
-      player: publicParticipant(participant)
+      player: publicParticipant(participant),
     });
 
     this.broadcast({
       type: "room:participants",
-      participants: publicParticipants(room)
+      participants: publicParticipants(room),
     });
   }
 
@@ -527,7 +584,7 @@ export class GameRoom extends DurableObject {
       type: "player:spectator",
       clientId: participant.clientId,
       spectator: participant.spectator,
-      participants: publicParticipants(room)
+      participants: publicParticipants(room),
     });
   }
 
@@ -535,7 +592,7 @@ export class GameRoom extends DurableObject {
     const event = {
       type,
       sender: publicParticipant(participant),
-      payload: sanitizeGamePayload(data)
+      payload: sanitizeGamePayload(data),
     };
 
     this.broadcast(event);
@@ -548,7 +605,9 @@ export class GameRoom extends DurableObject {
     const room = await this.getState();
     if (!room) return;
 
-    const participant = room.participants.find(p => p.clientId === attachment.clientId);
+    const participant = room.participants.find(
+      (p) => p.clientId === attachment.clientId,
+    );
     if (!participant) return;
 
     participant.connected = false;
@@ -562,7 +621,7 @@ export class GameRoom extends DurableObject {
 
     this.broadcast({
       type: "room:participants",
-      participants: publicParticipants(room)
+      participants: publicParticipants(room),
     });
   }
 
@@ -617,7 +676,7 @@ function publicParticipant(participant) {
     avatar: participant.avatar,
     role: participant.role,
     spectator: participant.spectator,
-    connected: participant.connected
+    connected: participant.connected,
   };
 }
 
@@ -634,7 +693,7 @@ function publicRoom(room) {
     participants: publicParticipants(room),
     started: room.started,
     stateAvailable: room.state !== null,
-    revision: room.revision
+    revision: room.revision,
   };
 }
 
