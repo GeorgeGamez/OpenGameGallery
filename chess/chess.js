@@ -1,21 +1,45 @@
 "use strict";
 
-const PIECES = {
-  w: { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" },
-  b: { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" },
+const SOLID_PIECES = {
+  k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟", m: "●", K: "👑",
 };
+const PIECES = { w: SOLID_PIECES, b: SOLID_PIECES };
+const FOUR_PIECES = { white: SOLID_PIECES, black: SOLID_PIECES, red: SOLID_PIECES, blue: SOLID_PIECES };
+const FOUR_COLORS = ["white", "red", "black", "blue"];
 
-function inside(r, c) {
-  return r >= 0 && r < 8 && c >= 0 && c < 8;
+function inside(r, c, size) { return r >= 0 && r < size && c >= 0 && c < size; }
+function cloneBoard(b) { return b.map((row) => row.map((p) => (p ? { ...p } : null))); }
+function opposite(c) { return c === "w" ? "b" : "w"; }
+
+// ---------------------------- CHESS ENGINE ----------------------------
+function generate960Row() {
+  const row = Array(8).fill(null);
+  const empty = () =>
+    row.map((v, i) => (v === null ? i : null)).filter((v) => v !== null);
+  const dark = [0, 2, 4, 6][Math.floor(Math.random() * 4)];
+  const light = [1, 3, 5, 7][Math.floor(Math.random() * 4)];
+  row[dark] = "b";
+  row[light] = "b";
+  let available = empty();
+  row[available[Math.floor(Math.random() * available.length)]] = "q";
+  available = empty();
+  row[
+    available.splice(Math.floor(Math.random() * available.length), 1)[0]
+  ] = "n";
+  row[
+    available.splice(Math.floor(Math.random() * available.length), 1)[0]
+  ] = "n";
+  available = empty();
+  row[available[0]] = "r";
+  row[available[1]] = "k";
+  row[available[2]] = "r";
+  return row;
 }
-function cloneBoard(b) {
-  return b.map((row) => row.map((p) => (p ? { ...p } : null)));
-}
-function opposite(c) {
-  return c === "w" ? "b" : "w";
-}
-function initialBoard() {
-  const back = ["r", "n", "b", "q", "k", "b", "n", "r"];
+
+function initialBoard(is960 = false) {
+  const back = is960
+    ? generate960Row()
+    : ["r", "n", "b", "q", "k", "b", "n", "r"];
   const b = Array.from({ length: 8 }, () => Array(8).fill(null));
   for (let c = 0; c < 8; c++) {
     b[0][c] = { type: back[c], color: "b" };
@@ -27,106 +51,86 @@ function initialBoard() {
 }
 
 class ChessGame {
-  constructor() {
+  constructor(is960 = false) {
     this.size = 8;
+    this.is960 = is960;
     this.reset();
   }
-
   reset() {
-    this.board = initialBoard();
+    this.board = initialBoard(this.is960);
     this.turn = "w";
     this.history = [];
     this.sanHistory = [];
     this.captured = [];
     this.lastMove = null;
-    this.enPassant = null;
+    const wK = this.board[7].findIndex(
+      (p) => p?.type === "k" && p.color === "w",
+    );
+    const wR = [];
+    this.board[7].forEach((p, c) => {
+      if (p?.type === "r" && p.color === "w") wR.push(c);
+    });
+    const bK = this.board[0].findIndex(
+      (p) => p?.type === "k" && p.color === "b",
+    );
+    const bR = [];
+    this.board[0].forEach((p, c) => {
+      if (p?.type === "r" && p.color === "b") bR.push(c);
+    });
     this.castling = {
       w: {
         kingMoved: false,
-        kingCol: 4,
-        rooks: [
-          { col: 0, moved: false },
-          { col: 7, moved: false },
-        ],
+        kingCol: wK,
+        rooks: wR.map((c) => ({ col: c, moved: false })),
       },
       b: {
         kingMoved: false,
-        kingCol: 4,
-        rooks: [
-          { col: 0, moved: false },
-          { col: 7, moved: false },
-        ],
+        kingCol: bK,
+        rooks: bR.map((c) => ({ col: c, moved: false })),
       },
     };
   }
-
   clone() {
     return {
       board: cloneBoard(this.board),
       turn: this.turn,
       san: [...this.sanHistory],
-      captured: this.captured.map((p) => ({ ...p })),
+      captured: [...this.captured.map((p) => ({ ...p }))],
       lastMove: this.lastMove
         ? { from: { ...this.lastMove.from }, to: { ...this.lastMove.to } }
         : null,
-      enPassant: this.enPassant ? { ...this.enPassant } : null,
       castling: JSON.parse(JSON.stringify(this.castling)),
     };
   }
-
   restore(s) {
     this.board = cloneBoard(s.board);
     this.turn = s.turn;
-    this.sanHistory = [...(s.san || [])];
-    this.captured = (s.captured || []).map((p) => ({ ...p }));
+    this.sanHistory = [...s.san];
+    this.captured = s.captured.map((p) => ({ ...p }));
     this.lastMove = s.lastMove
       ? { from: { ...s.lastMove.from }, to: { ...s.lastMove.to } }
       : null;
-    this.enPassant = s.enPassant ? { ...s.enPassant } : null;
-    this.castling = JSON.parse(
-      JSON.stringify(
-        s.castling || {
-          w: {
-            kingMoved: false,
-            kingCol: 4,
-            rooks: [
-              { col: 0, moved: false },
-              { col: 7, moved: false },
-            ],
-          },
-          b: {
-            kingMoved: false,
-            kingCol: 4,
-            rooks: [
-              { col: 0, moved: false },
-              { col: 7, moved: false },
-            ],
-          },
-        },
-      ),
-    );
+    this.castling = JSON.parse(JSON.stringify(s.castling));
   }
-
   undo() {
     if (!this.history.length) return false;
     this.restore(this.history.pop());
     return true;
   }
-
   findKing(color, b = this.board) {
     for (let r = 0; r < 8; r++)
       for (let c = 0; c < 8; c++)
-        if (b[r][c]?.color === color && b[r][c].type === "k") return { r, c };
+        if (b[r][c]?.color === color && b[r][c].type === "k")
+          return { r, c };
     return null;
   }
-
   attacked(r, c, by, b = this.board) {
-    const pawnRow = by === "w" ? r + 1 : r - 1;
+    const pawn = by === "w" ? r + 1 : r - 1;
     for (const dc of [-1, 1])
       if (
-        inside(pawnRow, c + dc) &&
-        b[pawnRow][c + dc]?.color === by &&
-        b[pawnRow][c + dc].type === "p"
+        inside(pawn, c + dc, 8) &&
+        b[pawn][c + dc]?.color === by &&
+        b[pawn][c + dc].type === "p"
       )
         return true;
     for (const [dr, dc] of [
@@ -140,7 +144,7 @@ class ChessGame {
       [2, 1],
     ])
       if (
-        inside(r + dr, c + dc) &&
+        inside(r + dr, c + dc, 8) &&
         b[r + dr][c + dc]?.color === by &&
         b[r + dr][c + dc].type === "n"
       )
@@ -149,7 +153,7 @@ class ChessGame {
       for (let dc = -1; dc <= 1; dc++)
         if (
           (dr || dc) &&
-          inside(r + dr, c + dc) &&
+          inside(r + dr, c + dc, 8) &&
           b[r + dr][c + dc]?.color === by &&
           b[r + dr][c + dc].type === "k"
         )
@@ -173,11 +177,11 @@ class ChessGame {
         ],
         ["b", "q"],
       ],
-    ]) {
+    ])
       for (const [dr, dc] of directions) {
         let nr = r + dr,
           nc = c + dc;
-        while (inside(nr, nc)) {
+        while (inside(nr, nc, 8)) {
           const p = b[nr][nc];
           if (p) {
             if (p.color === by && types.includes(p.type)) return true;
@@ -187,51 +191,36 @@ class ChessGame {
           nc += dc;
         }
       }
-    }
     return false;
   }
-
-  isInCheck(color) {
-    const k = this.findKing(color);
-    return !!k && this.attacked(k.r, k.c, opposite(color));
-  }
-
   moveList(r, c) {
     const p = this.board[r]?.[c];
     if (!p || p.color !== this.turn) return [];
-    const out = [];
-    const add = (tr, tc, x = {}) => {
-      if (!inside(tr, tc)) return;
-      const t = this.board[tr][tc];
-      if (!t || t.color !== p.color)
-        out.push({ from: { r, c }, to: { r: tr, c: tc }, ...x });
-    };
-
+    const out = [],
+      add = (tr, tc, x = {}) => {
+        if (!inside(tr, tc, 8)) return;
+        const t = this.board[tr][tc];
+        if (!t || t.color !== p.color)
+          out.push({ from: { r, c }, to: { r: tr, c: tc }, ...x });
+      };
     if (p.type === "p") {
-      const d = p.color === "w" ? -1 : 1;
-      const start = p.color === "w" ? 6 : 1;
-      const promotionRow = p.color === "w" ? 0 : 7;
-      if (inside(r + d, c) && !this.board[r + d][c]) {
-        add(r + d, c, { promotion: r + d === promotionRow });
-        if (r === start && !this.board[r + 2 * d][c])
-          add(r + 2 * d, c, { doublePawn: true });
+      const d = p.color === "w" ? -1 : 1,
+        s = p.color === "w" ? 6 : 1;
+      if (inside(r + d, c, 8) && !this.board[r + d][c]) {
+        add(r + d, c, { promotion: r + d === 0 || r + d === 7 });
+        if (r === s && !this.board[r + 2 * d][c]) add(r + 2 * d, c);
       }
       for (const dc of [-1, 1]) {
         const tr = r + d,
           tc = c + dc;
-        if (!inside(tr, tc)) continue;
-        const t = this.board[tr][tc];
-        if (t && t.color !== p.color)
-          add(tr, tc, { promotion: tr === promotionRow });
-        else if (
-          this.enPassant &&
-          this.enPassant.r === tr &&
-          this.enPassant.c === tc
+        if (
+          inside(tr, tc, 8) &&
+          this.board[tr][tc] &&
+          this.board[tr][tc].color !== p.color
         )
-          add(tr, tc, { enPassant: true, capture: { r: r, c: tc } });
+          add(tr, tc, { promotion: tr === 0 || tr === 7 });
       }
     }
-
     if (p.type === "n")
       for (const [dr, dc] of [
         [-2, -1],
@@ -244,7 +233,6 @@ class ChessGame {
         [2, 1],
       ])
         add(r + dr, c + dc);
-
     if (["b", "r", "q"].includes(p.type)) {
       const ds = [];
       if (["b", "q"].includes(p.type))
@@ -254,7 +242,7 @@ class ChessGame {
       for (const [dr, dc] of ds) {
         let tr = r + dr,
           tc = c + dc;
-        while (inside(tr, tc)) {
+        while (inside(tr, tc, 8)) {
           const t = this.board[tr][tc];
           if (!t) add(tr, tc);
           else {
@@ -266,87 +254,89 @@ class ChessGame {
         }
       }
     }
-
     if (p.type === "k") {
       for (let dr = -1; dr <= 1; dr++)
-        for (let dc = -1; dc <= 1; dc++) if (dr || dc) add(r + dr, c + dc);
-      const cs = this.castling[p.color];
-      if (!cs.kingMoved && !this.attacked(r, c, opposite(p.color))) {
-        for (const rk of cs.rooks) {
-          if (
-            rk.moved ||
-            this.board[r][rk.col]?.type !== "r" ||
-            this.board[r][rk.col]?.color !== p.color
-          )
-            continue;
-          const kingTarget = rk.col > cs.kingCol ? 6 : 2;
-          const rookTarget = rk.col > cs.kingCol ? 5 : 3;
-          let clear = true;
-          const min = Math.min(cs.kingCol, kingTarget, rk.col, rookTarget),
-            max = Math.max(cs.kingCol, kingTarget, rk.col, rookTarget);
-          for (let col = min; col <= max; col++)
-            if (col !== cs.kingCol && col !== rk.col && this.board[r][col]) {
-              clear = false;
-              break;
+        for (let dc = -1; dc <= 1; dc++)
+          if (dr || dc) add(r + dr, c + dc);
+
+      const cState = this.castling[p.color];
+      if (!cState.kingMoved && !this.attacked(r, c, opposite(p.color))) {
+        cState.rooks.forEach((rk) => {
+          if (!rk.moved) {
+            const isKingside = rk.col > cState.kingCol;
+            const targetKCol = isKingside ? 6 : 2,
+              targetRCol = isKingside ? 5 : 3;
+            let clear = true;
+            const minC = Math.min(
+              cState.kingCol,
+              targetKCol,
+              rk.col,
+              targetRCol,
+            );
+            const maxC = Math.max(
+              cState.kingCol,
+              targetKCol,
+              rk.col,
+              targetRCol,
+            );
+
+            for (let col = minC; col <= maxC; col++) {
+              if (
+                col !== cState.kingCol &&
+                col !== rk.col &&
+                this.board[r][col]
+              ) {
+                clear = false;
+                break;
+              }
             }
-          if (!clear) continue;
-          const step = kingTarget > cs.kingCol ? 1 : -1;
-          for (
-            let col = cs.kingCol + step;
-            col !== kingTarget + step;
-            col += step
-          ) {
-            if (this.attacked(r, col, opposite(p.color))) {
-              clear = false;
-              break;
+            if (clear) {
+              const step = targetKCol > cState.kingCol ? 1 : -1;
+              for (
+                let col = cState.kingCol + step;
+                col !== targetKCol + step;
+                col += step
+              ) {
+                if (this.attacked(r, col, opposite(p.color))) {
+                  clear = false;
+                  break;
+                }
+              }
+            }
+            if (clear) {
+              out.push({
+                from: { r, c },
+                to: { r, c: this.is960 ? rk.col : targetKCol },
+                castling: { rookFromCol: rk.col, targetKCol, targetRCol },
+              });
             }
           }
-          if (clear)
-            out.push({
-              from: { r, c },
-              to: { r, c: kingTarget },
-              castling: { rookFromCol: rk.col, kingTarget, rookTarget },
-            });
-        }
+        });
       }
     }
     return out;
   }
-
   legalMovesFrom(r, c) {
-    const p = this.board[r]?.[c];
-    if (!p || p.color !== this.turn) return [];
     return this.moveList(r, c).filter((m) => {
       const b = cloneBoard(this.board);
       if (m.castling) {
-        const king = b[r][c],
-          rook = b[r][m.castling.rookFromCol];
-        b[r][c] = null;
-        b[r][m.castling.rookFromCol] = null;
-        b[r][m.castling.kingTarget] = king;
-        b[r][m.castling.rookTarget] = rook;
+        const p = b[m.from.r][m.from.c],
+          rk = b[m.from.r][m.castling.rookFromCol];
+        b[m.from.r][m.from.c] = null;
+        b[m.from.r][m.castling.rookFromCol] = null;
+        b[m.from.r][m.castling.targetKCol] = p;
+        b[m.from.r][m.castling.targetRCol] = rk;
       } else {
-        b[r][c] = null;
-        if (m.enPassant && m.capture) b[m.capture.r][m.capture.c] = null;
+        const p = b[m.from.r][m.from.c];
+        b[m.from.r][m.from.c] = null;
         b[m.to.r][m.to.c] = p;
       }
-      const k = this.findKing(p.color, b);
-      return !!k && !this.attacked(k.r, k.c, opposite(p.color), b);
+      const k = this.findKing(this.board[r][c].color, b);
+      return (
+        k && !this.attacked(k.r, k.c, opposite(this.board[r][c].color), b)
+      );
     });
   }
-
-  allLegal(color = this.turn) {
-    const old = this.turn;
-    this.turn = color;
-    const out = [];
-    for (let r = 0; r < 8; r++)
-      for (let c = 0; c < 8; c++)
-        if (this.board[r][c]?.color === color)
-          out.push(...this.legalMovesFrom(r, c));
-    this.turn = old;
-    return out;
-  }
-
   makeMove(m, promotion = "q") {
     const legal = this.legalMovesFrom(m.from.r, m.from.c).find(
       (x) => x.to.r === m.to.r && x.to.c === m.to.c,
@@ -354,52 +344,38 @@ class ChessGame {
     if (!legal) return false;
     this.history.push(this.clone());
     const p = this.board[legal.from.r][legal.from.c];
-    let cap = null;
 
     if (legal.castling) {
-      const rook = this.board[legal.from.r][legal.castling.rookFromCol];
+      const rk = this.board[legal.from.r][legal.castling.rookFromCol];
       this.board[legal.from.r][legal.from.c] = null;
       this.board[legal.from.r][legal.castling.rookFromCol] = null;
-      this.board[legal.from.r][legal.castling.kingTarget] = { ...p };
-      this.board[legal.from.r][legal.castling.rookTarget] = { ...rook };
+      this.board[legal.from.r][legal.castling.targetKCol] = p;
+      this.board[legal.from.r][legal.castling.targetRCol] = rk;
       this.castling[p.color].kingMoved = true;
-      this.sanHistory.push(legal.castling.kingTarget === 6 ? "O-O" : "O-O-O");
+      this.sanHistory.push(
+        legal.castling.targetKCol === 6 ? "O-O" : "O-O-O",
+      );
     } else {
-      cap =
-        legal.enPassant && legal.capture
-          ? this.board[legal.capture.r][legal.capture.c]
-          : this.board[legal.to.r][legal.to.c];
+      const cap = this.board[legal.to.r][legal.to.c];
       this.board[legal.from.r][legal.from.c] = null;
-      if (legal.enPassant && legal.capture)
-        this.board[legal.capture.r][legal.capture.c] = null;
       this.board[legal.to.r][legal.to.c] = {
         ...p,
         type: legal.promotion ? promotion : p.type,
       };
       if (p.type === "k") this.castling[p.color].kingMoved = true;
       if (p.type === "r") {
-        const rs = this.castling[p.color].rooks.find(
-          (x) => x.col === legal.from.c,
+        const rk = this.castling[p.color].rooks.find(
+          (r) => r.col === legal.from.c,
         );
-        if (rs) rs.moved = true;
-      }
-      if (cap && cap.type === "r") {
-        const enemy = cap.color,
-          rs = this.castling[enemy].rooks.find((x) => x.col === legal.to.c);
-        if (rs && legal.to.r === (enemy === "w" ? 7 : 0)) rs.moved = true;
+        if (rk) rk.moved = true;
       }
       if (cap) this.captured.push(cap);
       this.sanHistory.push(this.san(p, legal, cap, promotion));
     }
-
-    this.enPassant = null;
-    if (p.type === "p" && Math.abs(legal.to.r - legal.from.r) === 2)
-      this.enPassant = { r: (legal.from.r + legal.to.r) / 2, c: legal.from.c };
     this.lastMove = { from: { ...legal.from }, to: { ...legal.to } };
     this.turn = opposite(this.turn);
     return true;
   }
-
   san(p, m, cap, promo) {
     const f = "abcdefgh";
     let s = p.type === "p" ? "" : p.type.toUpperCase();
@@ -409,10 +385,10 @@ class ChessGame {
     if (m.promotion) s += "=" + promo.toUpperCase();
     return s;
   }
-
   gameStatus() {
     const moves = this.allLegal(this.turn),
-      check = this.isInCheck(this.turn);
+      k = this.findKing(this.turn),
+      check = k && this.attacked(k.r, k.c, opposite(this.turn));
     if (!moves.length)
       return {
         over: true,
@@ -427,418 +403,852 @@ class ChessGame {
       text: `${this.turn === "w" ? "White" : "Black"}${check ? " is in check" : " to move"}`,
     };
   }
+  allLegal(color) {
+    const old = this.turn;
+    this.turn = color;
+    const a = [];
+    for (let r = 0; r < 8; r++)
+      for (let c = 0; c < 8; c++)
+        if (this.board[r][c]?.color === color)
+          a.push(...this.legalMovesFrom(r, c));
+    this.turn = old;
+    return a;
+  }
+}
+
+// ---------------------------- 4-PLAYER CHESS ENGINE ----------------------------
+function playable4(r, c) {
+  return (r >= 3 && r <= 10) || (c >= 3 && c <= 10);
+}
+function setupSide(b, color, side) {
+  const back = ["r", "n", "b", "q", "k", "b", "n", "r"];
+  if (side === "top")
+    for (let c = 3; c <= 10; c++) {
+      b[0][c] = { type: back[c - 3], color };
+      b[1][c] = { type: "p", color };
+    }
+  if (side === "bottom")
+    for (let c = 3; c <= 10; c++) {
+      b[13][c] = { type: back[10 - c], color };
+      b[12][c] = { type: "p", color };
+    }
+  if (side === "left")
+    for (let r = 3; r <= 10; r++) {
+      b[r][0] = { type: back[10 - r], color };
+      b[r][1] = { type: "p", color };
+    }
+  if (side === "right")
+    for (let r = 3; r <= 10; r++) {
+      b[r][13] = { type: back[r - 3], color };
+      b[r][12] = { type: "p", color };
+    }
+}
+
+class FourPlayerChessGame {
+  constructor() {
+    this.size = 14;
+    this.reset();
+  }
+  reset() {
+    this.board = Array.from({ length: 14 }, () => Array(14).fill(null));
+    setupSide(this.board, "black", "top");
+    setupSide(this.board, "white", "bottom");
+    setupSide(this.board, "red", "left");
+    setupSide(this.board, "blue", "right");
+    this.turnIndex = 0;
+    this.turn = FOUR_COLORS[this.turnIndex];
+    this.history = [];
+    this.sanHistory = [];
+    this.captured = [];
+    this.lastMove = null;
+  }
+  clone() {
+    return {
+      board: cloneBoard(this.board),
+      turnIndex: this.turnIndex,
+      turn: this.turn,
+      san: [...this.sanHistory],
+      captured: this.captured.map((p) => ({ ...p })),
+      lastMove: this.lastMove ? { ...this.lastMove } : null,
+    };
+  }
+  restore(s) {
+    this.board = cloneBoard(s.board);
+    this.turnIndex = s.turnIndex;
+    this.turn = s.turn;
+    this.sanHistory = [...s.san];
+    this.captured = s.captured.map((p) => ({ ...p }));
+    this.lastMove = s.lastMove ? { ...s.lastMove } : null;
+  }
+  undo() {
+    if (!this.history.length) return false;
+    this.restore(this.history.pop());
+    return true;
+  }
+  forward(color) {
+    return color === "black"
+      ? [1, 0]
+      : color === "white"
+        ? [-1, 0]
+        : color === "red"
+          ? [0, 1]
+          : [0, -1];
+  }
+  moveList(r, c) {
+    const p = this.board[r]?.[c];
+    if (!p || p.color !== this.turn) return [];
+    const out = [],
+      add = (tr, tc, x = {}) => {
+        if (!inside(tr, tc, 14) || !playable4(tr, tc)) return;
+        const t = this.board[tr][tc];
+        if (!t || t.color !== p.color)
+          out.push({ from: { r, c }, to: { r: tr, c: tc }, ...x });
+      };
+    if (p.type === "p") {
+      const [dR, dC] = this.forward(p.color);
+      const nr = r + dR,
+        nc = c + dC;
+      if (
+        inside(nr, nc, 14) &&
+        playable4(nr, nc) &&
+        !this.board[nr][nc]
+      ) {
+        add(nr, nc, { promotion: this.promotionSquare(p.color, nr, nc) });
+        const isStart =
+          (p.color === "black" && r === 1) ||
+          (p.color === "white" && r === 12) ||
+          (p.color === "red" && c === 1) ||
+          (p.color === "blue" && c === 12);
+        const nnr = r + 2 * dR,
+          nnc = c + 2 * dC;
+        if (
+          isStart &&
+          inside(nnr, nnc, 14) &&
+          playable4(nnr, nnc) &&
+          !this.board[nnr][nnc]
+        ) {
+          add(nnr, nnc, {
+            promotion: this.promotionSquare(p.color, nnr, nnc),
+          });
+        }
+      }
+      for (const [dr, dc] of p.color === "red" || p.color === "blue"
+        ? [
+            [1, 0],
+            [-1, 0],
+          ]
+        : [
+            [0, 1],
+            [0, -1],
+          ]) {
+        const tr = r + dr,
+          tc = c + dc;
+        if (
+          inside(tr, tc, 14) &&
+          playable4(tr, tc) &&
+          this.board[tr][tc] &&
+          this.board[tr][tc].color !== p.color
+        ) {
+          add(tr, tc, {
+            promotion: this.promotionSquare(p.color, tr, tc),
+          });
+        }
+      }
+    } else if (p.type === "n") {
+      for (const [dr, dc] of [
+        [-2, -1],
+        [-2, 1],
+        [-1, -2],
+        [-1, 2],
+        [1, -2],
+        [1, 2],
+        [2, -1],
+        [2, 1],
+      ])
+        add(r + dr, c + dc);
+    } else if (p.type === "k") {
+      for (let dr = -1; dr <= 1; dr++)
+        for (let dc = -1; dc <= 1; dc++)
+          if (dr || dc) add(r + dr, c + dc);
+    } else {
+      const ds = [];
+      if (["b", "q"].includes(p.type))
+        ds.push([1, 1], [1, -1], [-1, 1], [-1, -1]);
+      if (["r", "q"].includes(p.type))
+        ds.push([1, 0], [-1, 0], [0, 1], [0, -1]);
+      for (const [dr, dc] of ds) {
+        let tr = r + dr,
+          tc = c + dc;
+        while (inside(tr, tc, 14) && playable4(tr, tc)) {
+          const t = this.board[tr][tc];
+          if (!t) add(tr, tc);
+          else {
+            if (t.color !== p.color) add(tr, tc);
+            break;
+          }
+          tr += dr;
+          tc += dc;
+        }
+      }
+    }
+    return out;
+  }
+  promotionSquare(color, r, c) {
+    return color === "black"
+      ? r === 10
+      : color === "white"
+        ? r === 3
+        : color === "red"
+          ? c === 10
+          : c === 3;
+  }
+  legalMovesFrom(r, c) {
+    return this.moveList(r, c);
+  }
+  makeMove(m, promotion = "q") {
+    const legal = this.legalMovesFrom(m.from.r, m.from.c).find(
+      (x) => x.to.r === m.to.r && x.to.c === m.to.c,
+    );
+    if (!legal) return false;
+    this.history.push(this.clone());
+    const p = this.board[legal.from.r][legal.from.c],
+      cap = this.board[legal.to.r][legal.to.c];
+    this.board[legal.from.r][legal.from.c] = null;
+    this.board[legal.to.r][legal.to.c] = {
+      ...p,
+      type: legal.promotion ? promotion : p.type,
+    };
+    if (cap) this.captured.push(cap);
+    this.lastMove = { from: { ...legal.from }, to: { ...legal.to } };
+    this.sanHistory.push(
+      `${this.turn[0].toUpperCase()}: ${String.fromCharCode(97 + m.from.c)}${14 - m.from.r}-${String.fromCharCode(97 + m.to.c)}${14 - m.to.r}`,
+    );
+    this.turnIndex = (this.turnIndex + 1) % 4;
+    this.turn = FOUR_COLORS[this.turnIndex];
+    return true;
+  }
+  gameStatus() {
+    return {
+      over: false,
+      check: false,
+      text: `${this.turn[0].toUpperCase() + this.turn.slice(1)} to move`,
+    };
+  }
+}
+
+// ---------------------------- CHESS GAME REGISTRY ----------------------------
+const GameRegistry = {
+  chess: {
+    name: "Chess",
+    variants: {
+standard: { name: "Standard Chess", create: () => new ChessGame(false) },
+chess960: { name: "Chess960", create: () => new ChessGame(true) },
+fourplayer: { name: "4-Player Chess", create: () => new FourPlayerChessGame() },
+    },
+  },
+};
+
+class GameManager {
+  constructor() { this.game = null; this.gameId = ""; this.variantId = ""; }
+  newGame(g, v) {
+    const d = GameRegistry[g]?.variants[v];
+    if (!d) return false;
+    this.game = d.create();
+    this.gameId = g;
+    this.variantId = v;
+    return true;
+  }
 }
 
 const params = new URLSearchParams(location.search);
-const online = params.get("online") === "1";
-const serverUrl = (params.get("server") || "").replace(/\/+$/, "");
-const onlineCode = params.get("code") || "";
-const onlineToken = params.get("hostToken") || "";
-const clientId =
-  params.get("clientId") ||
+let selectedGameId = "chess";
+let selectedVariantId = params.get("variant") || "standard";
+if (!GameRegistry.chess.variants[selectedVariantId]) selectedVariantId = "standard";
+
+const localPlayerCount = Math.max(0, Number(params.get("localPlayers") || 1));
+const computerPlayerCount = Math.max(0, Number(params.get("computerPlayers") || 0));
+const ONLINE_SERVER_URL = params.get("onlineServer") || "";
+const ONLINE_CODE = params.get("onlineCode") || params.get("onlineJoinedCode") || "";
+const ONLINE_HOST_TOKEN = params.get("onlineHostToken") || params.get("hostToken") || "";
+const ONLINE_CLIENT_ID =
+  params.get("onlineClientId") ||
   localStorage.getItem("gameLibraryOnlineClientId") ||
-  "client_" + Math.random().toString(36).slice(2, 12);
-localStorage.setItem("gameLibraryOnlineClientId", clientId);
+  `client_${Math.random().toString(36).slice(2, 12)}`;
+localStorage.setItem("gameLibraryOnlineClientId", ONLINE_CLIENT_ID);
+const ONLINE_MODE = Boolean(ONLINE_SERVER_URL && ONLINE_CODE);
+
 let onlineConfig = null;
 try {
-  const stored = sessionStorage.getItem("gameLibraryOnlineConfig");
-  if (stored) onlineConfig = JSON.parse(stored);
-} catch {}
+  const rawConfig = params.get("onlineConfig");
+  if (rawConfig) onlineConfig = JSON.parse(rawConfig);
+} catch (error) {
+  console.warn("Could not read online game configuration:", error);
+}
 
-const defaultProfiles = (() => {
-  try {
-    const p = JSON.parse(localStorage.getItem("gameLibraryProfiles") || "[]");
-    return Array.isArray(p) ? p : [];
-  } catch {
-    return [];
+let onlineSocket = null;
+let onlineParticipants = [];
+let onlineConnected = false;
+let profiles = [];
+try {
+  const saved = JSON.parse(localStorage.getItem("gameLibraryProfiles") || "[]");
+  if (Array.isArray(saved)) profiles = saved;
+} catch (error) { console.warn("Could not load player profiles:", error); }
+
+function parseOnlinePlayers(config) {
+  return Array.isArray(config?.players) ? config.players.map(player => ({...player})) : [];
+}
+
+let gamePlayers = parseOnlinePlayers(onlineConfig);
+
+function refreshOnlinePlayerNames() {
+  if (!gamePlayers.length) return;
+
+  const byClientId = new Map(
+    onlineParticipants.map(participant => [participant.clientId, participant])
+  );
+
+  gamePlayers = gamePlayers.map(player => {
+    if (player.type === "computer") return player;
+    const participant = byClientId.get(player.controllerClientId);
+    if (!participant) return player;
+    return {
+      ...player,
+      name: participant.name || player.name,
+      avatar: participant.avatar || player.avatar
+    };
+  });
+}
+
+function currentPlayerIndex(game) {
+  if (Number.isInteger(game.turnIndex)) return game.turnIndex;
+  if (["w", "blue", "yellow"].includes(game.turn)) return 0;
+  if (["b", "red", "black"].includes(game.turn)) return 1;
+  return 0;
+}
+
+function playerInfo(index) {
+  if (gamePlayers.length) {
+    const p = gamePlayers[index];
+    if (p) {
+      return {
+        name: p.name || `Player ${index + 1}`,
+        avatar: p.avatar || "♟",
+        type: p.type === "computer" ? "Computer player" : (p.playerType || "Online player"),
+        controllerClientId: p.controllerClientId || p.clientId || "",
+        seat: p.seat || "",
+        id: p.id || p.seat || ""
+      };
+    }
   }
-})();
-function gamePlayers() {
-  if (onlineConfig?.players?.length === 2) return onlineConfig.players;
-  return [
-    {
-      seat: "white",
-      clientId: null,
-      name: defaultProfiles[0]?.name || "Player 1",
-      avatar: defaultProfiles[0]?.avatar || "♟",
-      type: "human",
-    },
-    {
-      seat: "black",
-      clientId: "computer",
-      name: "Computer",
-      avatar: "🤖",
-      type: "computer",
-      difficulty: "normal",
-    },
-  ];
-}
-function selfPlayer() {
-  return online
-    ? gamePlayers().find((p) => p.clientId === clientId) || null
-    : gamePlayers()[0];
-}
-function playerInfoByColor(color) {
-  return (
-    gamePlayers().find((p) => p.seat === (color === "w" ? "white" : "black")) ||
-    gamePlayers()[0]
-  );
-}
-function escapeHtml(v) {
-  return String(v).replace(
-    /[&<>\"]/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
-  );
+
+  if (index < localPlayerCount) {
+    const p = profiles[index];
+    return { name: p?.name || `Player ${index + 1}`, avatar: p?.avatar || "♟", type: "Local player", controllerClientId: "", id: `local:${index}` };
+  }
+
+  return { name: `Computer ${index - localPlayerCount + 1}`, avatar: "🤖", type: "Computer player", controllerClientId: "", id: `computer:${index - localPlayerCount}` };
 }
 
-const manager = { game: new ChessGame() };
-let selected = null,
-  pendingPromotion = null,
-  keyboardBuffer = "",
-  boardFlipped = false,
-  computerMoveTimer = null,
-  onlineSocket = null,
-  onlineConnected = false,
-  onlineSelf = null;
-const boardEl = document.getElementById("board"),
-  statusEl = document.getElementById("status"),
-  moveListEl = document.getElementById("moveList"),
-  capturedPanel = document.getElementById("capturedPanel"),
-  playerListEl = document.getElementById("playerList"),
-  onlineBar = document.getElementById("onlineBar"),
-  promotionModal = document.getElementById("promotionModal"),
-  promotionOptions = document.getElementById("promotionOptions");
-
-function isMyTurn() {
-  if (!online) return manager.game.turn === "w";
-  const p = selfPlayer();
-  return !!p && p.seat === (manager.game.turn === "w" ? "white" : "black");
+function currentPlayerEntry(game) {
+  if (!gamePlayers.length) return playerInfo(currentPlayerIndex(game));
+  return gamePlayers[currentPlayerIndex(game)] || playerInfo(currentPlayerIndex(game));
 }
+
 function isComputerTurn() {
-  return !online && manager.game.turn === "b";
+  const current = currentPlayerEntry(manager.game);
+  if (current?.type !== "computer") return false;
+  return !ONLINE_MODE || current.controllerClientId === ONLINE_CLIENT_ID;
 }
-function send(msg) {
-  if (!onlineSocket || onlineSocket.readyState !== WebSocket.OPEN) return false;
-  onlineSocket.send(JSON.stringify(msg));
-  return true;
+
+function canLocalPlayerMove() {
+  const current = currentPlayerEntry(manager.game);
+  if (!ONLINE_MODE) return current?.type !== "computer";
+
+  // Prefer the explicit seat assigned by the host. This is more reliable
+  // than comparing client IDs after navigating from the main menu, and it
+  // also works when the same browser is used for both test windows.
+  if (current?.seat === "white" || current?.seat === "black") {
+    return ONLINE_HOST_TOKEN
+      ? current.seat === "white"
+      : current.seat === "black";
+  }
+
+  return current?.controllerClientId === ONLINE_CLIENT_ID;
 }
-function applyState(state) {
-  if (!state?.board) return;
-  manager.game.history = [];
-  manager.game.restore(state);
+
+function renderPlayers() {
+  const list = document.getElementById("playerList");
+  list.innerHTML = "";
+  const count = gamePlayers.length || Math.max(2, localPlayerCount + computerPlayerCount);
+  const current = currentPlayerIndex(manager.game);
+
+  for (let i = 0; i < count; i++) {
+    const info = playerInfo(i), row = document.createElement("div");
+    row.className = "player-row" + (i === current ? " current" : "");
+    const avatar = document.createElement("div"); avatar.className = "player-avatar"; avatar.textContent = info.avatar;
+    const details = document.createElement("div"); details.className = "player-details";
+    const name = document.createElement("div"); name.className = "player-name"; name.textContent = info.name;
+    const type = document.createElement("div"); type.className = "player-type"; type.textContent = info.type + (i === current ? " • Current turn" : "");
+    details.append(name, type); row.append(avatar, details); list.appendChild(row);
+  }
+}
+
+const manager = new GameManager();
+if (onlineConfig?.variant && GameRegistry.chess.variants[onlineConfig.variant]) {
+  selectedVariantId = onlineConfig.variant;
+}
+manager.newGame("chess", selectedVariantId);
+let computerMoveTimer = null;
+let computerMovePending = false;
+let selected = null;
+let pendingPromotion = null;
+
+const computerDifficulty =
+  params.get("computerDifficulty") || "normal";
+let computerDifficulties = {};
+try {
+  const rawDifficulties = params.get("computerDifficulties");
+  if (rawDifficulties) computerDifficulties = JSON.parse(rawDifficulties) || {};
+} catch (error) {
+  console.warn("Could not read computer difficulties:", error);
+}
+
+
+function onlineWsUrl() {
+  const base = ONLINE_SERVER_URL.replace(/^http/i, "ws").replace(/\/$/, "");
+  const query = new URLSearchParams({ role: "player", clientId: ONLINE_CLIENT_ID });
+  if (ONLINE_HOST_TOKEN) query.set("token", ONLINE_HOST_TOKEN);
+  return `${base}/ws/${encodeURIComponent(ONLINE_CODE)}?${query.toString()}`;
+}
+
+function localProfileForOnlineIdentity() {
+  const profileIndex = Math.max(0, Number(params.get("localProfileIndex") || 0));
+  return profiles[profileIndex] || profiles[0] || { id: "", name: "Player 1", avatar: "♟" };
+}
+
+function setOnlineStatus(text, isError = false) {
+  const bar = document.getElementById("onlineBar");
+  if (!bar) return;
+  bar.hidden = !ONLINE_MODE;
+  bar.textContent = text;
+  bar.classList.toggle("error", Boolean(isError));
+}
+
+function publishOnlineState() {
+  if (!ONLINE_MODE || !onlineSocket || onlineSocket.readyState !== WebSocket.OPEN || !ONLINE_HOST_TOKEN) return;
+
+  try {
+    onlineSocket.send(JSON.stringify({
+      type: "game:state",
+      state: {
+        variant: manager.variantId,
+        game: manager.game.clone()
+      }
+    }));
+  } catch (error) {
+    console.warn("Could not publish game state:", error);
+  }
+}
+
+function publishOnlineMove(move, promotion = "q") {
+  if (!ONLINE_MODE) return false;
+  if (!onlineSocket || onlineSocket.readyState !== WebSocket.OPEN) {
+    setOnlineStatus("Online connection is not open; move was not sent.", true);
+    return false;
+  }
+
+  const payload = {
+    from: { ...move.from },
+    to: { ...move.to },
+    promotion,
+    ply: manager.game.sanHistory.length,
+    moveId: `${ONLINE_CLIENT_ID}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+  };
+
+  try {
+    onlineSocket.send(JSON.stringify({
+      type: "game:move",
+      payload
+    }));
+    setOnlineStatus(`Connected • sent move ${payload.ply}`);
+    console.debug("Online chess: sent move", payload);
+    return true;
+  } catch (error) {
+    setOnlineStatus(`Failed to send move: ${error.message || error}`, true);
+    console.warn("Could not send online move:", error);
+    return false;
+  }
+}
+
+function applyRemoteState(state) {
+  if (!state?.game) return;
+  if (state.variant && GameRegistry.chess.variants[state.variant]) {
+    if (manager.variantId !== state.variant) {
+      manager.newGame("chess", state.variant);
+      selectedVariantId = state.variant;
+    }
+  }
+
+  try {
+    manager.game.restore(state.game);
+    selected = null;
+    pendingPromotion = null;
+    promotionModal.classList.remove("open");
+    render();
+  } catch (error) {
+    console.warn("Could not apply online game state:", error);
+  }
+}
+
+function applyRemoteMove(payload) {
+  if (!payload?.from || !payload?.to) return false;
+
+  const expectedPly = manager.game.sanHistory.length + 1;
+  if (Number.isInteger(payload.ply) && payload.ply !== expectedPly) {
+    console.warn("Online chess: move is out of sequence", {
+      expectedPly,
+      receivedPly: payload.ply,
+      payload
+    });
+    if (ONLINE_HOST_TOKEN) publishOnlineState();
+    return false;
+  }
+
+  const promotion = payload.promotion || "q";
+  const ok = manager.game.makeMove(
+    { from: { ...payload.from }, to: { ...payload.to } },
+    promotion
+  );
+
+  if (!ok) {
+    console.warn("Online chess: remote move was illegal in local state", payload);
+    if (ONLINE_HOST_TOKEN) publishOnlineState();
+    return false;
+  }
+
   selected = null;
   pendingPromotion = null;
   promotionModal.classList.remove("open");
+  setOnlineStatus(`Connected • received move ${manager.game.sanHistory.length}`);
+  console.debug("Online chess: applied remote move", payload);
+
+  // The host is authoritative. After applying a guest move, immediately
+  // publish the resulting state so both sides converge on the same board.
+  if (ONLINE_HOST_TOKEN) publishOnlineState();
   render();
+  return true;
 }
-function publishState() {
-  if (online && !onlineToken) return;
-  send({ type: "game:state", state: manager.game.clone() });
-}
-function renderCoordinates() {
-  const rows = document.getElementById("rowLabels"),
-    cols = document.getElementById("colLabels");
-  rows.innerHTML = "";
-  cols.innerHTML = "";
-  for (let r = 0; r < 8; r++) {
-    const x = document.createElement("span");
-    x.textContent = 8 - r;
-    rows.appendChild(x);
-  }
-  for (let c = 0; c < 8; c++) {
-    const x = document.createElement("span");
-    x.textContent = String.fromCharCode(97 + c);
-    cols.appendChild(x);
-  }
-}
-function renderPlayers() {
-  playerListEl.innerHTML = "";
-  for (const p of gamePlayers()) {
-    const row = document.createElement("div");
-    row.className = "player-row";
-    if ((p.seat === "white" ? "w" : "b") === manager.game.turn)
-      row.classList.add("current");
-    row.innerHTML = `<div class="player-avatar">${escapeHtml(p.avatar || "♟")}</div><div class="player-details"><div class="player-name">${escapeHtml(p.name || "Player")}</div><div class="player-type">${p.seat === "white" ? "White" : "Black"}${p.type === "computer" ? " • Computer" : online && p.clientId === clientId ? " • You" : " • Player"}</div></div>`;
-    playerListEl.appendChild(row);
-  }
-  if (online) {
-    onlineBar.hidden = false;
-    onlineBar.innerHTML = onlineConnected
-      ? `<strong>Online</strong> • Room ${escapeHtml(onlineCode)} • ${onlineSelf?.name ? `Playing as ${escapeHtml(onlineSelf.name)}` : "Connected"}`
-      : `Connecting to room ${escapeHtml(onlineCode)}…`;
-  } else onlineBar.hidden = true;
-}
-function render() {
-  const g = manager.game,
-    s = g.gameStatus();
-  renderCoordinates();
-  boardEl.innerHTML = "";
-  const legal = selected ? g.legalMovesFrom(selected.r, selected.c) : [];
-  for (let r = 0; r < 8; r++)
-    for (let c = 0; c < 8; c++) {
-      const sq = document.createElement("button");
-      sq.className = "square " + ((r + c) % 2 ? "dark" : "light");
-      if (selected?.r === r && selected?.c === c) sq.classList.add("selected");
-      if (
-        g.lastMove &&
-        ((g.lastMove.from.r === r && g.lastMove.from.c === c) ||
-          (g.lastMove.to.r === r && g.lastMove.to.c === c))
-      )
-        sq.classList.add("last-move");
-      if (s.check) {
-        const k = g.findKing(g.turn);
-        if (k && k.r === r && k.c === c) sq.classList.add("in-check");
-      }
-      const m = legal.find((x) => x.to.r === r && x.to.c === c);
-      if (m) {
-        const mark = document.createElement("span");
-        mark.className =
-          g.board[r][c] || m.enPassant ? "legal-capture" : "legal-dot";
-        sq.appendChild(mark);
-      }
-      const p = g.board[r][c];
-      if (p) {
-        const pe = document.createElement("span");
-        pe.className = "piece " + p.color;
-        pe.textContent = PIECES[p.color][p.type];
-        sq.appendChild(pe);
-      }
-      sq.onclick = () => clickSquare(r, c);
-      boardEl.appendChild(sq);
-    }
-  const current = playerInfoByColor(g.turn);
-  statusEl.textContent = `${current?.name || "Player"}: ${s.text}`;
-  statusEl.classList.toggle("ok", online && onlineConnected && isMyTurn());
-  statusEl.classList.remove("error");
-  if (online && !onlineConnected)
-    statusEl.textContent += ` • connecting to room ${onlineCode}`;
-  renderMoves();
-  renderCaptured();
-  renderPlayers();
-  document.getElementById("undoBtn").disabled = online || !g.history.length;
-  scheduleComputerMove();
-}
-function clickSquare(r, c) {
-  const g = manager.game;
-  if (g.gameStatus().over || !isMyTurn() || isComputerTurn()) return;
-  const p = g.board[r][c];
-  if (!selected) {
-    if (p && p.color === g.turn) {
-      selected = { r, c };
-      render();
-    }
+
+function connectOnlineGame() {
+  if (!ONLINE_MODE) return;
+
+  try {
+    onlineSocket = new WebSocket(onlineWsUrl());
+  } catch (error) {
+    console.warn("Could not create online WebSocket:", error);
     return;
   }
-  if (p && p.color === g.turn) {
+
+  onlineSocket.addEventListener("open", () => {
+    onlineConnected = true;
+    setOnlineStatus("Connected • registering player…");
+    const profile = localProfileForOnlineIdentity();
+
+    onlineSocket.send(JSON.stringify({
+      type: "player:identify",
+      profileId: profile.id || "",
+      name: profile.name || "Player 1",
+      avatar: profile.avatar || "♟",
+      spectator: false
+    }));
+
+    // A host can refresh the authoritative state when another client connects.
+    setTimeout(() => publishOnlineState(), 100);
+  });
+
+  onlineSocket.addEventListener("message", event => {
+    let message;
+    try { message = JSON.parse(event.data); }
+    catch { return; }
+
+    if (message.type === "room:hello") {
+      onlineParticipants = message.room?.participants || [];
+      refreshOnlinePlayerNames();
+      renderPlayers();
+      if (message.room?.config?.players?.length && !gamePlayers.length) {
+        onlineConfig = message.room.config;
+        gamePlayers = parseOnlinePlayers(onlineConfig);
+        refreshOnlinePlayerNames();
+        renderPlayers();
+      }
+      return;
+    }
+
+    if (message.type === "room:participants") {
+      onlineParticipants = Array.isArray(message.participants) ? message.participants : [];
+      refreshOnlinePlayerNames();
+      renderPlayers();
+      publishOnlineState();
+      return;
+    }
+
+    if (message.type === "room:config") {
+      onlineConfig = message.config || onlineConfig;
+      if (onlineConfig?.players?.length) gamePlayers = parseOnlinePlayers(onlineConfig);
+      refreshOnlinePlayerNames();
+      renderPlayers();
+      return;
+    }
+
+    if (message.type === "game:start") {
+      onlineConfig = message.config || onlineConfig;
+      if (onlineConfig?.players?.length) gamePlayers = parseOnlinePlayers(onlineConfig);
+      refreshOnlinePlayerNames();
+      renderPlayers();
+      return;
+    }
+
+    if (message.type === "game:state") {
+      applyRemoteState(message.state);
+      return;
+    }
+
+    if (message.type === "game:move") {
+      // Ignore our own echoed move. Compare role as well as ID so a host
+      // can still receive a guest move if both test windows share an ID.
+      if (
+        message.sender?.clientId === ONLINE_CLIENT_ID &&
+        message.sender?.role === (ONLINE_HOST_TOKEN ? "host" : "player")
+      ) {
+        return;
+      }
+
+      applyRemoteMove(message.payload);
+      return;
+    }
+
+    if (message.type === "error") {
+      setOnlineStatus(`Server error: ${message.message || message.code || "Unknown error"}`, true);
+      console.warn("Online chess server error:", message);
+      return;
+    }
+  });
+
+  onlineSocket.addEventListener("close", () => {
+    onlineConnected = false;
+  });
+
+  onlineSocket.addEventListener("error", error => {
+    console.warn("Online chess connection error:", error);
+    onlineConnected = false;
+  });
+}
+
+function makeComputerMove() {
+  const game = manager.game;
+  if (game.gameStatus().over || !isComputerTurn()) return false;
+
+  const current = currentPlayerEntry(game);
+  const difficulty =
+    current?.difficulty ||
+    computerDifficulties[current?.id] ||
+    computerDifficulty;
+  const move = ChessAI.findBestMove(game, difficulty);
+  if (!move) return false;
+
+  const promotion = move.promotion ? "q" : "q";
+  const ok = game.makeMove(move, promotion);
+  if (ok && ONLINE_MODE) {
+    publishOnlineMove(move, promotion);
+    publishOnlineState();
+  }
+  return ok;
+}
+function scheduleComputerMove() {
+  if (computerMovePending || !isComputerTurn() || manager.game.gameStatus().over) return;
+  computerMovePending = true;
+  clearTimeout(computerMoveTimer);
+  computerMoveTimer = setTimeout(() => {
+    computerMovePending = false;
+    makeComputerMove();
+    selected = null;
+    render();
+  }, 350);
+}
+
+const boardEl = document.getElementById("board");
+const boardFrameEl = document.getElementById("boardFrame");
+const rowLabelsEl = document.getElementById("rowLabels");
+const colLabelsEl = document.getElementById("colLabels");
+const statusEl = document.getElementById("status");
+const moveListEl = document.getElementById("moveList");
+const capturedPanel = document.getElementById("capturedPanel");
+const promotionModal = document.getElementById("promotionModal");
+const promotionOptions = document.getElementById("promotionOptions");
+
+document.getElementById("pageTitle").textContent = "Chess";
+document.getElementById("gameName").textContent = "Chess";
+document.getElementById("variantName").textContent = GameRegistry.chess.variants[manager.variantId].name;
+
+function render() {
+  const g = manager.game, s = g.gameStatus(), size = g.size;
+  boardEl.innerHTML = "";
+  boardEl.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+  boardEl.classList.toggle("four-player", size === 14);
+  boardFrameEl.classList.toggle("four-player", size === 14);
+  renderCoordinates(size);
+  const legal = selected ? g.legalMovesFrom(selected.r, selected.c) : [];
+  const king = s.check ? g.findKing(g.turn) : null;
+
+  for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) {
+    const sq = document.createElement("button");
+    sq.className = "square " + ((r + c) % 2 ? "dark" : "light");
+    if (size === 14 && !playable4(r, c)) sq.classList.add("unplayable");
+    if (selected?.r === r && selected?.c === c) sq.classList.add("selected");
+    if (g.lastMove && ((g.lastMove.from?.r === r && g.lastMove.from?.c === c) || (g.lastMove.to?.r === r && g.lastMove.to?.c === c))) sq.classList.add("last-move");
+    if (king && king.r === r && king.c === c) sq.classList.add("in-check");
+
+    const isLegalMove = !!legal.find((m) => m.to.r === r && m.to.c === c);
+    if (isLegalMove) {
+const mark = document.createElement("span");
+mark.className = g.board[r][c] ? "legal-capture" : "legal-dot";
+sq.appendChild(mark);
+    }
+    const p = g.board[r][c];
+    if (p) {
+const pe = document.createElement("span");
+pe.className = "piece " + p.color;
+pe.textContent = size === 14 ? FOUR_PIECES[p.color][p.type] : PIECES[p.color][p.type];
+sq.appendChild(pe);
+    }
+    sq.onclick = () => clickSquare(r, c);
+    boardEl.appendChild(sq);
+  }
+  statusEl.textContent = `${playerInfo(currentPlayerIndex(g)).name}: ${s.text}`;
+  renderMoves();
+  renderCaptured();
+  document.getElementById("undoBtn").disabled = !g.history.length;
+}
+
+
+function renderCoordinates(size) {
+  const files = "abcdefghijklmnopqrstuvwxyz".slice(0, size).split("");
+  const ranks = Array.from({ length: size }, (_, i) => size - i);
+
+  rowLabelsEl.innerHTML = ranks
+    .map((rank) => `<span>${rank}</span>`)
+    .join("");
+
+  colLabelsEl.innerHTML = files
+    .map((file) => `<span>${file}</span>`)
+    .join("");
+}
+
+function clickSquare(r, c) {
+  const g = manager.game;
+  if (g.gameStatus().over || isComputerTurn() || !canLocalPlayerMove()) return;
+  const p = g.board[r]?.[c];
+  if (!selected) {
+    if (p && p.color === g.turn) { selected = { r, c }; render(); }
+    return;
+  }
+  if (p && p.color === g.turn && !(g.is960 && g.board[selected.r][selected.c]?.type === "k" && p.type === "r")) {
     selected = { r, c };
     render();
     return;
   }
-  const move = g
-    .legalMovesFrom(selected.r, selected.c)
-    .find((m) => m.to.r === r && m.to.c === c);
-  if (!move) {
-    selected = null;
-    render();
-    return;
+  const m = g.legalMovesFrom(selected.r, selected.c).find((x) => x.to.r === r && x.to.c === c);
+  if (!m) { selected = null; render(); return; }
+  if (m.promotion) { pendingPromotion = m; openPromotion(g.board[selected.r][selected.c].color); return; }
+  const ok = g.makeMove(m);
+  if (ok && ONLINE_MODE) {
+    publishOnlineMove(m, "q");
+    publishOnlineState();
   }
-  if (move.promotion) {
-    pendingPromotion = move;
-    openPromotion(g.turn);
-    return;
-  }
-  commitMove(move, null);
-}
-function commitMove(move, promotion) {
-  const before = manager.game.turn;
-  if (!manager.game.makeMove(move, promotion || "q")) return;
   selected = null;
-  pendingPromotion = null;
-  promotionModal.classList.remove("open");
   render();
-  if (online)
-    send({
-      type: "game:move",
-      move: { from: move.from, to: move.to, promotion: promotion || null },
-    });
-  if (online && onlineToken && before === "w") publishState();
 }
+
 function openPromotion(color) {
   promotionOptions.innerHTML = "";
   for (const t of ["q", "r", "b", "n"]) {
     const b = document.createElement("button");
-    b.textContent = PIECES[color][t];
-    b.onclick = () => commitMove(pendingPromotion, t);
+    b.textContent = (manager.game.size === 14 ? FOUR_PIECES[color] : PIECES[color])[t];
+    b.onclick = () => {
+      const move = pendingPromotion;
+      const ok = manager.game.makeMove(move, t);
+      if (ok && ONLINE_MODE) {
+        publishOnlineMove(move, t);
+        publishOnlineState();
+      }
+      pendingPromotion = null;
+      promotionModal.classList.remove("open");
+      selected = null;
+      render();
+    };
     promotionOptions.appendChild(b);
   }
   promotionModal.classList.add("open");
 }
+
 function renderMoves() {
   moveListEl.innerHTML = "";
-  for (let i = 0; i < manager.game.sanHistory.length; i += 2) {
+  const m = manager.game.sanHistory;
+  for (let i = 0; i < m.length; i += 2) {
     const row = document.createElement("div");
     row.className = "move-row";
-    row.innerHTML = `<div class="move-number">${Math.floor(i / 2) + 1}.</div><div class="move">${manager.game.sanHistory[i] || ""}</div><div class="move">${manager.game.sanHistory[i + 1] || ""}</div>`;
+    row.innerHTML = `<div class="move-number">${Math.floor(i / 2) + 1}.</div><div class="move">${m[i] || ""}</div><div class="move">${m[i + 1] || ""}</div>`;
     moveListEl.appendChild(row);
   }
   moveListEl.scrollTop = moveListEl.scrollHeight;
+  renderPlayers();
+  scheduleComputerMove();
 }
+
 function renderCaptured() {
   capturedPanel.innerHTML = "";
-  if (!manager.game.captured.length) {
-    capturedPanel.textContent = "None";
-    return;
-  }
+  const g = manager.game;
+  if (!g.captured || !g.captured.length) { capturedPanel.textContent = "None"; return; }
   const groups = {};
-  for (const p of manager.game.captured) (groups[p.color] ??= []).push(p);
+  for (const p of g.captured) (groups[p.color] ??= []).push(p);
   for (const [color, pieces] of Object.entries(groups)) {
     const box = document.createElement("div");
     box.className = "captured-group";
-    box.innerHTML = `<div class="captured-label">${color === "w" ? "White" : "Black"} pieces captured</div>`;
+    box.innerHTML = `<div class="captured-label">${color.toUpperCase()} captured</div>`;
     const list = document.createElement("div");
     list.className = "captured";
     for (const p of pieces) {
-      const x = document.createElement("span");
-      x.className = "piece " + p.color;
-      x.textContent = PIECES[p.color][p.type];
-      list.appendChild(x);
+const x = document.createElement("span");
+x.className = "piece " + p.color;
+x.textContent = g.size === 14 ? FOUR_PIECES[p.color][p.type] : PIECES[p.color][p.type];
+list.appendChild(x);
     }
-    box.appendChild(list);
-    capturedPanel.appendChild(box);
+    box.appendChild(list); capturedPanel.appendChild(box);
   }
 }
-function scheduleComputerMove() {
-  clearTimeout(computerMoveTimer);
-  if (online || !isComputerTurn() || manager.game.gameStatus().over) return;
-  computerMoveTimer = setTimeout(() => {
-    const diff =
-      gamePlayers().find((p) => p.seat === "black")?.difficulty || "normal";
-    const move =
-      typeof ChessAI !== "undefined"
-        ? ChessAI.findBestMove(manager.game, diff)
-        : null;
-    if (move) commitMove(move, null);
-  }, 250);
-}
-function connectOnline() {
-  if (!online || !serverUrl || !onlineCode) return;
-  const base = serverUrl.replace(
-    /^https?:/i,
-    location.protocol === "https:" ? "wss:" : "ws:",
-  );
-  const q = new URLSearchParams({
-    clientId,
-    role: onlineToken ? "host" : "player",
-  });
-  if (onlineToken) q.set("token", onlineToken);
-  const ws = new WebSocket(`${base}/ws/${encodeURIComponent(onlineCode)}?${q}`);
-  onlineSocket = ws;
-  ws.onopen = () => {
-    onlineConnected = true;
-    const me = defaultProfiles[0] || { id: "", name: "Player 1", avatar: "♟" };
-    send({
-      type: "player:identify",
-      profileId: me.id,
-      name: me.name,
-      avatar: me.avatar,
-      spectator: false,
-    });
-    render();
-  };
-  ws.onmessage = (e) => {
-    let m;
-    try {
-      m = JSON.parse(e.data);
-    } catch {
-      return;
-    }
-    if (m.type === "room:hello") {
-      onlineSelf = m.self || null;
-      if (m.room?.config) onlineConfig = m.room.config;
-      render();
-      if (m.room?.stateAvailable) send({ type: "game:state:request" });
-      return;
-    }
-    if (m.type === "room:participants") {
-      onlineSelf =
-        m.participants?.find((p) => p.clientId === clientId) || onlineSelf;
-      render();
-      return;
-    }
-    if (m.type === "room:config") {
-      onlineConfig = m.config || onlineConfig;
-      render();
-      return;
-    }
-    if (m.type === "game:state") {
-      applyState(m.state);
-      return;
-    }
-    if (m.type === "game:move") {
-      if (m.sender?.clientId === clientId) return;
-      const mv = m.payload?.move;
-      if (!mv) return;
-      const before = manager.game.turn;
-      if (manager.game.makeMove(mv, mv.promotion || "q")) {
-        selected = null;
-        pendingPromotion = null;
-        promotionModal.classList.remove("open");
-        render();
-        if (onlineToken && before === "b") publishState();
-      }
-    }
-    return;
-    if (m.type === "game:start") {
-      onlineConfig = m.config || onlineConfig;
-      sessionStorage.setItem(
-        "gameLibraryOnlineConfig",
-        JSON.stringify(onlineConfig || {}),
-      );
-      render();
-      return;
-    }
-    if (m.type === "error") {
-      onlineConnected = false;
-      statusEl.classList.add("error");
-      statusEl.textContent = m.message || "Online server error";
-      renderPlayers();
-    }
-  };
-  ws.onclose = () => {
-    onlineConnected = false;
-    onlineSocket = null;
-    render();
-  };
-  ws.onerror = () => {
-    onlineConnected = false;
-    statusEl.classList.add("error");
-    statusEl.textContent = "Could not connect to the multiplayer server.";
-    renderPlayers();
-  };
-}
-document.getElementById("newGameBtn").onclick = () =>
-  (location.href = "../index.html");
+
+document.getElementById("newGameBtn").onclick = () => { window.location.href = "index.html"; };
 document.getElementById("clearBtn").onclick = () => {
-  if (online) {
-    if (!onlineToken) return;
-    manager.game.reset();
-    selected = null;
-    pendingPromotion = null;
-    render();
-    publishState();
-    return;
-  }
-  manager.game.reset();
-  selected = null;
-  pendingPromotion = null;
+  clearTimeout(computerMoveTimer); computerMovePending = false;
+  if (ONLINE_MODE && !ONLINE_HOST_TOKEN) return;
+  manager.newGame("chess", manager.variantId);
+  selected = null; pendingPromotion = null; promotionModal.classList.remove("open");
+  if (ONLINE_MODE) publishOnlineState();
   render();
 };
 document.getElementById("undoBtn").onclick = () => {
-  if (online) return;
+  clearTimeout(computerMoveTimer); computerMovePending = false;
+  if (ONLINE_MODE && !ONLINE_HOST_TOKEN) return;
   if (manager.game.undo()) {
+    if (ONLINE_MODE) publishOnlineState();
     selected = null;
     render();
   }
 };
+
+if (onlineConfig?.players?.length) {
+  gamePlayers = parseOnlinePlayers(onlineConfig);
+}
+refreshOnlinePlayerNames();
+connectOnlineGame();
 render();
-connectOnline();
