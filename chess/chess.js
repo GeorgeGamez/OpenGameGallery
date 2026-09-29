@@ -667,14 +667,25 @@ if (!GameRegistry.chess.variants[selectedVariantId]) selectedVariantId = "standa
 
 const localPlayerCount = Math.max(0, Number(params.get("localPlayers") || 1));
 const computerPlayerCount = Math.max(0, Number(params.get("computerPlayers") || 0));
-const ONLINE_SERVER_URL = params.get("onlineServer") || "";
-const ONLINE_CODE = params.get("onlineCode") || params.get("onlineJoinedCode") || "";
-const ONLINE_HOST_TOKEN = params.get("onlineHostToken") || params.get("hostToken") || "";
+const ONLINE_SERVER_URL =
+  params.get("onlineServer") ||
+  params.get("server") ||
+  "";
+const ONLINE_CODE =
+  params.get("onlineCode") ||
+  params.get("onlineJoinedCode") ||
+  params.get("code") ||
+  "";
+const ONLINE_HOST_TOKEN =
+  params.get("onlineHostToken") ||
+  params.get("hostToken") ||
+  "";
 const ONLINE_CLIENT_ID =
   params.get("onlineClientId") ||
-  localStorage.getItem("gameLibraryOnlineClientId") ||
+  params.get("clientId") ||
+  sessionStorage.getItem("gameLibraryOnlineClientId") ||
   `client_${Math.random().toString(36).slice(2, 12)}`;
-localStorage.setItem("gameLibraryOnlineClientId", ONLINE_CLIENT_ID);
+sessionStorage.setItem("gameLibraryOnlineClientId", ONLINE_CLIENT_ID);
 const ONLINE_MODE = Boolean(ONLINE_SERVER_URL && ONLINE_CODE);
 
 let onlineConfig = null;
@@ -682,7 +693,19 @@ try {
   const rawConfig = params.get("onlineConfig");
   if (rawConfig) onlineConfig = JSON.parse(rawConfig);
 } catch (error) {
-  console.warn("Could not read online game configuration:", error);
+  console.warn("Could not read online game configuration from URL:", error);
+}
+
+// index.html stores the exact host-generated configuration in sessionStorage
+// before navigating here. Use it immediately so the chess page starts with
+// the same human seats instead of briefly/defaulting to Computer.
+if (!onlineConfig) {
+  try {
+    const storedConfig = sessionStorage.getItem("gameLibraryOnlineConfig");
+    if (storedConfig) onlineConfig = JSON.parse(storedConfig);
+  } catch (error) {
+    console.warn("Could not read online game configuration from sessionStorage:", error);
+  }
 }
 
 let onlineSocket = null;
@@ -973,14 +996,21 @@ function connectOnlineGame() {
 
     if (message.type === "room:hello") {
       onlineParticipants = message.room?.participants || [];
-      refreshOnlinePlayerNames();
-      renderPlayers();
-      if (message.room?.config?.players?.length && !gamePlayers.length) {
+
+      // The room is authoritative. Always accept a complete player config
+      // from the server, even when sessionStorage already contained a copy.
+      if (message.room?.config?.players?.length) {
         onlineConfig = message.room.config;
         gamePlayers = parseOnlinePlayers(onlineConfig);
-        refreshOnlinePlayerNames();
-        renderPlayers();
       }
+
+      refreshOnlinePlayerNames();
+      renderPlayers();
+
+      // A reconnecting client may be joining an already-started game. The
+      // server includes the authoritative state in room:hello so it can
+      // immediately converge without waiting for another move.
+      if (message.room?.state) applyRemoteState(message.room.state);
       return;
     }
 
@@ -1005,6 +1035,7 @@ function connectOnlineGame() {
       if (onlineConfig?.players?.length) gamePlayers = parseOnlinePlayers(onlineConfig);
       refreshOnlinePlayerNames();
       renderPlayers();
+      if (message.state) applyRemoteState(message.state);
       return;
     }
 
