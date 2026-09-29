@@ -489,6 +489,11 @@ export class GameRoom extends DurableObject {
           break;
         }
         room.started = true;
+        // Every explicit game:start is a new match. The host will publish
+        // the initial authoritative board after chess.html connects.
+        if (data.resetState !== false) {
+          room.state = null;
+        }
         room.revision += 1;
         await this.saveState(room);
         this.broadcast({
