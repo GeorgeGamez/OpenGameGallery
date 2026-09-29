@@ -479,8 +479,43 @@ export class GameRoom extends DurableObject {
         break;
 
       case "player:spectator":
-        await this.handleSpectator(room, participant, data);
+        await this.handleSpectator(room, participant, data, attachment);
         break;
+
+      case "game:select": {
+        if (!attachment.isHost) {
+          sendJson(ws, {
+            type: "error",
+            code: "HOST_ONLY",
+            message: "Only the host may select the online game.",
+          });
+          break;
+        }
+        const selectedGame = String(data?.game || "chess");
+        const selectedVariant = String(data?.variant || "standard");
+        if (selectedGame !== "chess" || !["standard", "chess960"].includes(selectedVariant)) {
+          sendJson(ws, {
+            type: "error",
+            code: "INVALID_GAME",
+            message: "That game or variant is not available.",
+          });
+          break;
+        }
+        room.started = false;
+        room.state = null;
+        room.matchId = null;
+        room.resultRecorded = false;
+        room.config = { game: selectedGame, variant: selectedVariant };
+        room.revision += 1;
+        await this.saveState(room);
+        this.broadcast({
+          type: "game:select",
+          game: selectedGame,
+          variant: selectedVariant,
+          revision: room.revision,
+        });
+        break;
+      }
 
       case "game:start":
         if (!attachment.isHost) {
@@ -491,12 +526,15 @@ export class GameRoom extends DurableObject {
           });
           break;
         }
+        if (data.config && typeof data.config === "object") {
+          room.config = sanitizeConfig(data.config);
+        }
         room.started = true;
         // Every explicit game:start is a new match. Wins remain attached to
         // the room participants, while the board/result belong to this match.
-        if (data.resetState !== false) {
-          room.state = null;
-        }
+        room.state = data.state !== undefined
+          ? sanitizeGamePayload({ payload: data.state })
+          : (data.resetState !== false ? null : room.state);
         room.matchId = crypto.randomUUID();
         room.resultRecorded = false;
         room.revision += 1;
@@ -670,13 +708,21 @@ export class GameRoom extends DurableObject {
     });
   }
 
-  async handleSpectator(room, participant, data) {
-    participant.spectator = Boolean(data.spectator);
+  async handleSpectator(room, participant, data, attachment) {
+    let target = participant;
+    if (attachment.isHost && typeof data.clientId === "string") {
+      target = room.participants.find((p) => p.clientId === data.clientId) || participant;
+    } else if (!attachment.isHost && data.clientId && data.clientId !== participant.clientId) {
+      target = participant;
+    }
+
+    target.spectator = Boolean(data.spectator);
+    await this.saveState(room);
 
     this.broadcast({
       type: "player:spectator",
-      clientId: participant.clientId,
-      spectator: participant.spectator,
+      clientId: target.clientId,
+      spectator: target.spectator,
       participants: publicParticipants(room),
     });
   }
