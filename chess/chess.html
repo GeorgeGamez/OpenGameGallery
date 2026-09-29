@@ -228,6 +228,16 @@
           <button id="clearBtn">Reset Position</button>
         </div>
       </div>
+      <div class="panel" id="setupPanel">
+        <h2>Game Setup</h2>
+        <div class="setup-note">Player profiles are managed from the Game Library. Choose the order here, and assign either a local/online player or a computer to each side.</div>
+        <div id="setupRows"></div>
+        <div id="spectatorSetup" class="setup-spectators" hidden></div>
+        <div id="setupMessage" class="setup-message">Configure the players, then start the game.</div>
+        <div class="setup-actions">
+          <button id="startGameBtn" class="primary">Start Game</button>
+        </div>
+      </div>
       <div class="panel">
         <h2>Players</h2>
         <div class="player-list" id="playerList"></div>
@@ -266,7 +276,7 @@
   <div class="promotion-modal" id="promotionModal">
     <div class="promotion-box"><h2>Choose promotion</h2><div class="promotion-options" id="promotionOptions"></div></div>
   </div>
-  <script src="chess-ai.js?v=20260929-online4"></script>
-  <script src="chess.js?v=20260929-online4"></script>
+  <script src="chess-ai.js?v=20260929-online5"></script>
+  <script src="chess.js?v=20260929-online5"></script>
 </body>
 </html>
