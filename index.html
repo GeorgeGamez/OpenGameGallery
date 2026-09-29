@@ -147,6 +147,26 @@
         gap: 6px;
         margin-bottom: 16px;
       }
+      .game-variant {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 14px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .game-variant label {
+        flex: 0 0 auto;
+      }
+      .game-variant select {
+        flex: 1;
+        min-width: 0;
+        color: var(--text);
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        padding: 8px 10px;
+      }
       .meta-tag {
         padding: 4px 7px;
         color: var(--muted);
@@ -744,37 +764,56 @@ No diagnostics run yet.</pre
 
       function renderGames() {
         gamesGrid.innerHTML = "";
-        const games = [
-          { id: "chess", variant: "standard", name: "Chess", description: "The classic two-player strategy game.", tags: ["2 players", "Standard Chess", "Local / Computer / Online"] },
-          { id: "chess", variant: "chess960", name: "Chess960", description: "Chess with a randomized starting back rank and Chess960 castling rules.", tags: ["2 players", "Chess960", "Local / Computer / Online"] },
-        ];
 
-        for (const game of games) {
-          const card = document.createElement("article");
-          card.className = "game-card";
-          const image = document.createElement("div");
-          image.className = "game-image";
-          const img = document.createElement("img");
-          img.src = "images/cover/chess.jpg";
-          img.alt = `${game.name} preview`;
-          img.onerror = () => {
-            img.remove();
-            const placeholder = document.createElement("div");
-            placeholder.className = "placeholder-image";
-            placeholder.textContent = game.variant === "chess960" ? "960" : "♟";
-            image.appendChild(placeholder);
-          };
-          image.appendChild(img);
-          const content = document.createElement("div");
-          content.className = "game-content";
-          const tags = game.tags.map((tag) => `<span class="meta-tag">${escapeHtml(tag)}</span>`).join("");
-          content.innerHTML = `<h2>${escapeHtml(game.name)}</h2><p class="description">${escapeHtml(game.description)}</p><div class="game-meta">${tags}</div><button class="play-button">${onlineState.connected && !onlineState.isHost ? "Waiting for host" : "Set up &amp; Play"}</button>`;
-          const button = content.querySelector("button");
-          button.disabled = onlineState.connected && !onlineState.isHost;
-          button.onclick = () => openGame(game.id, game.variant);
-          card.append(image, content);
-          gamesGrid.appendChild(card);
-        }
+        const card = document.createElement("article");
+        card.className = "game-card";
+
+        const image = document.createElement("div");
+        image.className = "game-image";
+        const img = document.createElement("img");
+        img.src = "images/cover/chess.jpg";
+        img.alt = "Chess preview";
+        img.onerror = () => {
+          img.remove();
+          const placeholder = document.createElement("div");
+          placeholder.className = "placeholder-image";
+          placeholder.textContent = "♟";
+          image.appendChild(placeholder);
+        };
+        image.appendChild(img);
+
+        const content = document.createElement("div");
+        content.className = "game-content";
+        const onlineSelection = onlineState.config?.game === "chess" ? onlineState.config.variant : "";
+        const selectedVariant = onlineSelection || "standard";
+        const waitingForHost = onlineState.connected && !onlineState.isHost;
+
+        content.innerHTML = `
+          <h2>Chess</h2>
+          <p class="description">The classic two-player strategy game.</p>
+          <div class="game-meta">
+            <span class="meta-tag">2 players</span>
+            <span class="meta-tag">Local / Computer / Online</span>
+          </div>
+          <div class="game-variant">
+            <label for="chessVariantSelect">Variant</label>
+            <select id="chessVariantSelect" aria-label="Chess variant">
+              <option value="standard">Standard Chess</option>
+              <option value="chess960">Chess960</option>
+            </select>
+          </div>
+          <button class="play-button">${waitingForHost ? "Waiting for host" : "Set up &amp; Play"}</button>
+        `;
+
+        const select = content.querySelector("#chessVariantSelect");
+        const button = content.querySelector("button");
+        select.value = ["standard", "chess960"].includes(selectedVariant) ? selectedVariant : "standard";
+        select.disabled = waitingForHost;
+        button.disabled = waitingForHost;
+        button.onclick = () => openGame("chess", select.value);
+
+        card.append(image, content);
+        gamesGrid.appendChild(card);
       }
 
       function renderOnline() {
