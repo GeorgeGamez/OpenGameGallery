@@ -858,41 +858,45 @@ function isLocalHotseatGame() {
   return !ONLINE_MODE && localHumanEntries().length >= 2;
 }
 
+function fogColorForSeat(seat, game = manager.game) {
+  if (!seat) return null;
+
+  // Four-player Chess uses its four literal colour names on the board.
+  if (game?.size === 14) {
+    return ["white", "red", "black", "blue"].includes(seat) ? seat : null;
+  }
+
+  // Standard Chess and Chess960 use the compact engine colours.
+  if (seat === "white") return "w";
+  if (seat === "black") return "b";
+  return null;
+}
+
 function fogViewerColor() {
   if (!FOG_OF_WAR) return null;
   if (ONLINE_MODE) {
     if (isOnlineSpectator()) return null;
     const own = gamePlayers.find((p) => p?.controllerClientId === ONLINE_CLIENT_ID);
-    if (own?.seat === "white") return "w";
-    if (own?.seat === "black") return "b";
-    if (own?.seat === "red") return "red";
-    if (own?.seat === "blue") return "blue";
-    return null;
+    return fogColorForSeat(own?.seat);
   }
 
   const humans = localHumanEntries();
   if (humans.length >= 2) {
-    const current = currentPlayerEntry(manager.game);
-    if (current?.seat === "white") return "w";
-    if (current?.seat === "black") return "b";
-    if (current?.seat === "red") return "red";
-    if (current?.seat === "blue") return "blue";
+    return fogColorForSeat(currentPlayerEntry(manager.game)?.seat);
   }
 
-  const firstHuman = humans[0];
-  if (firstHuman?.seat === "white") return "w";
-  if (firstHuman?.seat === "black") return "b";
-  if (firstHuman?.seat === "red") return "red";
-  if (firstHuman?.seat === "blue") return "blue";
-  return null;
+  return fogColorForSeat(humans[0]?.seat);
+}
+
+function squareVisibleToColor(r, c, color, game = manager.game) {
+  if (!FOG_OF_WAR || !color) return true;
+  const piece = game.board[r]?.[c];
+  if (piece?.color === color) return true;
+  return game.attacked(r, c, color, game.board);
 }
 
 function squareVisibleToViewer(r, c, game = manager.game) {
-  const viewer = fogViewerColor();
-  if (!viewer) return true;
-  const piece = game.board[r]?.[c];
-  if (piece?.color === viewer) return true;
-  return game.attacked(r, c, viewer, game.board);
+  return squareVisibleToColor(r, c, fogViewerColor(), game);
 }
 
 function squareVisibleOrOwnLastMove(r, c) {
@@ -912,7 +916,9 @@ function clearLocalHandoff() {
 }
 
 function beginLocalHandoff() {
-  if (!isLocalHotseatGame() || manager.game.gameStatus().over) return;
+  // The pass-the-device screen only exists when Fog of War is enabled.
+  // Without hidden information there is nothing to hide between turns.
+  if (!FOG_OF_WAR || !isLocalHotseatGame() || manager.game.gameStatus().over) return;
   const next = currentPlayerEntry(manager.game);
   if (!next || next.type === "computer") return;
 
@@ -1341,7 +1347,19 @@ function makeComputerMove() {
     current?.difficulty ||
     computerDifficulties[current?.id] ||
     computerDifficulty;
-  const move = ChessAI.findBestMove(game, difficulty);
+
+  // When Fog of War is enabled, give the AI only the same information its
+  // controlled side would have. Spectators still receive the full board.
+  const fogColor = fogColorForSeat(current?.seat, game);
+  const aiFog = FOG_OF_WAR && fogColor
+    ? {
+        enabled: true,
+        color: fogColor,
+        visible: (r, c) => squareVisibleToColor(r, c, fogColor, game),
+      }
+    : null;
+
+  const move = ChessAI.findBestMove(game, difficulty, aiFog);
   if (!move) return false;
 
   const promotion = move.promotion ? "q" : "q";
