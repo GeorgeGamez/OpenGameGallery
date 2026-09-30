@@ -593,6 +593,51 @@ class FourPlayerChessGame {
     }
     return out;
   }
+  attacked(r, c, by, b = this.board) {
+    // Determine whether a four-player piece attacks the target square.
+    // This is deliberately separate from legal movement because pawns attack
+    // empty squares for Fog of War visibility purposes.
+    for (let sr = 0; sr < 14; sr++) {
+      for (let sc = 0; sc < 14; sc++) {
+        const p = b[sr]?.[sc];
+        if (!p || p.color !== by) continue;
+
+        if (p.type === "p") {
+          const captures = by === "red" || by === "blue"
+            ? [[sr + 1, sc + (by === "red" ? 1 : -1)], [sr - 1, sc + (by === "red" ? 1 : -1)]]
+            : [[sr + (by === "black" ? 1 : -1), sc - 1], [sr + (by === "black" ? 1 : -1), sc + 1]];
+          if (captures.some(([tr, tc]) => tr === r && tc === c && inside(tr, tc, 14) && playable4(tr, tc))) return true;
+          continue;
+        }
+
+        if (p.type === "n") {
+          for (const [dr, dc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) {
+            if (sr + dr === r && sc + dc === c && inside(r, c, 14) && playable4(r, c)) return true;
+          }
+          continue;
+        }
+
+        if (p.type === "k") {
+          if (Math.max(Math.abs(r - sr), Math.abs(c - sc)) === 1 && playable4(r, c)) return true;
+          continue;
+        }
+
+        const dirs = [];
+        if (["b", "q"].includes(p.type)) dirs.push([1,1],[1,-1],[-1,1],[-1,-1]);
+        if (["r", "q"].includes(p.type)) dirs.push([1,0],[-1,0],[0,1],[0,-1]);
+        for (const [dr, dc] of dirs) {
+          let tr = sr + dr, tc = sc + dc;
+          while (inside(tr, tc, 14) && playable4(tr, tc)) {
+            if (tr === r && tc === c) return true;
+            if (b[tr][tc]) break;
+            tr += dr;
+            tc += dc;
+          }
+        }
+      }
+    }
+    return false;
+  }
   promotionSquare(color, r, c) {
     return color === "black"
       ? r === 10
@@ -809,8 +854,8 @@ function localHumanEntries() {
   return gamePlayers.filter((p) => p?.type !== "computer" && !p?.spectator && !p?.controllerClientId);
 }
 
-function isLocalHotseatFogGame() {
-  return !ONLINE_MODE && FOG_OF_WAR && localHumanEntries().length >= 2;
+function isLocalHotseatGame() {
+  return !ONLINE_MODE && localHumanEntries().length >= 2;
 }
 
 function fogViewerColor() {
@@ -820,6 +865,8 @@ function fogViewerColor() {
     const own = gamePlayers.find((p) => p?.controllerClientId === ONLINE_CLIENT_ID);
     if (own?.seat === "white") return "w";
     if (own?.seat === "black") return "b";
+    if (own?.seat === "red") return "red";
+    if (own?.seat === "blue") return "blue";
     return null;
   }
 
@@ -828,11 +875,15 @@ function fogViewerColor() {
     const current = currentPlayerEntry(manager.game);
     if (current?.seat === "white") return "w";
     if (current?.seat === "black") return "b";
+    if (current?.seat === "red") return "red";
+    if (current?.seat === "blue") return "blue";
   }
 
   const firstHuman = humans[0];
   if (firstHuman?.seat === "white") return "w";
   if (firstHuman?.seat === "black") return "b";
+  if (firstHuman?.seat === "red") return "red";
+  if (firstHuman?.seat === "blue") return "blue";
   return null;
 }
 
@@ -861,7 +912,7 @@ function clearLocalHandoff() {
 }
 
 function beginLocalHandoff() {
-  if (!isLocalHotseatFogGame() || manager.game.gameStatus().over) return;
+  if (!isLocalHotseatGame() || manager.game.gameStatus().over) return;
   const next = currentPlayerEntry(manager.game);
   if (!next || next.type === "computer") return;
 
@@ -1303,7 +1354,7 @@ function makeComputerMove() {
   return ok;
 }
 function scheduleComputerMove() {
-  if (!gameHasStarted || computerMovePending || !isComputerTurn() || manager.game.gameStatus().over) return;
+  if (!gameHasStarted || localHandoffActive || computerMovePending || !isComputerTurn() || manager.game.gameStatus().over) return;
   computerMovePending = true;
   clearTimeout(computerMoveTimer);
   computerMoveTimer = setTimeout(() => {
@@ -1311,6 +1362,7 @@ function scheduleComputerMove() {
     makeComputerMove();
     selected = null;
     render();
+    beginLocalHandoff();
   }, 350);
 }
 
@@ -1346,11 +1398,12 @@ function render() {
     sq.className = "square " + ((r + c) % 2 ? "dark" : "light");
     if (size === 14 && !playable4(r, c)) sq.classList.add("unplayable");
     if (selected?.r === r && selected?.c === c) sq.classList.add("selected");
-    const visible = squareVisibleToViewer(r, c, g);
+    const legalDestination = !!legal.find((m) => m.to.r === r && m.to.c === c);
+    const visible = squareVisibleToViewer(r, c, g) || Boolean(selected && legalDestination);
     if (g.lastMove && visible && ((g.lastMove.from?.r === r && g.lastMove.from?.c === c) || (g.lastMove.to?.r === r && g.lastMove.to?.c === c))) sq.classList.add("last-move");
     if (king && visible && king.r === r && king.c === c) sq.classList.add("in-check");
 
-    const isLegalMove = visible && !!legal.find((m) => m.to.r === r && m.to.c === c);
+    const isLegalMove = visible && legalDestination;
     if (isLegalMove) {
 const mark = document.createElement("span");
 mark.className = g.board[r][c] ? "legal-capture" : "legal-dot";
