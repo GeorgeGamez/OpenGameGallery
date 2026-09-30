@@ -187,9 +187,9 @@
       .online-bar { margin-top: 12px; padding: 9px 10px; background: var(--panel2); border-radius: 7px; color: var(--muted); font-size: 12px; line-height: 1.4; }
       .online-bar.error { border: 1px solid #6b3d45; color: #ffbcbc; }
       .fog-mask { position: absolute; inset: 0; z-index: 5; background: #14171d; pointer-events: none; }
-      .handoff-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(12,14,18,0.96); z-index: 50; text-align: center; }
+      .handoff-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: #000; z-index: 50; text-align: center; }
       .handoff-overlay.open { display: flex; }
-      .handoff-box { width: min(420px, calc(100vw - 32px)); padding: 28px; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 18px 55px rgba(0,0,0,.45); }
+      .handoff-box { width: min(520px, calc(100vw - 32px)); padding: 28px; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
       .handoff-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
       .handoff-countdown { font-size: 34px; font-weight: 800; color: var(--accent); margin-top: 12px; }
       .handoff-note { color: var(--muted); font-size: 12px; margin-top: 10px; line-height: 1.45; }
@@ -280,7 +280,7 @@
   <div class="promotion-modal" id="promotionModal">
     <div class="promotion-box"><h2>Choose promotion</h2><div class="promotion-options" id="promotionOptions"></div></div>
   </div>
-  <script src="chess-ai.js?v=20260930-online8"></script>
-  <script src="chess.js?v=20260930-online8"></script>
+  <script src="chess-ai.js?v=20260930-online9"></script>
+  <script src="chess.js?v=20260930-online9"></script>
 </body>
 </html>
