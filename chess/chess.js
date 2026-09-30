@@ -708,6 +708,8 @@ if (!onlineConfig) {
   }
 }
 
+const FOG_OF_WAR = Boolean(onlineConfig?.options?.fogOfWar || params.get("fogOfWar") === "true");
+
 let onlineSocket = null;
 let onlineParticipants = [];
 let onlineConnected = false;
@@ -793,7 +795,7 @@ function isOnlineSpectator() {
 }
 
 function canLocalPlayerMove() {
-  if (!gameHasStarted) return false;
+  if (!gameHasStarted || localHandoffActive) return false;
   if (isOnlineSpectator()) return false;
   const current = currentPlayerEntry(manager.game);
   if (!ONLINE_MODE) return current?.type !== "computer";
@@ -801,6 +803,90 @@ function canLocalPlayerMove() {
   // The index page supplies the controllerClientId for each human seat.
   // Either online player may be White or Black.
   return current?.controllerClientId === ONLINE_CLIENT_ID;
+}
+
+function localHumanEntries() {
+  return gamePlayers.filter((p) => p?.type !== "computer" && !p?.spectator && !p?.controllerClientId);
+}
+
+function isLocalHotseatFogGame() {
+  return !ONLINE_MODE && FOG_OF_WAR && localHumanEntries().length >= 2;
+}
+
+function fogViewerColor() {
+  if (!FOG_OF_WAR) return null;
+  if (ONLINE_MODE) {
+    if (isOnlineSpectator()) return null;
+    const own = gamePlayers.find((p) => p?.controllerClientId === ONLINE_CLIENT_ID);
+    if (own?.seat === "white") return "w";
+    if (own?.seat === "black") return "b";
+    return null;
+  }
+
+  const humans = localHumanEntries();
+  if (humans.length >= 2) {
+    const current = currentPlayerEntry(manager.game);
+    if (current?.seat === "white") return "w";
+    if (current?.seat === "black") return "b";
+  }
+
+  const firstHuman = humans[0];
+  if (firstHuman?.seat === "white") return "w";
+  if (firstHuman?.seat === "black") return "b";
+  return null;
+}
+
+function squareVisibleToViewer(r, c, game = manager.game) {
+  const viewer = fogViewerColor();
+  if (!viewer) return true;
+  const piece = game.board[r]?.[c];
+  if (piece?.color === viewer) return true;
+  return game.attacked(r, c, viewer, game.board);
+}
+
+function squareVisibleOrOwnLastMove(r, c) {
+  return squareVisibleToViewer(r, c);
+}
+
+function clearLocalHandoff() {
+  if (localHandoffTimer) clearInterval(localHandoffTimer);
+  localHandoffTimer = null;
+  localHandoffActive = false;
+  localHandoffUntil = 0;
+  const overlay = document.getElementById("handoffOverlay");
+  if (overlay) {
+    overlay.classList.remove("open");
+    overlay.setAttribute("aria-hidden", "true");
+  }
+}
+
+function beginLocalHandoff() {
+  if (!isLocalHotseatFogGame() || manager.game.gameStatus().over) return;
+  const next = currentPlayerEntry(manager.game);
+  if (!next || next.type === "computer") return;
+
+  clearLocalHandoff();
+  localHandoffActive = true;
+  localHandoffUntil = Date.now() + 2000;
+  const overlay = document.getElementById("handoffOverlay");
+  const title = document.getElementById("handoffTitle");
+  const countdown = document.getElementById("handoffCountdown");
+  if (!overlay || !title || !countdown) return;
+
+  title.textContent = `Pass the device to ${next.name || "the next player"}`;
+  overlay.classList.add("open");
+  overlay.setAttribute("aria-hidden", "false");
+
+  const update = () => {
+    const remaining = Math.max(0, localHandoffUntil - Date.now());
+    countdown.textContent = (remaining / 1000).toFixed(1);
+    if (remaining <= 0) {
+      clearLocalHandoff();
+      render();
+    }
+  };
+  update();
+  localHandoffTimer = setInterval(update, 50);
 }
 
 function renderPlayers() {
@@ -830,6 +916,9 @@ let computerMoveTimer = null;
 let computerMovePending = false;
 let selected = null;
 let pendingPromotion = null;
+let localHandoffTimer = null;
+let localHandoffActive = false;
+let localHandoffUntil = 0;
 
 const computerDifficulty = params.get("computerDifficulty") || "normal";
 let computerDifficulties = {};
@@ -962,6 +1051,7 @@ function applyRemoteState(state) {
   try {
     manager.game.restore(state.game);
     gameHasStarted = true;
+    clearLocalHandoff();
     renderPlayers();
     selected = null;
     pendingPromotion = null;
@@ -1114,6 +1204,7 @@ function connectOnlineGame() {
       onlineResultSent = false;
       onlineConfig = message.config || onlineConfig;
       gameHasStarted = true;
+      clearLocalHandoff();
       if (onlineConfig?.players?.length) {
         gamePlayers = parseOnlinePlayers(onlineConfig);
                 try {
@@ -1255,21 +1346,27 @@ function render() {
     sq.className = "square " + ((r + c) % 2 ? "dark" : "light");
     if (size === 14 && !playable4(r, c)) sq.classList.add("unplayable");
     if (selected?.r === r && selected?.c === c) sq.classList.add("selected");
-    if (g.lastMove && ((g.lastMove.from?.r === r && g.lastMove.from?.c === c) || (g.lastMove.to?.r === r && g.lastMove.to?.c === c))) sq.classList.add("last-move");
-    if (king && king.r === r && king.c === c) sq.classList.add("in-check");
+    const visible = squareVisibleToViewer(r, c, g);
+    if (g.lastMove && visible && ((g.lastMove.from?.r === r && g.lastMove.from?.c === c) || (g.lastMove.to?.r === r && g.lastMove.to?.c === c))) sq.classList.add("last-move");
+    if (king && visible && king.r === r && king.c === c) sq.classList.add("in-check");
 
-    const isLegalMove = !!legal.find((m) => m.to.r === r && m.to.c === c);
+    const isLegalMove = visible && !!legal.find((m) => m.to.r === r && m.to.c === c);
     if (isLegalMove) {
 const mark = document.createElement("span");
 mark.className = g.board[r][c] ? "legal-capture" : "legal-dot";
 sq.appendChild(mark);
     }
     const p = g.board[r][c];
-    if (p) {
+    if (p && visible) {
 const pe = document.createElement("span");
 pe.className = "piece " + p.color;
 pe.textContent = size === 14 ? FOUR_PIECES[p.color][p.type] : PIECES[p.color][p.type];
 sq.appendChild(pe);
+    }
+    if (!visible) {
+      const fog = document.createElement("span");
+      fog.className = "fog-mask";
+      sq.appendChild(fog);
     }
     sq.onclick = () => clickSquare(r, c);
     boardEl.appendChild(sq);
@@ -1318,6 +1415,7 @@ function clickSquare(r, c) {
   }
   selected = null;
   render();
+  beginLocalHandoff();
 }
 
 function openPromotion(color) {
@@ -1337,6 +1435,7 @@ function openPromotion(color) {
       promotionModal.classList.remove("open");
       selected = null;
       render();
+      beginLocalHandoff();
     };
     promotionOptions.appendChild(b);
   }
@@ -1382,6 +1481,7 @@ list.appendChild(x);
 document.getElementById("newGameBtn").onclick = goBackToLibrary;
 document.getElementById("clearBtn").onclick = () => {
   if (!gameHasStarted) return;
+  clearLocalHandoff();
   clearTimeout(computerMoveTimer); computerMovePending = false;
   if (ONLINE_MODE && !ONLINE_HOST_TOKEN) return;
   manager.newGame("chess", manager.variantId);
@@ -1391,6 +1491,7 @@ document.getElementById("clearBtn").onclick = () => {
 };
 document.getElementById("undoBtn").onclick = () => {
   if (!gameHasStarted) return;
+  clearLocalHandoff();
   clearTimeout(computerMoveTimer); computerMovePending = false;
   if (ONLINE_MODE && !ONLINE_HOST_TOKEN) return;
   if (manager.game.undo()) {
