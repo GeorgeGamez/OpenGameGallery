@@ -1022,7 +1022,10 @@ No diagnostics run yet.</pre
           ? roomVariant
           : "standard";
         selectedSetupGame = "chess";
-        selectedSetupOptions = {};
+        selectedSetupOptions = {
+          ...(onlineState.config?.options || {}),
+          fogOfWar: Boolean(onlineState.config?.options?.fogOfWar),
+        };
         setupComputerDifficulties = {};
 
         if (onlineState.connected) {
@@ -1297,12 +1300,40 @@ No diagnostics run yet.</pre
           buttons.append(up, down); row.appendChild(buttons); orderList.appendChild(row);
         });
         orderSection.append(oh, ohd, orderList); body.appendChild(orderSection);
+        const optionSection = document.createElement("section");
+        optionSection.className = "setup-section";
+        const optionsHeading = document.createElement("h3");
+        optionsHeading.textContent = "Game options";
+        const optionList = document.createElement("div");
+        optionList.className = "setup-option-list";
 
-        const optionSection = document.createElement("section"); optionSection.className = "setup-section";
-        const optionsHeading = document.createElement("h3"); optionsHeading.textContent = "Game options";
-        const optionList = document.createElement("div"); optionList.className = "setup-option-list";
-        const note = document.createElement("div"); note.className = "setup-player-summary"; note.textContent = selectedSetupVariant === "chess960" ? "Chess960 uses a randomized starting position; no additional options are required." : "No additional options are available for Standard Chess yet.";
-        optionList.appendChild(note); optionSection.append(optionsHeading, optionList); body.appendChild(optionSection);
+        const fogRow = document.createElement("label");
+        fogRow.className = "toggle-option";
+        const fogLabel = document.createElement("span");
+        fogLabel.className = "toggle-label";
+        fogLabel.innerHTML = '<strong>Fog of War</strong><br><span class="range-help">Players see their own pieces and the squares those pieces attack. Spectators see the entire board.</span>';
+        const fogSwitch = document.createElement("span");
+        fogSwitch.className = "toggle-switch";
+        const fogCheckbox = document.createElement("input");
+        fogCheckbox.type = "checkbox";
+        fogCheckbox.checked = Boolean(selectedSetupOptions.fogOfWar);
+        fogCheckbox.disabled = host;
+        const fogSlider = document.createElement("span");
+        fogSlider.className = "toggle-slider";
+        fogCheckbox.addEventListener("change", () => {
+          selectedSetupOptions.fogOfWar = fogCheckbox.checked;
+          if (onlineState.connected && onlineState.isHost) sendPreGameConfig();
+        });
+        fogSwitch.append(fogCheckbox, fogSlider);
+        fogRow.append(fogLabel, fogSwitch);
+        optionList.appendChild(fogRow);
+
+        const note = document.createElement("div");
+        note.className = "setup-player-summary";
+        note.textContent = "Fog of War works with both Standard Chess and Chess960. In local two-human games, a 2-second pass-the-device timer hides the board between turns.";
+        optionList.appendChild(note);
+        optionSection.append(optionsHeading, optionList);
+        body.appendChild(optionSection);
 
         const message = document.createElement("div"); message.className = "setup-message";
         if (host) message.textContent = "Waiting for the host to finish configuring the match.";
