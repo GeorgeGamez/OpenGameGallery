@@ -786,8 +786,15 @@ function isComputerTurn() {
   return !ONLINE_MODE || current.controllerClientId === ONLINE_CLIENT_ID;
 }
 
+function isOnlineSpectator() {
+  if (!ONLINE_MODE) return false;
+  const self = onlineParticipants.find((p) => p.clientId === ONLINE_CLIENT_ID);
+  return Boolean(self?.spectator) || Boolean((onlineConfig?.spectators || []).includes(ONLINE_CLIENT_ID));
+}
+
 function canLocalPlayerMove() {
   if (!gameHasStarted) return false;
+  if (isOnlineSpectator()) return false;
   const current = currentPlayerEntry(manager.game);
   if (!ONLINE_MODE) return current?.type !== "computer";
 
@@ -1285,10 +1292,22 @@ function connectOnlineGame() {
       } catch {}
 
       refreshOnlinePlayerNames();
-      if (message.room?.started && message.room?.state) {
+      if (message.room?.started) {
         gameHasStarted = true;
         renderSetupPanel();
-        applyRemoteState(message.room.state);
+        if (message.room?.state) {
+          applyRemoteState(message.room.state);
+        } else {
+          // The host may have launched the match from index.html before this
+          // chess page connected. Create the local initial position now; for
+          // Chess960 the host immediately publishes its authoritative random
+          // position, which replaces this temporary one.
+          manager.newGame("chess", selectedVariantId);
+          selected = null;
+          pendingPromotion = null;
+          render();
+          if (ONLINE_HOST_TOKEN) setTimeout(() => publishOnlineState(), 75);
+        }
       } else {
         gameHasStarted = false;
         renderSetupPanel();
@@ -1338,7 +1357,10 @@ function connectOnlineGame() {
         applyRemoteState(message.state);
       } else {
         manager.newGame("chess", selectedVariantId);
+        selected = null;
+        pendingPromotion = null;
         render();
+        if (ONLINE_HOST_TOKEN) setTimeout(() => publishOnlineState(), 75);
       }
       return;
     }
