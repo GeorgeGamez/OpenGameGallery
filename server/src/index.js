@@ -139,7 +139,7 @@ export default {
         {
           ok: true,
           service: "game-library-multiplayer",
-          version: "2026-09-28-debug-1",
+          version: "2026-09-30-fourplayer-fog-1",
           request: {
             method: request.method,
             pathname: url.pathname,
@@ -493,7 +493,7 @@ export class GameRoom extends DurableObject {
         }
         const selectedGame = String(data?.game || "chess");
         const selectedVariant = String(data?.variant || "standard");
-        if (selectedGame !== "chess" || !["standard", "chess960"].includes(selectedVariant)) {
+        if (selectedGame !== "chess" || !["standard", "chess960", "fourplayer"].includes(selectedVariant)) {
           sendJson(ws, {
             type: "error",
             code: "INVALID_GAME",
