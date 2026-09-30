@@ -567,57 +567,119 @@ const ChessAI = (() => {
     return scored[0].move;
   }
 
-  function findBestMove(game, difficulty = "normal") {
+  function isFourPlayerGame(game) {
+    return Boolean(
+      game && (
+        game.variant === "fourplayer" ||
+        game.playersCount === 4 ||
+        game.size === 14 ||
+        (Number.isInteger(game.turnIndex) && Array.isArray(game.board) && game.board.length === 14)
+      )
+    );
+  }
+
+  function cloneValue(value) {
+    if (Array.isArray(value)) return value.map(cloneValue);
+    if (value && typeof value === "object") {
+      const out = {};
+      for (const [key, child] of Object.entries(value)) out[key] = cloneValue(child);
+      return out;
+    }
+    return value;
+  }
+
+  /* Build an AI-only view of the position when Fog of War is enabled. */
+  function makeAIView(game, fog) {
+    if (!fog?.enabled || typeof fog.visible !== "function") return game;
+
+    const view = Object.create(Object.getPrototypeOf(game));
+    for (const [key, value] of Object.entries(game)) {
+      if (key === "board") continue;
+      if (key === "history") view.history = [];
+      else view[key] = cloneValue(value);
+    }
+
+    view.board = game.board.map((row, r) =>
+      row.map((piece, c) => {
+        if (!piece) return null;
+        if (piece.color === fog.color || fog.visible(r, c)) return { ...piece };
+        return null;
+      })
+    );
+
+    return view;
+  }
+
+  function sameMove(a, b) {
+    return Boolean(
+      a && b &&
+      a.from?.r === b.from?.r &&
+      a.from?.c === b.from?.c &&
+      a.to?.r === b.to?.r &&
+      a.to?.c === b.to?.c
+    );
+  }
+
+  function isActuallyLegalMove(game, move) {
+    if (!game || !move) return false;
+    return game.legalMovesFrom(move.from.r, move.from.c).some(candidate => sameMove(candidate, move));
+  }
+
+  function findBestMove(game, difficulty = "normal", fog = null) {
     if (!game) return null;
 
-    if (game.variant === "fourplayer" || game.playersCount === 4) {
-      return findBestFourPlayerMove(game, difficulty);
+    const aiGame = makeAIView(game, fog);
+
+    if (isFourPlayerGame(game)) {
+      const move = findBestFourPlayerMove(aiGame, difficulty);
+      return isActuallyLegalMove(game, move) ? move : findFallbackMove(game);
     }
 
     if (game.variant === "threeman" || game.playersCount === 3) {
-      return findBestThreePlayerMove(game, difficulty);
+      const move = findBestThreePlayerMove(aiGame, difficulty);
+      return isActuallyLegalMove(game, move) ? move : findFallbackMove(game);
     }
 
-    const moves = allMoves(game);
+    const moves = allMoves(aiGame);
     if (!moves.length) return null;
 
     const settings = config(difficulty);
-    const rootColor = game.turn;
-    const candidates = orderedMoves(game, moves);
+    const rootColor = aiGame.turn;
+    const candidates = orderedMoves(aiGame, moves);
     const scored = [];
 
     for (const move of candidates) {
-      const { snapshot, historyLength, ok } = makeTemporaryMove(game, move);
+      const { snapshot, historyLength, ok } = makeTemporaryMove(aiGame, move);
       if (!ok) continue;
 
       const score = search(
-        game,
+        aiGame,
         settings.depth - 1,
         -Infinity,
         Infinity,
         rootColor,
       );
 
-      restoreTemporaryMove(game, { snapshot, historyLength });
+      restoreTemporaryMove(aiGame, { snapshot, historyLength });
       scored.push({ move, score });
     }
 
-    if (!scored.length) return null;
+    if (!scored.length) return findFallbackMove(game);
 
     scored.sort((a, b) => b.score - a.score);
 
-    // Easy/Normal retain a small amount of variety. The engine still strongly
-    // prefers its best moves, but it does not play identically every game.
     if (
       settings.randomness > 0 &&
       scored.length > 1 &&
       Math.random() < settings.randomness
     ) {
       const poolSize = Math.min(3, scored.length);
-      return scored[Math.floor(Math.random() * poolSize)].move;
+      const randomMove = scored[Math.floor(Math.random() * poolSize)].move;
+      return isActuallyLegalMove(game, randomMove) ? randomMove : findFallbackMove(game);
     }
 
-    return scored[0].move;
+    const best = scored[0].move;
+    return isActuallyLegalMove(game, best) ? best : findFallbackMove(game);
   }
 
   function findFallbackMove(game) {
