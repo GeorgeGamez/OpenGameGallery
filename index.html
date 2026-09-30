@@ -761,6 +761,7 @@ No diagnostics run yet.</pre
       const CHESS_VARIANTS = [
         { id: "standard", name: "Standard Chess", players: { min: 2, max: 2 } },
         { id: "chess960", name: "Chess960", players: { min: 2, max: 2 } },
+        { id: "threeman", name: "Three Player Chess", players: { min: 3, max: 3 } },
         { id: "fourplayer", name: "4-Player Chess", players: { min: 4, max: 4 } },
       ];
 
@@ -1019,7 +1020,7 @@ No diagnostics run yet.</pre
         const roomVariant = onlineState.config?.game === "chess"
           ? onlineState.config?.variant
           : null;
-        selectedSetupVariant = ["standard", "chess960", "fourplayer"].includes(roomVariant)
+        selectedSetupVariant = ["standard", "chess960", "threeman", "fourplayer"].includes(roomVariant)
           ? roomVariant
           : "standard";
         selectedSetupGame = "chess";
@@ -1108,7 +1109,9 @@ No diagnostics run yet.</pre
           .filter(Boolean);
         const seatOrder = selectedSetupVariant === "fourplayer"
           ? ["white", "red", "black", "blue"]
-          : ["white", "black"];
+          : selectedSetupVariant === "threeman"
+            ? ["white", "red", "black"]
+            : ["white", "black"];
         if (order.length < seatOrder.length) return null;
 
         const human = (entry) => {
@@ -1246,7 +1249,7 @@ No diagnostics run yet.</pre
 
         const note = document.createElement("div");
         note.className = "setup-player-summary";
-        note.textContent = "Fog of War works with Standard Chess, Chess960, and 4-Player Chess. In local games with multiple human players, a 2-second pass-the-device timer hides the board between turns.";
+        note.textContent = "Fog of War works with Standard Chess, Chess960, Three Player Chess, and 4-Player Chess. In local games with multiple human players, a 2-second pass-the-device timer hides the board between turns.";
         optionList.appendChild(note);
         optionSection.append(optionsHeading, optionList);
         body.appendChild(optionSection);
@@ -1317,7 +1320,9 @@ No diagnostics run yet.</pre
         const ohd = document.createElement("div"); ohd.className = "range-help";
         ohd.textContent = selectedSetupVariant === "fourplayer"
           ? "Order determines the four sides: White, Red, Black, Blue."
-          : "The first active player becomes White; the second becomes Black.";
+          : selectedSetupVariant === "threeman"
+            ? "Order determines the three sides: White, Red, Black."
+            : "The first active player becomes White; the second becomes Black.";
         const orderList = document.createElement("div"); orderList.className = "setup-order-list";
         normalizeSetupOrder();
         const entries = new Map(activeSetupEntries().map((entry) => [entry.token, entry]));
@@ -1328,7 +1333,9 @@ No diagnostics run yet.</pre
           const info = document.createElement("div"); info.className = "setup-player-name";
           const seatNames = selectedSetupVariant === "fourplayer"
             ? ["White", "Red", "Black", "Blue"]
-            : ["White", "Black"];
+            : selectedSetupVariant === "threeman"
+              ? ["White", "Red", "Black"]
+              : ["White", "Black"];
           const name = document.createElement("strong"); name.textContent = `${seatNames[index] || `Player ${index + 1}`} — ${entry.name}`;
           const type = document.createElement("span"); type.textContent = entry.type + (entry.computer ? ` • ${formatSetupLabel(entry.difficulty)}` : "");
           info.append(name, type);
@@ -1441,7 +1448,7 @@ No diagnostics run yet.</pre
         content.innerHTML = `
           <h2>Chess</h2>
           <p class="description">The classic two-player strategy game.</p>
-          <div class="game-meta"><span class="meta-tag">2 players</span><span class="meta-tag">Standard / Chess960</span><span class="meta-tag">Local / Computer / Online</span></div>
+          <div class="game-meta"><span class="meta-tag">2–4 players</span><span class="meta-tag">Standard / Chess960 / Three Player / 4-Player</span><span class="meta-tag">Local / Computer / Online</span></div>
           <button class="play-button">${waitingForHost ? "View game setup" : "Set up &amp; Play"}</button>
         `;
         content.querySelector("button").onclick = () => openGameSetup("chess");
