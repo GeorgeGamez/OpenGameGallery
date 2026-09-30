@@ -4,7 +4,9 @@ const SOLID_PIECES = {
   k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟", m: "●", K: "👑",
 };
 const PIECES = { w: SOLID_PIECES, b: SOLID_PIECES };
+const THREE_PIECES = { white: SOLID_PIECES, red: SOLID_PIECES, black: SOLID_PIECES };
 const FOUR_PIECES = { white: SOLID_PIECES, black: SOLID_PIECES, red: SOLID_PIECES, blue: SOLID_PIECES };
+const THREE_COLORS = ["white", "red", "black"];
 const FOUR_COLORS = ["white", "red", "black", "blue"];
 
 function inside(r, c, size) { return r >= 0 && r < size && c >= 0 && c < size; }
@@ -416,6 +418,81 @@ class ChessGame {
   }
 }
 
+// ---------------------------- THREE-PLAYER CHESS ENGINE ----------------------------
+const THREE_ROWS = 12;
+const THREE_COLS = 8;
+function wrapThreeRow(r) { return ((r % THREE_ROWS) + THREE_ROWS) % THREE_ROWS; }
+function playable3(r, c) { return r >= 0 && r < THREE_ROWS && c >= 0 && c < THREE_COLS; }
+function threeStartRow(color) { return color === "white" ? 0 : color === "red" ? 4 : 8; }
+function setupThreeSide(board, color, startRow) {
+  const back = ["r", "n", "b", "q", "k", "b", "n", "r"];
+  for (let c = 0; c < THREE_COLS; c++) {
+    board[startRow][c] = { type: back[c], color };
+    board[startRow + 1][c] = { type: "p", color };
+  }
+}
+class ThreePlayerChessGame {
+  constructor() { this.size = THREE_ROWS; this.cols = THREE_COLS; this.variant = "threeman"; this.playersCount = 3; this.reset(); }
+  reset() {
+    this.board = Array.from({ length: THREE_ROWS }, () => Array(THREE_COLS).fill(null));
+    setupThreeSide(this.board, "white", 0); setupThreeSide(this.board, "red", 4); setupThreeSide(this.board, "black", 8);
+    this.turnIndex = 0; this.turn = THREE_COLORS[0]; this.history = []; this.sanHistory = []; this.captured = []; this.lastMove = null;
+    this.castling = {
+      white: { kingMoved: false, rooks: [{ col: 0, moved: false }, { col: 7, moved: false }] },
+      red: { kingMoved: false, rooks: [{ col: 0, moved: false }, { col: 7, moved: false }] },
+      black: { kingMoved: false, rooks: [{ col: 0, moved: false }, { col: 7, moved: false }] },
+    };
+  }
+  clone() { return { board: cloneBoard(this.board), turnIndex: this.turnIndex, turn: this.turn, san: [...this.sanHistory], captured: this.captured.map(p => ({...p})), lastMove: this.lastMove ? {from:{...this.lastMove.from},to:{...this.lastMove.to}} : null, castling: JSON.parse(JSON.stringify(this.castling)) }; }
+  restore(s) { this.board=cloneBoard(s.board); this.turnIndex=s.turnIndex; this.turn=s.turn; this.sanHistory=[...s.san]; this.captured=s.captured.map(p=>({...p})); this.lastMove=s.lastMove?{from:{...s.lastMove.from},to:{...s.lastMove.to}}:null; this.castling=JSON.parse(JSON.stringify(s.castling)); }
+  undo() { if (!this.history.length) return false; this.restore(this.history.pop()); return true; }
+  nextRow(r,d) { return wrapThreeRow(r+d); }
+  pawnStartRow(color) { return threeStartRow(color)+1; }
+  promotionRow(color) { return threeStartRow(color); }
+  findKing(color,b=this.board) { for(let r=0;r<THREE_ROWS;r++) for(let c=0;c<THREE_COLS;c++) if(b[r][c]?.color===color&&b[r][c].type==="k") return {r,c}; return null; }
+  otherColors(color) { return THREE_COLORS.filter(c=>c!==color); }
+  attacked(r,c,by,b=this.board) {
+    for(let sr=0;sr<THREE_ROWS;sr++) for(let sc=0;sc<THREE_COLS;sc++) {
+      const p=b[sr][sc]; if(!p||p.color!==by) continue;
+      if(p.type==="p") { const nr=this.nextRow(sr,1); if(nr===r&&(sc-1===c||sc+1===c)) return true; continue; }
+      if(p.type==="n") { for(const [dr,dc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) if(this.nextRow(sr,dr)===r&&sc+dc===c&&playable3(r,c)) return true; continue; }
+      if(p.type==="k") { for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++) if((dr||dc)&&this.nextRow(sr,dr)===r&&sc+dc===c&&playable3(r,c)) return true; continue; }
+      const dirs=[]; if(["b","q"].includes(p.type)) dirs.push([1,1],[1,-1],[-1,1],[-1,-1]); if(["r","q"].includes(p.type)) dirs.push([1,0],[-1,0],[0,1],[0,-1]);
+      for(const [dr,dc] of dirs){ let tr=sr,tc=sc; for(let step=0;step<12;step++){ tr=this.nextRow(tr,dr); tc+=dc; if(tc<0||tc>=THREE_COLS) break; if(tr===r&&tc===c) return true; if(b[tr][tc]) break; } }
+    }
+    return false;
+  }
+  moveList(r,c) {
+    const p=this.board[r]?.[c]; if(!p||p.color!==this.turn) return [];
+    const out=[]; const add=(tr,tc,x={})=>{ if(!playable3(tr,tc)) return; const t=this.board[tr][tc]; if(!t||t.color!==p.color) out.push({from:{r,c},to:{r:tr,c:tc},...x}); };
+    if(p.type==="p") {
+      const nr=this.nextRow(r,1); if(!this.board[nr][c]) { add(nr,c,{promotion:nr===this.promotionRow(p.color)}); if(r===this.pawnStartRow(p.color)){const nnr=this.nextRow(r,2); if(!this.board[nnr][c]) add(nnr,c,{promotion:nnr===this.promotionRow(p.color)});} }
+      for(const dc of [-1,1]){const nc=c+dc; if(nc>=0&&nc<THREE_COLS&&this.board[nr][nc]&&this.board[nr][nc].color!==p.color) add(nr,nc,{promotion:nr===this.promotionRow(p.color)});}
+    } else if(p.type==="n") {
+      for(const [dr,dc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) add(this.nextRow(r,dr),c+dc);
+    } else if(p.type==="k") {
+      for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++) if(dr||dc) add(this.nextRow(r,dr),c+dc);
+      const cs=this.castling[p.color];
+      if(r===threeStartRow(p.color)&&c===4&&!cs.kingMoved&&!this.otherColors(p.color).some(e=>this.attacked(r,c,e))) {
+        for(const rook of cs.rooks){ if(rook.moved) continue; const kingSide=rook.col>c,targetKCol=kingSide?6:2,targetRCol=kingSide?5:3; let clear=true;
+          for(let col=Math.min(c,rook.col);col<=Math.max(c,rook.col);col++) if(col!==c&&col!==rook.col&&this.board[r][col]) {clear=false;break;}
+          if(clear&&(this.board[r][targetKCol]||this.board[r][targetRCol])) clear=false;
+          if(clear){const step=targetKCol>c?1:-1;for(let col=c+step;col!==targetKCol+step;col+=step) if(this.otherColors(p.color).some(e=>this.attacked(r,col,e))){clear=false;break;}}
+          if(clear) out.push({from:{r,c},to:{r,c:targetKCol},castling:{rookFromCol:rook.col,targetKCol,targetRCol}});
+        }
+      }
+    } else {
+      const ds=[]; if(["b","q"].includes(p.type)) ds.push([1,1],[1,-1],[-1,1],[-1,-1]); if(["r","q"].includes(p.type)) ds.push([1,0],[-1,0],[0,1],[0,-1]);
+      for(const [dr,dc] of ds){let tr=r,tc=c;for(let step=0;step<12;step++){tr=this.nextRow(tr,dr);tc+=dc;if(tc<0||tc>=THREE_COLS)break;const t=this.board[tr][tc];if(!t)add(tr,tc);else{if(t.color!==p.color)add(tr,tc);break;}}}
+    }
+    return out;
+  }
+  legalMovesFrom(r,c){ return this.moveList(r,c).filter(m=>{const snap=this.clone();const p=this.board[m.from.r][m.from.c];if(m.castling){const rook=this.board[m.from.r][m.castling.rookFromCol];this.board[m.from.r][m.from.c]=null;this.board[m.from.r][m.castling.rookFromCol]=null;this.board[m.from.r][m.castling.targetKCol]=p;this.board[m.from.r][m.castling.targetRCol]=rook;}else{this.board[m.from.r][m.from.c]=null;this.board[m.to.r][m.to.c]=p;}const king=this.findKing(p.color);const safe=king&&!this.otherColors(p.color).some(e=>this.attacked(king.r,king.c,e));this.restore(snap);return safe;}); }
+  allLegal(color){const old=this.turn;this.turn=color;const a=[];for(let r=0;r<THREE_ROWS;r++)for(let c=0;c<THREE_COLS;c++)if(this.board[r][c]?.color===color)a.push(...this.legalMovesFrom(r,c));this.turn=old;return a;}
+  makeMove(m,promotion="q"){const legal=this.legalMovesFrom(m.from.r,m.from.c).find(x=>x.to.r===m.to.r&&x.to.c===m.to.c);if(!legal)return false;this.history.push(this.clone());const p=this.board[legal.from.r][legal.from.c];if(legal.castling){const rook=this.board[legal.from.r][legal.castling.rookFromCol];this.board[legal.from.r][legal.from.c]=null;this.board[legal.from.r][legal.castling.rookFromCol]=null;this.board[legal.from.r][legal.castling.targetKCol]=p;this.board[legal.from.r][legal.castling.targetRCol]=rook;this.castling[p.color].kingMoved=true;const rk=this.castling[p.color].rooks.find(x=>x.col===legal.castling.rookFromCol);if(rk)rk.moved=true;this.sanHistory.push(legal.castling.targetKCol===6?"O-O":"O-O-O");}else{const cap=this.board[legal.to.r][legal.to.c];this.board[legal.from.r][legal.from.c]=null;this.board[legal.to.r][legal.to.c]={...p,type:legal.promotion?promotion:p.type};if(p.type==="k")this.castling[p.color].kingMoved=true;if(p.type==="r"){const rk=this.castling[p.color].rooks.find(x=>x.col===legal.from.c);if(rk)rk.moved=true;}if(cap)this.captured.push(cap);const file="abcdefgh";this.sanHistory.push(`${p.type==="p"?"":p.type.toUpperCase()}${cap?"x":""}${file[legal.to.c]}${THREE_ROWS-legal.to.r}${legal.promotion?"="+promotion.toUpperCase():""}`);}this.lastMove={from:{...legal.from},to:{...legal.to}};this.turnIndex=(this.turnIndex+1)%3;this.turn=THREE_COLORS[this.turnIndex];return true;}
+  gameStatus(){const king=this.findKing(this.turn);const check=king&&this.otherColors(this.turn).some(e=>this.attacked(king.r,king.c,e));const moves=this.allLegal(this.turn);if(!moves.length){const winner=this.turnIndex===0?"black":this.turnIndex===1?"white":"red";return{over:true,check:Boolean(check),winner,text:check?`Checkmate — ${winner[0].toUpperCase()+winner.slice(1)} wins`:"Stalemate — draw"};}return{over:false,check:Boolean(check),text:`${this.turn[0].toUpperCase()+this.turn.slice(1)}${check?" is in check":" to move"}`};}
+}
+
 // ---------------------------- 4-PLAYER CHESS ENGINE ----------------------------
 function playable4(r, c) {
   return (r >= 3 && r <= 10) || (c >= 3 && c <= 10);
@@ -532,15 +609,14 @@ class FourPlayerChessGame {
           });
         }
       }
-      for (const [dr, dc] of p.color === "red" || p.color === "blue"
-        ? [
-            [1, 0],
-            [-1, 0],
-          ]
-        : [
-            [0, 1],
-            [0, -1],
-          ]) {
+      const captureDirs = p.color === "red"
+        ? [[1, 1], [-1, 1]]
+        : p.color === "blue"
+          ? [[1, -1], [-1, -1]]
+          : p.color === "black"
+            ? [[1, -1], [1, 1]]
+            : [[-1, -1], [-1, 1]];
+      for (const [dr, dc] of captureDirs) {
         const tr = r + dr,
           tc = c + dc;
         if (
@@ -688,6 +764,7 @@ const GameRegistry = {
     variants: {
 standard: { name: "Standard Chess", create: () => new ChessGame(false) },
 chess960: { name: "Chess960", create: () => new ChessGame(true) },
+threeman: { name: "Three Player Chess", create: () => new ThreePlayerChessGame() },
 fourplayer: { name: "4-Player Chess", create: () => new FourPlayerChessGame() },
     },
   },
@@ -793,8 +870,10 @@ function refreshOnlinePlayerNames() {
 
 function currentPlayerIndex(game) {
   if (Number.isInteger(game.turnIndex)) return game.turnIndex;
-  if (["w", "blue", "yellow"].includes(game.turn)) return 0;
-  if (["b", "red", "black"].includes(game.turn)) return 1;
+  if (game.turn === "w" || game.turn === "white") return 0;
+  if (game.turn === "red") return 1;
+  if (game.turn === "b" || game.turn === "black") return game.size === 12 ? 2 : 1;
+  if (game.turn === "blue") return 3;
   return 0;
 }
 
@@ -864,6 +943,10 @@ function fogColorForSeat(seat, game = manager.game) {
   // Four-player Chess uses its four literal colour names on the board.
   if (game?.size === 14) {
     return ["white", "red", "black", "blue"].includes(seat) ? seat : null;
+  }
+
+  if (game?.size === 12) {
+    return ["white", "red", "black"].includes(seat) ? seat : null;
   }
 
   // Standard Chess and Chess960 use the compact engine colours.
@@ -1029,12 +1112,14 @@ function publishOnlineResultIfOver() {
   const status = manager.game.gameStatus();
   if (!status.over) return;
 
-  const winner = status.check ? opposite(manager.game.turn) : null;
+  const winner = status.winner || (status.check ? opposite(manager.game.turn) : null);
   const winnerClientId = winner
-    ? (gamePlayers.find((player) =>
-        (player.seat === "white" && winner === "w") ||
-        (player.seat === "black" && winner === "b")
-      )?.controllerClientId || "")
+    ? (gamePlayers.find((player) => {
+        if (player.seat === winner) return true;
+        if (player.seat === "white" && winner === "w") return true;
+        if (player.seat === "black" && winner === "b") return true;
+        return false;
+      })?.controllerClientId || "")
     : null;
 
   if (winner && !winnerClientId) return;
@@ -1411,7 +1496,7 @@ function render() {
   const legal = selected ? g.legalMovesFrom(selected.r, selected.c) : [];
   const king = s.check ? g.findKing(g.turn) : null;
 
-  for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) {
+  for (let r = 0; r < size; r++) for (let c = 0; c < cols; c++) {
     const sq = document.createElement("button");
     sq.className = "square " + ((r + c) % 2 ? "dark" : "light");
     if (size === 14 && !playable4(r, c)) sq.classList.add("unplayable");
@@ -1431,7 +1516,7 @@ sq.appendChild(mark);
     if (p && visible) {
 const pe = document.createElement("span");
 pe.className = "piece " + p.color;
-pe.textContent = size === 14 ? FOUR_PIECES[p.color][p.type] : PIECES[p.color][p.type];
+pe.textContent = size === 14 ? FOUR_PIECES[p.color][p.type] : size === 12 ? THREE_PIECES[p.color][p.type] : PIECES[p.color][p.type];
 sq.appendChild(pe);
     }
     if (!visible) {
@@ -1450,7 +1535,8 @@ sq.appendChild(pe);
 
 
 function renderCoordinates(size) {
-  const files = "abcdefghijklmnopqrstuvwxyz".slice(0, size).split("");
+  const cols = size === 12 ? 8 : size;
+  const files = "abcdefghijklmnopqrstuvwxyz".slice(0, cols).split("");
   const ranks = Array.from({ length: size }, (_, i) => size - i);
 
   rowLabelsEl.innerHTML = ranks
@@ -1493,7 +1579,7 @@ function openPromotion(color) {
   promotionOptions.innerHTML = "";
   for (const t of ["q", "r", "b", "n"]) {
     const b = document.createElement("button");
-    b.textContent = (manager.game.size === 14 ? FOUR_PIECES[color] : PIECES[color])[t];
+    b.textContent = (manager.game.size === 14 ? FOUR_PIECES[color] : manager.game.size === 12 ? THREE_PIECES[color] : PIECES[color])[t];
     b.onclick = () => {
       const move = pendingPromotion;
       const ok = manager.game.makeMove(move, t);
@@ -1542,7 +1628,7 @@ function renderCaptured() {
     for (const p of pieces) {
 const x = document.createElement("span");
 x.className = "piece " + p.color;
-x.textContent = g.size === 14 ? FOUR_PIECES[p.color][p.type] : PIECES[p.color][p.type];
+x.textContent = g.size === 14 ? FOUR_PIECES[p.color][p.type] : g.size === 12 ? THREE_PIECES[p.color][p.type] : PIECES[p.color][p.type];
 list.appendChild(x);
     }
     box.appendChild(list); capturedPanel.appendChild(box);
