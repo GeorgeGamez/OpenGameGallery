@@ -798,15 +798,8 @@ function canLocalPlayerMove() {
   const current = currentPlayerEntry(manager.game);
   if (!ONLINE_MODE) return current?.type !== "computer";
 
-  // Prefer the explicit seat assigned by the host. This is more reliable
-  // than comparing client IDs after navigating from the main menu, and it
-  // also works when the same browser is used for both test windows.
-  if (current?.seat === "white" || current?.seat === "black") {
-    return ONLINE_HOST_TOKEN
-      ? current.seat === "white"
-      : current.seat === "black";
-  }
-
+  // The index page supplies the controllerClientId for each human seat.
+  // Either online player may be White or Black.
   return current?.controllerClientId === ONLINE_CLIENT_ID;
 }
 
@@ -833,14 +826,12 @@ if (onlineConfig?.variant && GameRegistry.chess.variants[onlineConfig.variant]) 
 }
 manager.newGame("chess", selectedVariantId);
 let gameHasStarted = false;
-let setupDraft = null;
 let computerMoveTimer = null;
 let computerMovePending = false;
 let selected = null;
 let pendingPromotion = null;
 
-const computerDifficulty =
-  params.get("computerDifficulty") || "normal";
+const computerDifficulty = params.get("computerDifficulty") || "normal";
 let computerDifficulties = {};
 try {
   const rawDifficulties = params.get("computerDifficulties");
@@ -848,7 +839,6 @@ try {
 } catch (error) {
   console.warn("Could not read computer difficulties:", error);
 }
-
 
 function onlineWsUrl() {
   const base = ONLINE_SERVER_URL.replace(/^http/i, "ws").replace(/\/$/, "");
@@ -868,226 +858,6 @@ function setOnlineStatus(text, isError = false) {
   bar.hidden = !ONLINE_MODE;
   bar.textContent = text;
   bar.classList.toggle("error", Boolean(isError));
-}
-
-function profileById(profileId) {
-  return profiles.find((p) => p.id === profileId) || profiles[0] || { id: "", name: "Player 1", avatar: "♟" };
-}
-
-function onlineHostClientId() {
-  return (onlineParticipants.find((p) => p.role === "host")?.clientId) || onlineConfig?.hostClientId || (ONLINE_HOST_TOKEN ? ONLINE_CLIENT_ID : "");
-}
-
-function humanSetupOptions() {
-  if (!ONLINE_MODE) return profiles.map((p) => ({ value: `profile:${p.id}`, label: p.name || "Player" }));
-  return onlineParticipants
-    .filter((p) => p.connected && !p.spectator)
-    .map((p) => ({ value: `client:${p.clientId}`, label: p.clientId === ONLINE_CLIENT_ID ? `${p.name || "Player"} (You)` : (p.name || "Player") }));
-}
-
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"]/g, (c) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-  })[c]);
-}
-
-function setupOptionValue(player, fallbackSeat) {
-  if (!player) return `computer:${fallbackSeat}`;
-  if (player.type === "computer") return "computer";
-  if (ONLINE_MODE) return `client:${player.controllerClientId || player.clientId || ""}`;
-  return `profile:${player.profileId || player.id?.replace(/^local:/, "") || ""}`;
-}
-
-function buildDefaultSetup() {
-  if (onlineConfig?.players?.length) {
-    const players = parseOnlinePlayers(onlineConfig);
-    const usable = new Set(onlineParticipants.filter((p) => p.connected && !p.spectator).map((p) => p.clientId));
-    const clean = (entry) => entry?.type === "computer" || usable.has(entry?.controllerClientId) ? entry : null;
-    const white = clean(players.find((p) => p.seat === "white"));
-    const black = clean(players.find((p) => p.seat === "black"));
-    const available = onlineParticipants.filter((p) => p.connected && !p.spectator);
-    const take = (exclude) => available.find((p) => p.clientId !== exclude?.controllerClientId);
-    return {
-      white: white || (available[0] ? { type: "human", controllerClientId: available[0].clientId } : { type: "computer", difficulty: "normal" }),
-      black: black || (take(white) ? { type: "human", controllerClientId: take(white).clientId } : { type: "computer", difficulty: "normal" }),
-      spectators: onlineParticipants.filter((p) => p.spectator).map((p) => p.clientId),
-    };
-  }
-  if (ONLINE_MODE) {
-    const humans = humanSetupOptions();
-    return {
-      white: humans[0]?.value?.startsWith("client:") ? { type: "human", controllerClientId: humans[0].value.slice(7) } : { type: "computer", difficulty: "normal" },
-      black: humans[1]?.value?.startsWith("client:") ? { type: "human", controllerClientId: humans[1].value.slice(7) } : { type: "computer", difficulty: "normal" },
-      spectators: onlineParticipants.filter((p) => p.spectator).map((p) => p.clientId),
-    };
-  }
-  const active = localProfileForOnlineIdentity();
-  return {
-    white: { type: "human", profileId: active.id },
-    black: { type: "computer", difficulty: "normal" },
-    spectators: [],
-  };
-}
-
-function setupEntry(value, difficulty) {
-  if (value === "computer") return { type: "computer", difficulty: difficulty || "normal" };
-  const [kind, id] = String(value).split(":", 2);
-  if (kind === "client") {
-    const p = onlineParticipants.find((x) => x.clientId === id) || {};
-    return { type: "human", controllerClientId: id, name: p.name || "Player", avatar: p.avatar || "♟" };
-  }
-  const p = profileById(id);
-  return { type: "human", profileId: id, name: p.name || "Player", avatar: p.avatar || "♟" };
-}
-
-function renderSetupPanel() {
-  const rows = document.getElementById("setupRows");
-  const spectatorBox = document.getElementById("spectatorSetup");
-  const message = document.getElementById("setupMessage");
-  const startButton = document.getElementById("startGameBtn");
-  if (!rows) return;
-
-  setupDraft ||= buildDefaultSetup();
-  const options = humanSetupOptions();
-  const optionHtml = (current) => {
-    const currentValue = setupOptionValue(current, "x");
-    const opts = [...options, { value: "computer", label: "Computer" }];
-    return opts.map((o) => `<option value="${escapeAttribute(o.value)}" ${o.value === currentValue ? "selected" : ""}>${escapeHtml(o.label)}</option>`).join("");
-  };
-
-  rows.innerHTML = "";
-  for (const [seat, entry] of [["white", setupDraft.white], ["black", setupDraft.black]]) {
-    const wrapper = document.createElement("div");
-    wrapper.innerHTML = `<div class="setup-row"><label for="setup-${seat}">${seat[0].toUpperCase()+seat.slice(1)}</label><select id="setup-${seat}">${optionHtml(entry)}</select></div><div class="setup-difficulty" id="difficulty-${seat}" hidden><label>Computer difficulty <select id="difficulty-select-${seat}"><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option><option value="expert">Expert</option></select></label></div>`;
-    rows.appendChild(wrapper);
-    const select = wrapper.querySelector(`#setup-${seat}`);
-    const diffWrap = wrapper.querySelector(`#difficulty-${seat}`);
-    const diff = wrapper.querySelector(`#difficulty-select-${seat}`);
-    const value = setupOptionValue(entry, seat);
-    select.onchange = () => {
-      setupDraft[seat] = setupEntry(select.value, diff.value);
-      renderSetupPanel();
-    };
-    diff.value = entry?.difficulty || "normal";
-    diffWrap.hidden = select.value !== "computer";
-    diff.onchange = () => { setupDraft[seat] = setupEntry("computer", diff.value); };
-  }
-
-  if (ONLINE_MODE) {
-    spectatorBox.hidden = false;
-    spectatorBox.innerHTML = `<div class="setup-note" style="margin-bottom:8px">Online spectators</div>` + (onlineParticipants.length ? onlineParticipants.map((p) => {
-      const canEdit = ONLINE_HOST_TOKEN || p.clientId === ONLINE_CLIENT_ID;
-      return `<label class="spectator-row"><div class="identity"><div class="name">${escapeHtml(p.name || "Player")}</div><div class="type">${p.clientId === ONLINE_CLIENT_ID ? "You" : (p.role === "host" ? "Host" : "Online player")}</div></div><input type="checkbox" data-spectator-id="${escapeAttribute(p.clientId)}" ${p.spectator ? "checked" : ""} ${canEdit ? "" : "disabled"}></label>`;
-    }).join("") : `<div class="muted">No connected players yet.</div>`);
-    spectatorBox.querySelectorAll("input[data-spectator-id]").forEach((box) => {
-      box.onchange = () => {
-        const clientId = box.dataset.spectatorId;
-        onlineSocket?.send(JSON.stringify({ type: "player:spectator", clientId, spectator: box.checked }));
-      };
-    });
-  } else {
-    spectatorBox.hidden = true;
-    spectatorBox.innerHTML = "";
-  }
-
-  const choices = [setupOptionValue(setupDraft.white, "white"), setupOptionValue(setupDraft.black, "black")].filter((v) => v && v !== "computer");
-  const duplicateHuman = choices.length === 2 && choices[0] === choices[1];
-  const onlineSeatsValid = !ONLINE_MODE || [setupDraft.white, setupDraft.black].every((entry) => entry?.type === "computer" || (entry?.controllerClientId && onlineParticipants.some((p) => p.clientId === entry.controllerClientId && p.connected && !p.spectator)));
-  const ready = !duplicateHuman && onlineSeatsValid && (!ONLINE_MODE || ONLINE_HOST_TOKEN);
-  startButton.disabled = gameHasStarted || !ready;
-  message.classList.remove("error");
-  if (gameHasStarted) message.textContent = ONLINE_MODE ? "Game in progress. Return to the Game Library to set up another match." : "Game in progress.";
-  else if (ONLINE_MODE && !ONLINE_HOST_TOKEN) message.textContent = "Waiting for the host to configure the players and start the game.";
-  else if (duplicateHuman) { message.textContent = "The same player cannot occupy both sides."; message.classList.add("error"); }
-  else if (!onlineSeatsValid) { message.textContent = "Choose connected, non-spectating online players for the human sides."; message.classList.add("error"); }
-  else { message.textContent = "Configure the sides and start the game when ready."; }
-}
-
-function escapeAttribute(value) {
-  return escapeHtml(value).replace(/'/g, "&#39;");
-}
-
-function applySetupDraft() {
-  const human = (entry) => {
-    if (entry.type === "computer") return {
-      type: "computer",
-      name: "Computer",
-      avatar: "🤖",
-      controllerClientId: ONLINE_MODE ? onlineHostClientId() : "",
-      difficulty: entry.difficulty || "normal",
-      id: `computer:${Math.random().toString(36).slice(2, 7)}`
-    };
-    if (ONLINE_MODE) {
-      const p = onlineParticipants.find((x) => x.clientId === entry.controllerClientId) || {};
-      return {
-        seat: "", type: "human", controllerClientId: entry.controllerClientId, profileId: p.profileId || "",
-        name: p.name || entry.name || "Player", avatar: p.avatar || entry.avatar || "♟", playerType: entry.controllerClientId === ONLINE_CLIENT_ID ? "Online player" : "Online player"
-      };
-    }
-    const p = profileById(entry.profileId);
-    return { seat: "", type: "human", controllerClientId: "", profileId: p.id, name: p.name, avatar: p.avatar, playerType: "Local player", id: `local:${p.id}` };
-  };
-
-  gamePlayers = [
-    { ...human(setupDraft.white), seat: "white" },
-    { ...human(setupDraft.black), seat: "black" },
-  ];
-
-  const hostId = onlineHostClientId();
-  const spectators = ONLINE_MODE ? [...new Set(onlineParticipants.filter((p) => p.spectator).map((p) => p.clientId))] : [];
-
-  return {
-    game: "chess", variant: selectedVariantId, hostClientId: ONLINE_MODE ? hostId : "",
-    players: gamePlayers.map((p) => ({ ...p })),
-    spectators,
-  };
-}
-
-async function startConfiguredGame() {
-  if (gameHasStarted) return;
-
-  const config = applySetupDraft();
-  const duplicate = ONLINE_MODE
-    ? config.players[0].type !== "computer" && config.players[1].type !== "computer" && config.players[0].controllerClientId === config.players[1].controllerClientId
-    : config.players[0].type !== "computer" && config.players[1].type !== "computer" && config.players[0].profileId === config.players[1].profileId;
-  if (duplicate) {
-    const msg = document.getElementById("setupMessage");
-    msg.textContent = "The same player cannot occupy both sides.";
-    msg.classList.add("error");
-    return;
-  }
-
-  clearTimeout(computerMoveTimer);
-  computerMovePending = false;
-  manager.newGame("chess", selectedVariantId);
-  gameHasStarted = true;
-  onlineResultSent = false;
-  renderSetupPanel();
-  render();
-
-  if (ONLINE_MODE) {
-    if (!ONLINE_HOST_TOKEN || !onlineSocket || onlineSocket.readyState !== WebSocket.OPEN) {
-      gameHasStarted = false;
-      renderSetupPanel();
-      return;
-    }
-    onlineConfig = config;
-    try { sessionStorage.setItem("gameLibraryOnlineConfig", JSON.stringify(config)); } catch {}
-    onlineSocket.send(JSON.stringify({ type: "room:config", config }));
-    onlineSocket.send(JSON.stringify({
-      type: "game:start",
-      config,
-      state: { variant: selectedVariantId, game: manager.game.clone() },
-      resetState: true,
-    }));
-    setOnlineStatus(`Connected • game started (${GameRegistry.chess.variants[selectedVariantId].name})`);
-    return;
-  }
-
-  render();
 }
 
 function publishOnlineState() {
@@ -1187,11 +957,12 @@ function applyRemoteState(state) {
       selectedVariantId = state.variant;
     }
   }
+  updateGameHeader();
 
   try {
     manager.game.restore(state.game);
     gameHasStarted = true;
-    renderSetupPanel();
+    renderPlayers();
     selected = null;
     pendingPromotion = null;
     promotionModal.classList.remove("open");
@@ -1261,7 +1032,7 @@ function connectOnlineGame() {
       profileId: profile.id || "",
       name: profile.name || "Player 1",
       avatar: profile.avatar || "♟",
-      spectator: false
+      spectator: Boolean((onlineConfig?.spectators || []).includes(ONLINE_CLIENT_ID))
     }));
 
     // Do not publish a random local Chess960 position before the host starts.
@@ -1281,10 +1052,10 @@ function connectOnlineGame() {
       // The room is authoritative. Replace stale session configuration with
       // whatever the room currently has, including a pre-game config without players.
       onlineConfig = message.room?.config || null;
-      if (onlineConfig?.players?.length) {
-        gamePlayers = parseOnlinePlayers(onlineConfig);
-      } else {
-        gamePlayers = [];
+      if (onlineConfig?.players?.length) gamePlayers = parseOnlinePlayers(onlineConfig);
+      if (onlineConfig?.variant && GameRegistry.chess.variants[onlineConfig.variant]) {
+        selectedVariantId = onlineConfig.variant;
+        if (!message.room?.started) manager.newGame("chess", selectedVariantId);
       }
       try {
         if (onlineConfig) sessionStorage.setItem("gameLibraryOnlineConfig", JSON.stringify(onlineConfig));
@@ -1294,7 +1065,7 @@ function connectOnlineGame() {
       refreshOnlinePlayerNames();
       if (message.room?.started) {
         gameHasStarted = true;
-        renderSetupPanel();
+        renderPlayers();
         if (message.room?.state) {
           applyRemoteState(message.room.state);
         } else {
@@ -1303,6 +1074,7 @@ function connectOnlineGame() {
           // Chess960 the host immediately publishes its authoritative random
           // position, which replaces this temporary one.
           manager.newGame("chess", selectedVariantId);
+          updateGameHeader();
           selected = null;
           pendingPromotion = null;
           render();
@@ -1310,7 +1082,6 @@ function connectOnlineGame() {
         }
       } else {
         gameHasStarted = false;
-        renderSetupPanel();
       }
       renderPlayers();
       return;
@@ -1319,7 +1090,6 @@ function connectOnlineGame() {
     if (message.type === "room:participants") {
       onlineParticipants = Array.isArray(message.participants) ? message.participants : [];
       refreshOnlinePlayerNames();
-      renderSetupPanel();
       renderPlayers();
       if (gameHasStarted) publishOnlineState();
       return;
@@ -1327,11 +1097,15 @@ function connectOnlineGame() {
 
     if (message.type === "room:config") {
       onlineConfig = message.config || onlineConfig;
-      gamePlayers = onlineConfig?.players?.length ? parseOnlinePlayers(onlineConfig) : [];
+      gamePlayers = onlineConfig?.players?.length ? parseOnlinePlayers(onlineConfig) : gamePlayers;
+      if (onlineConfig?.variant && GameRegistry.chess.variants[onlineConfig.variant]) {
+        selectedVariantId = onlineConfig.variant;
+        if (!gameHasStarted) manager.newGame("chess", selectedVariantId);
+      }
       refreshOnlinePlayerNames();
-      setupDraft = null;
-      renderSetupPanel();
+      updateGameHeader();
       renderPlayers();
+      render();
       return;
     }
 
@@ -1342,8 +1116,7 @@ function connectOnlineGame() {
       gameHasStarted = true;
       if (onlineConfig?.players?.length) {
         gamePlayers = parseOnlinePlayers(onlineConfig);
-        setupDraft = null;
-        try {
+                try {
           sessionStorage.setItem("gameLibraryOnlineConfig", JSON.stringify(onlineConfig));
         } catch {}
       }
@@ -1351,7 +1124,7 @@ function connectOnlineGame() {
         selectedVariantId = onlineConfig.variant;
       }
       refreshOnlinePlayerNames();
-      renderSetupPanel();
+      updateGameHeader();
       renderPlayers();
       if (message.state) {
         applyRemoteState(message.state);
@@ -1377,8 +1150,7 @@ function connectOnlineGame() {
 
     if (message.type === "player:spectator") {
       onlineParticipants = Array.isArray(message.participants) ? message.participants : onlineParticipants;
-      setupDraft = null;
-      renderSetupPanel();
+      refreshOnlinePlayerNames();
       renderPlayers();
       return;
     }
@@ -1461,11 +1233,12 @@ const capturedPanel = document.getElementById("capturedPanel");
 const promotionModal = document.getElementById("promotionModal");
 const promotionOptions = document.getElementById("promotionOptions");
 
-const displayGameName = "Chess";
-const displayVariantName = GameRegistry.chess.variants[manager.variantId].name;
-document.getElementById("pageTitle").textContent = displayGameName;
-document.getElementById("gameName").textContent = displayGameName;
-document.getElementById("variantName").textContent = displayVariantName;
+function updateGameHeader() {
+  document.getElementById("pageTitle").textContent = "Chess";
+  document.getElementById("gameName").textContent = "Chess";
+  document.getElementById("variantName").textContent = GameRegistry.chess.variants[manager.variantId]?.name || manager.variantId;
+}
+updateGameHeader();
 
 function render() {
   const g = manager.game, s = g.gameStatus(), size = g.size;
@@ -1629,12 +1402,20 @@ document.getElementById("undoBtn").onclick = () => {
 
 if (onlineConfig?.players?.length) {
   gamePlayers = parseOnlinePlayers(onlineConfig);
+} else {
+  const active = localProfileForOnlineIdentity();
+  gamePlayers = [
+    { seat: "white", type: "human", controllerClientId: ONLINE_MODE ? ONLINE_CLIENT_ID : "", profileId: active.id || "", name: active.name || "Player 1", avatar: active.avatar || "♟", playerType: ONLINE_MODE ? "Online player" : "Local player", id: ONLINE_MODE ? `online:${ONLINE_CLIENT_ID}` : `local:${active.id || "0"}` },
+    { seat: "black", type: "computer", controllerClientId: ONLINE_MODE ? (onlineConfig?.hostClientId || "") : "", name: "Computer", avatar: "🤖", difficulty: computerDifficulty, id: "computer:0" }
+  ];
 }
-setupDraft = buildDefaultSetup();
+if (onlineConfig?.variant && GameRegistry.chess.variants[onlineConfig.variant]) {
+  selectedVariantId = onlineConfig.variant;
+  manager.newGame("chess", selectedVariantId);
+}
+gameHasStarted = true;
 refreshOnlinePlayerNames();
-renderSetupPanel();
+renderPlayers();
 connectOnlineGame();
 
-const startGameButton = document.getElementById("startGameBtn");
-if (startGameButton) startGameButton.onclick = startConfiguredGame;
 render();
