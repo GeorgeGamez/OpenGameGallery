@@ -215,6 +215,149 @@
       .drawer.open {
         transform: translateX(0);
       }
+      .game-setup-drawer {
+        position: fixed;
+        z-index: 22;
+        top: 0;
+        right: 0;
+        width: min(430px, 100vw);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: var(--panel);
+        border-left: 1px solid var(--border);
+        box-shadow: -12px 0 35px rgba(0,0,0,.3);
+        transform: translateX(100%);
+        transition: transform .2s ease;
+      }
+      .game-setup-drawer.open { transform: translateX(0); }
+      .game-setup-drawer .drawer-header {
+        background: #1d2027;
+      }
+      .game-setup-body {
+        overflow: auto;
+        flex: 1;
+        padding: 18px;
+      }
+      .setup-section { margin-bottom: 20px; }
+      .setup-section h3 {
+        margin: 0 0 9px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .variant-list { display: flex; flex-wrap: wrap; gap: 7px; }
+      .variant-button {
+        color: var(--text);
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .variant-button:hover { background: #353a45; }
+      .variant-button.selected {
+        border-color: var(--accent);
+        outline: 1px solid var(--accent);
+        background: #303b50;
+      }
+      .range-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      .range-label {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 7px;
+        font-size: 13px;
+      }
+      .range-value { color: var(--accent); font-weight: 700; white-space: nowrap; }
+      .range-help {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.35;
+      }
+      .setup-option-list { display: flex; flex-direction: column; gap: 8px; }
+      .toggle-option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      .toggle-label { color: var(--text); font-size: 12px; line-height: 1.3; cursor: pointer; }
+      .toggle-switch { position: relative; flex: 0 0 auto; width: 38px; height: 21px; }
+      .toggle-switch input { opacity: 0; width: 0; height: 0; }
+      .toggle-slider {
+        position: absolute; inset: 0; background: #454b57; border: 1px solid var(--border);
+        border-radius: 999px; cursor: pointer; transition: .15s;
+      }
+      .toggle-slider::before {
+        content: ''; position: absolute; width: 15px; height: 15px; left: 2px; top: 2px;
+        background: var(--text); border-radius: 50%; transition: .15s;
+      }
+      .toggle-switch input:checked + .toggle-slider { background: var(--accent); border-color: var(--accent); }
+      .toggle-switch input:checked + .toggle-slider::before { transform: translateX(17px); background: #111318; }
+      .setup-player-summary {
+        padding: 12px; background: var(--panel2); border: 1px solid var(--border);
+        border-radius: 8px; color: var(--muted); font-size: 12px; line-height: 1.45;
+      }
+      .setup-player-summary strong { color: var(--text); }
+      .setup-player-list, .setup-order-list { display:flex; flex-direction:column; gap:7px; margin-top:9px; }
+      .setup-player-row, .setup-order-row {
+        display:grid; grid-template-columns:auto 1fr auto auto; align-items:center; gap:9px;
+        padding:8px 9px; background:var(--panel2); border:1px solid var(--border); border-radius:7px;
+      }
+      .setup-player-row { grid-template-columns:auto 1fr auto; }
+      .setup-player-avatar {
+        width:30px; height:30px; display:grid; place-items:center; border-radius:50%;
+        background:var(--bg); font-size:17px;
+      }
+      .setup-player-name { min-width:0; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .setup-player-name strong { display:block; }
+      .setup-player-name span { display:block; margin-top:2px; color:var(--muted); font-size:10px; }
+      .setup-order-position { width:24px; color:var(--muted); font-size:11px; text-align:center; }
+      .setup-order-buttons { display:flex; gap:4px; }
+      .order-button {
+        width:28px; height:28px; color:var(--text); background:#353a45; border:1px solid var(--border);
+        border-radius:5px; cursor:pointer;
+      }
+      .order-button:disabled { opacity:.35; cursor:not-allowed; }
+      .computer-difficulty-select {
+        min-width:92px; color:var(--text); background:#1d2027; border:1px solid var(--border);
+        border-radius:5px; padding:5px 6px; font:inherit; font-size:11px;
+      }
+      .spectator-row {
+        display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:9px;
+        padding:8px 9px; background:var(--panel2); border:1px solid var(--border); border-radius:7px;
+      }
+      .spectator-row.is-spectator { opacity:.55; }
+      .spectator-toggle {
+        width:27px; height:27px; color:var(--text); background:#353a45; border:1px solid var(--border);
+        border-radius:5px; cursor:pointer; font-size:16px; line-height:1;
+      }
+      .setup-message {
+        margin-top: 12px; padding: 10px; border-radius: 7px; background: #1d2027;
+        border: 1px solid var(--border); color: var(--muted); font-size: 12px; line-height: 1.4;
+      }
+      .setup-message.error { color: #ffb4b4; background:#321f24; border-color:#63353d; }
+      .setup-footer { padding:16px 18px; border-top:1px solid var(--border); background:#1d2027; }
+      .setup-footer button { width:100%; }
+      @media (max-width: 650px) {
+        .game-setup-drawer { width:100%; }
+      }
       .drawer-header {
         display: flex;
         justify-content: space-between;
@@ -527,6 +670,19 @@ No diagnostics run yet.</pre
         </section>
       </div>
     </aside>
+    <aside id="gameSetupDrawer" class="game-setup-drawer" aria-hidden="true">
+      <div class="drawer-header">
+        <div>
+          <h2 id="gameSetupTitle">Chess Setup</h2>
+          <p id="gameSetupSubtitle">Choose the variant and configure this match.</p>
+        </div>
+        <button id="closeGameSetup" class="small" aria-label="Close">×</button>
+      </div>
+      <div id="gameSetupBody" class="game-setup-body"></div>
+      <div class="setup-footer">
+        <button id="gameSetupPlay" class="primary">Play</button>
+      </div>
+    </aside>
     <script>
       "use strict";
       const RAW_ONLINE_SERVER_URL =
@@ -551,7 +707,10 @@ No diagnostics run yet.</pre
         profileEditor = $("profileEditor"),
         runDiagnosticsButton = $("runDiagnostics"),
         debugOutput = $("debugOutput"),
-        onlineWinsCorner = $("onlineWinsCorner");
+        onlineWinsCorner = $("onlineWinsCorner"),
+        gameSetupDrawer = $("gameSetupDrawer"),
+        gameSetupPlay = $("gameSetupPlay"),
+        closeGameSetupButton = $("closeGameSetup");
       let profiles = loadProfiles(),
         editingProfileId = null,
         activeProfileId = localStorage.getItem("gameLibraryActiveProfileId") || profiles[0]?.id || "";
@@ -570,6 +729,20 @@ No diagnostics run yet.</pre
         participants: [],
         config: null,
       };
+      let selectedSetupGame = "chess";
+      let selectedSetupVariant = "standard";
+      let selectedSetupOptions = {};
+      let setupComputerCount = 0;
+      let setupComputerDifficulties = {};
+      let setupPlayerOrder = [];
+      let setupSpectatorTokens = new Set();
+      let gameSetupOpen = false;
+
+      const CHESS_VARIANTS = [
+        { id: "standard", name: "Standard Chess" },
+        { id: "chess960", name: "Chess960" },
+      ];
+
       const AVATARS = [
         "♟",
         "♞",
@@ -735,85 +908,421 @@ No diagnostics run yet.</pre
         return profiles.find((p) => p.id === activeProfileId) || profiles[0] || { name: "Player 1", avatar: "♟", id: "" };
       }
 
-      function openGame(gameId, variantId) {
-        const go = () => {
-          const params = new URLSearchParams({ game: gameId, variant: variantId });
-          if (onlineState.connected) {
-            params.set("online", "1");
-            params.set("onlineCode", roomCode());
-            params.set("onlineServer", serverBase());
-            params.set("onlineClientId", onlineState.clientId);
-            if (onlineState.isHost && onlineState.hostToken) params.set("hostToken", onlineState.hostToken);
+      function setupEntries() {
+        if (onlineState.connected) {
+          return onlineState.participants
+            .filter((p) => p.connected)
+            .map((p) => ({
+              token: `online:${p.clientId}`,
+              id: p.clientId,
+              name: p.name || "Player",
+              avatar: p.avatar || "♟",
+              type: p.role === "host" ? "Host / Online player" : "Online player",
+              online: true,
+              spectator: Boolean(p.spectator),
+            }));
+        }
+
+        return profiles.map((p) => ({
+          token: `local:${p.id}`,
+          id: p.id,
+          name: p.name || "Player",
+          avatar: p.avatar || "♟",
+          type: "Local player",
+          online: false,
+          spectator: setupSpectatorTokens.has(`local:${p.id}`),
+        }));
+      }
+
+      function setupComputerEntry(index) {
+        return {
+          token: `computer:${index}`,
+          id: `computer:${index}`,
+          name: `Computer ${index + 1}`,
+          avatar: "🤖",
+          type: "Computer player",
+          computer: true,
+          difficulty: setupComputerDifficulties[`computer:${index}`] || "normal",
+        };
+      }
+
+      function activeSetupEntries() {
+        const humans = setupEntries().filter((entry) => !setupSpectatorTokens.has(entry.token));
+        const computers = Array.from({ length: setupComputerCount }, (_, i) => setupComputerEntry(i));
+        const all = [...humans, ...computers];
+        const valid = new Set(all.map((entry) => entry.token));
+        const normalized = setupPlayerOrder.filter((token) => valid.has(token));
+        for (const entry of all) if (!normalized.includes(entry.token)) normalized.push(entry.token);
+        setupPlayerOrder = normalized;
+        return all;
+      }
+
+      function initializeSetupState() {
+        const roomVariant = onlineState.config?.game === "chess"
+          ? onlineState.config?.variant
+          : null;
+        selectedSetupVariant = ["standard", "chess960"].includes(roomVariant)
+          ? roomVariant
+          : "standard";
+        selectedSetupGame = "chess";
+        selectedSetupOptions = {};
+        setupComputerDifficulties = {};
+
+        if (onlineState.connected) {
+          setupSpectatorTokens = new Set(
+            onlineState.participants
+              .filter((p) => p.connected && p.spectator)
+              .map((p) => `online:${p.clientId}`),
+          );
+        } else {
+          setupSpectatorTokens = new Set(
+            profiles.slice(2).map((p) => `local:${p.id}`),
+          );
+        }
+
+        const activeHumans = setupEntries().filter((entry) => !setupSpectatorTokens.has(entry.token)).length;
+        setupComputerCount = Math.max(0, 2 - activeHumans);
+        setupComputerCount = Math.min(2, setupComputerCount);
+
+        if (onlineState.config?.players?.length) {
+          const ordered = [];
+          for (const p of onlineState.config.players) {
+            if (p.type === "computer") {
+              const id = p.id || p.seat || "";
+              const m = String(id).match(/computer:(\d+)/);
+              if (m) ordered.push(`computer:${m[1]}`);
+            } else if (p.controllerClientId) {
+              ordered.push(`online:${p.controllerClientId}`);
+            } else if (p.profileId) {
+              ordered.push(`local:${p.profileId}`);
+            }
           }
-          window.location.href = `chess/chess.html?${params}`;
+          setupComputerCount = onlineState.config.players.filter((p) => p.type === "computer").length;
+          setupComputerCount = Math.max(0, Math.min(2, setupComputerCount));
+          for (let i = 0; i < setupComputerCount; i++) {
+            const configured = onlineState.config.players.find((p) => String(p.id || "").includes(`computer:${i}`));
+            setupComputerDifficulties[`computer:${i}`] = configured?.difficulty || "normal";
+          }
+          setupPlayerOrder = ordered;
+        }
+
+        const active = activeSetupEntries();
+        if (!setupPlayerOrder.length) setupPlayerOrder = active.map((entry) => entry.token);
+      }
+
+      function ensureSetupCounts() {
+        const humans = setupEntries().filter((entry) => !setupSpectatorTokens.has(entry.token)).length;
+        const minimumComputers = Math.max(0, 2 - humans);
+        setupComputerCount = Math.max(setupComputerCount, minimumComputers);
+        setupComputerCount = Math.min(setupComputerCount, 2);
+      }
+
+      function setupConfigFromState() {
+        ensureSetupCounts();
+        const active = activeSetupEntries();
+        if (active.length < 2 || active.length > 2) return null;
+
+        const entries = new Map(active.map((entry) => [entry.token, entry]));
+        const order = setupPlayerOrder
+          .map((token) => entries.get(token))
+          .filter(Boolean);
+        if (order.length < 2) return null;
+
+        const human = (entry) => {
+          if (entry.computer) {
+            return {
+              seat: "",
+              type: "computer",
+              name: entry.name,
+              avatar: entry.avatar,
+              controllerClientId: onlineState.connected ? (onlineState.participants.find((p) => p.role === "host")?.clientId || onlineState.clientId) : "",
+              difficulty: setupComputerDifficulties[entry.token] || "normal",
+              id: entry.token,
+            };
+          }
+          if (entry.online) {
+            const p = onlineState.participants.find((x) => x.clientId === entry.id) || {};
+            return {
+              seat: "",
+              type: "human",
+              controllerClientId: entry.id,
+              profileId: p.profileId || "",
+              name: p.name || entry.name,
+              avatar: p.avatar || entry.avatar,
+              playerType: "Online player",
+              id: entry.token,
+            };
+          }
+          const p = profiles.find((x) => x.id === entry.id) || {};
+          return {
+            seat: "",
+            type: "human",
+            controllerClientId: "",
+            profileId: p.id || entry.id,
+            name: p.name || entry.name,
+            avatar: p.avatar || entry.avatar,
+            playerType: "Local player",
+            id: entry.token,
+          };
         };
 
-        if (!onlineState.connected) {
-          go();
-          return;
+        return {
+          game: "chess",
+          variant: selectedSetupVariant,
+          hostClientId: onlineState.connected
+            ? (onlineState.participants.find((p) => p.role === "host")?.clientId || "")
+            : "",
+          players: [
+            { ...human(order[0]), seat: "white" },
+            { ...human(order[1]), seat: "black" },
+          ],
+          spectators: onlineState.connected
+            ? onlineState.participants.filter((p) => p.spectator).map((p) => p.clientId)
+            : [...setupSpectatorTokens],
+          options: { ...selectedSetupOptions },
+        };
+      }
+
+      function sendPreGameConfig() {
+        if (!onlineState.connected || !onlineState.isHost || !onlineState.socket || onlineState.socket.readyState !== WebSocket.OPEN) return;
+        const config = setupConfigFromState();
+        if (!config) return;
+        onlineState.config = config;
+        try { sessionStorage.setItem("gameLibraryOnlineConfig", JSON.stringify(config)); } catch {}
+        onlineState.socket.send(JSON.stringify({ type: "room:config", config }));
+      }
+
+      function renderGameSetup() {
+        if (!gameSetupOpen) return;
+        const body = $("gameSetupBody");
+        const play = $("gameSetupPlay");
+        const subtitle = $("gameSetupSubtitle");
+        body.innerHTML = "";
+
+        const host = onlineState.connected && !onlineState.isHost;
+        const active = activeSetupEntries();
+        const humans = setupEntries().filter((entry) => !setupSpectatorTokens.has(entry.token)).length;
+        const valid = active.length === 2;
+
+        $("gameSetupTitle").textContent = "Chess Setup";
+        subtitle.textContent = onlineState.connected
+          ? (host ? "The host controls the match configuration." : `Room ${roomCode()} • Host setup`)
+          : "Choose the variant and configure this match.";
+
+        const variantSection = document.createElement("section");
+        variantSection.className = "setup-section";
+        const vh = document.createElement("h3"); vh.textContent = "Variant";
+        const variantList = document.createElement("div"); variantList.className = "variant-list";
+        for (const variant of CHESS_VARIANTS) {
+          const b = document.createElement("button");
+          b.type = "button"; b.className = "variant-button"; b.textContent = variant.name;
+          b.disabled = host;
+          if (variant.id === selectedSetupVariant) b.classList.add("selected");
+          b.onclick = () => {
+            selectedSetupVariant = variant.id;
+            if (onlineState.connected && onlineState.isHost) sendPreGameConfig();
+            renderGameSetup();
+          };
+          variantList.appendChild(b);
+        }
+        variantSection.append(vh, variantList);
+        body.appendChild(variantSection);
+
+        const playerSection = document.createElement("section");
+        playerSection.className = "setup-section";
+        const ph = document.createElement("h3"); ph.textContent = "Players & spectators";
+        const summary = document.createElement("div"); summary.className = "setup-player-summary";
+        summary.innerHTML = `<strong>${humans} active human${humans === 1 ? "" : "s"}</strong> in the room, plus ${setupComputerCount} computer${setupComputerCount === 1 ? "" : "s"}.`;
+        playerSection.append(ph, summary);
+
+        const spectatorList = document.createElement("div"); spectatorList.className = "setup-player-list";
+        for (const entry of setupEntries()) {
+          const isSpectator = setupSpectatorTokens.has(entry.token);
+          const row = document.createElement("div");
+          row.className = "spectator-row" + (isSpectator ? " is-spectator" : "");
+          const avatar = document.createElement("div"); avatar.className = "setup-player-avatar"; avatar.textContent = entry.avatar;
+          const info = document.createElement("div"); info.className = "setup-player-name";
+          const name = document.createElement("strong"); name.textContent = entry.name;
+          const type = document.createElement("span"); type.textContent = isSpectator ? "Spectator" : entry.type;
+          info.append(name, type);
+          const toggle = document.createElement("button"); toggle.type = "button"; toggle.className = "spectator-toggle";
+          toggle.textContent = isSpectator ? "↩" : "×";
+          toggle.title = isSpectator ? "Return player to the game" : "Make spectator for this match";
+          toggle.disabled = host;
+          toggle.onclick = () => {
+            const next = !isSpectator;
+            if (onlineState.connected && entry.online) {
+              onlineState.socket?.send(JSON.stringify({ type: "player:spectator", clientId: entry.id, spectator: next }));
+            } else {
+              if (next) setupSpectatorTokens.add(entry.token); else setupSpectatorTokens.delete(entry.token);
+              ensureSetupCounts();
+              normalizeSetupOrder();
+              renderGameSetup();
+            }
+          };
+          row.append(avatar, info, toggle);
+          spectatorList.appendChild(row);
+        }
+        playerSection.appendChild(spectatorList);
+        const help = document.createElement("div"); help.className = "range-help";
+        help.textContent = host ? "Only the host can change spectator assignments for an online room." : "Spectators watch the match without occupying a chess side.";
+        playerSection.appendChild(help);
+        body.appendChild(playerSection);
+
+        const compSection = document.createElement("section"); compSection.className = "setup-section";
+        const ch = document.createElement("h3"); ch.textContent = "Computer players";
+        const rangeRow = document.createElement("div"); rangeRow.className = "range-row";
+        const main = document.createElement("div");
+        const rl = document.createElement("div"); rl.className = "range-label";
+        const lab = document.createElement("span"); lab.textContent = "Number of computers";
+        const val = document.createElement("span"); val.className = "range-value"; val.textContent = String(setupComputerCount);
+        rl.append(lab, val);
+        const slider = document.createElement("input"); slider.type = "range"; slider.min = "0"; slider.max = "2"; slider.step = "1"; slider.value = String(setupComputerCount); slider.disabled = host;
+        slider.oninput = () => {
+          setupComputerCount = Number(slider.value);
+          const humansNow = setupEntries().filter((entry) => !setupSpectatorTokens.has(entry.token)).length;
+          if (humansNow + setupComputerCount > 2) setupComputerCount = Math.max(0, 2 - humansNow);
+          ensureSetupCounts();
+          normalizeSetupOrder();
+          renderGameSetup();
+          if (onlineState.connected && onlineState.isHost) sendPreGameConfig();
+        };
+        const rh = document.createElement("div"); rh.className = "range-help";
+        rh.textContent = "Chess requires exactly two active sides. Make extra people spectators or use computers to fill empty sides.";
+        main.append(rl, slider, rh); rangeRow.appendChild(main); compSection.append(ch, rangeRow); body.appendChild(compSection);
+
+        const orderSection = document.createElement("section"); orderSection.className = "setup-section";
+        const oh = document.createElement("h3"); oh.textContent = "Player order";
+        const ohd = document.createElement("div"); ohd.className = "range-help"; ohd.textContent = "The first active player becomes White; the second becomes Black.";
+        const orderList = document.createElement("div"); orderList.className = "setup-order-list";
+        normalizeSetupOrder();
+        const entries = new Map(activeSetupEntries().map((entry) => [entry.token, entry]));
+        setupPlayerOrder.forEach((token, index) => {
+          const entry = entries.get(token); if (!entry) return;
+          const row = document.createElement("div"); row.className = "setup-order-row";
+          const pos = document.createElement("div"); pos.className = "setup-order-position"; pos.textContent = String(index + 1);
+          const info = document.createElement("div"); info.className = "setup-player-name";
+          const name = document.createElement("strong"); name.textContent = `${index === 0 ? "White" : "Black"} — ${entry.name}`;
+          const type = document.createElement("span"); type.textContent = entry.type + (entry.computer ? ` • ${formatSetupLabel(entry.difficulty)}` : "");
+          info.append(name, type);
+          if (entry.computer) {
+            const select = document.createElement("select"); select.className = "computer-difficulty-select"; select.disabled = host;
+            select.innerHTML = '<option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option><option value="expert">Expert</option>';
+            select.value = setupComputerDifficulties[entry.token] || "normal";
+            select.onchange = () => { setupComputerDifficulties[entry.token] = select.value; renderGameSetup(); if (onlineState.connected && onlineState.isHost) sendPreGameConfig(); };
+            row.append(pos, info, select);
+          } else row.append(pos, info, document.createElement("span"));
+          const buttons = document.createElement("div"); buttons.className = "setup-order-buttons";
+          const up = document.createElement("button"); up.className = "order-button"; up.type="button"; up.textContent="↑"; up.disabled=host || index===0; up.onclick=()=>{ [setupPlayerOrder[index-1],setupPlayerOrder[index]]=[setupPlayerOrder[index],setupPlayerOrder[index-1]]; renderGameSetup(); if (onlineState.connected && onlineState.isHost) sendPreGameConfig(); };
+          const down = document.createElement("button"); down.className = "order-button"; down.type="button"; down.textContent="↓"; down.disabled=host || index===setupPlayerOrder.length-1; down.onclick=()=>{ [setupPlayerOrder[index+1],setupPlayerOrder[index]]=[setupPlayerOrder[index],setupPlayerOrder[index+1]]; renderGameSetup(); if (onlineState.connected && onlineState.isHost) sendPreGameConfig(); };
+          buttons.append(up, down); row.appendChild(buttons); orderList.appendChild(row);
+        });
+        orderSection.append(oh, ohd, orderList); body.appendChild(orderSection);
+
+        const optionSection = document.createElement("section"); optionSection.className = "setup-section";
+        const optionsHeading = document.createElement("h3"); optionsHeading.textContent = "Game options";
+        const optionList = document.createElement("div"); optionList.className = "setup-option-list";
+        const note = document.createElement("div"); note.className = "setup-player-summary"; note.textContent = selectedSetupVariant === "chess960" ? "Chess960 uses a randomized starting position; no additional options are required." : "No additional options are available for Standard Chess yet.";
+        optionList.appendChild(note); optionSection.append(optionsHeading, optionList); body.appendChild(optionSection);
+
+        const message = document.createElement("div"); message.className = "setup-message";
+        if (host) message.textContent = "Waiting for the host to finish configuring the match.";
+        else if (activeSetupEntries().length !== 2) { message.classList.add("error"); message.textContent = "Chess requires exactly two active sides."; }
+        else message.textContent = onlineState.connected ? "Both sides are configured. Start the match when ready." : "Start the match when ready.";
+        body.appendChild(message);
+
+        play.disabled = host || !valid || (onlineState.connected && !onlineState.isHost);
+        play.textContent = onlineState.connected && !onlineState.isHost ? "Waiting for host" : "Play";
+      }
+
+      function formatSetupLabel(value) {
+        return String(value || "").replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      }
+
+      function normalizeSetupOrder() {
+        const active = activeSetupEntries();
+        const valid = new Set(active.map((entry) => entry.token));
+        setupPlayerOrder = setupPlayerOrder.filter((token) => valid.has(token));
+        for (const entry of active) if (!setupPlayerOrder.includes(entry.token)) setupPlayerOrder.push(entry.token);
+        // Chess only has two active sides.
+        setupPlayerOrder = setupPlayerOrder.slice(0, 2);
+      }
+
+      function openGameSetup(gameId = "chess") {
+        selectedSetupGame = gameId;
+        initializeSetupState();
+        ensureSetupCounts();
+        normalizeSetupOrder();
+        gameSetupOpen = true;
+        setupDrawer.classList.remove("open");
+        setupDrawer.setAttribute("aria-hidden", "true");
+        gameSetupDrawer.classList.add("open");
+        gameSetupDrawer.setAttribute("aria-hidden", "false");
+        backdrop.classList.add("open");
+        renderGameSetup();
+      }
+
+      function closeGameSetup() {
+        gameSetupOpen = false;
+        gameSetupDrawer.classList.remove("open");
+        gameSetupDrawer.setAttribute("aria-hidden", "true");
+        if (!setupDrawer.classList.contains("open")) backdrop.classList.remove("open");
+      }
+
+      function startSelectedGame() {
+        if (onlineState.connected && !onlineState.isHost) return;
+        const config = setupConfigFromState();
+        if (!config || config.players?.length !== 2) return;
+
+        onlineState.config = config;
+        try { sessionStorage.setItem("gameLibraryOnlineConfig", JSON.stringify(config)); } catch {}
+
+        const params = new URLSearchParams({
+          game: "chess",
+          variant: selectedSetupVariant,
+          online: onlineState.connected ? "1" : "0",
+          onlineCode: onlineState.connected ? roomCode() : "",
+          onlineServer: onlineState.connected ? serverBase() : "",
+          onlineClientId: onlineState.connected ? onlineState.clientId : "",
+          onlineConfig: JSON.stringify(config),
+        });
+        if (onlineState.connected && onlineState.isHost && onlineState.hostToken) params.set("hostToken", onlineState.hostToken);
+
+        if (onlineState.connected) {
+          if (!onlineState.socket || onlineState.socket.readyState !== WebSocket.OPEN) return;
+          onlineState.socket.send(JSON.stringify({ type: "room:config", config }));
+          // Chess960 positions are randomized by chess.js, so chess.js will publish the
+          // authoritative initial position after the host connects to the room.
+          onlineState.socket.send(JSON.stringify({ type: "game:start", config, resetState: true }));
         }
 
-        if (!onlineState.isHost) {
-          error("The host selects the game for the online room.");
-          return;
-        }
+        closeGameSetup();
+        window.location.href = `chess/chess.html?${params}`;
+      }
 
-        onlineState.socket?.send(JSON.stringify({ type: "game:select", game: gameId, variant: variantId }));
-        go();
+      function openGame(gameId, variantId) {
+        openGameSetup(gameId);
+        if (variantId) selectedSetupVariant = variantId;
+        renderGameSetup();
       }
 
       function renderGames() {
         gamesGrid.innerHTML = "";
-
-        const card = document.createElement("article");
-        card.className = "game-card";
-
-        const image = document.createElement("div");
-        image.className = "game-image";
-        const img = document.createElement("img");
-        img.src = "images/cover/chess.jpg";
-        img.alt = "Chess preview";
-        img.onerror = () => {
-          img.remove();
-          const placeholder = document.createElement("div");
-          placeholder.className = "placeholder-image";
-          placeholder.textContent = "♟";
-          image.appendChild(placeholder);
-        };
+        const card = document.createElement("article"); card.className = "game-card";
+        const image = document.createElement("div"); image.className = "game-image";
+        const img = document.createElement("img"); img.src = "images/cover/chess.jpg"; img.alt = "Chess preview";
+        img.onerror = () => { img.remove(); const p = document.createElement("div"); p.className = "placeholder-image"; p.textContent = "♟"; image.appendChild(p); };
         image.appendChild(img);
-
-        const content = document.createElement("div");
-        content.className = "game-content";
-        const onlineSelection = onlineState.config?.game === "chess" ? onlineState.config.variant : "";
-        const selectedVariant = onlineSelection || "standard";
+        const content = document.createElement("div"); content.className = "game-content";
         const waitingForHost = onlineState.connected && !onlineState.isHost;
-
         content.innerHTML = `
           <h2>Chess</h2>
           <p class="description">The classic two-player strategy game.</p>
-          <div class="game-meta">
-            <span class="meta-tag">2 players</span>
-            <span class="meta-tag">Local / Computer / Online</span>
-          </div>
-          <div class="game-variant">
-            <label for="chessVariantSelect">Variant</label>
-            <select id="chessVariantSelect" aria-label="Chess variant">
-              <option value="standard">Standard Chess</option>
-              <option value="chess960">Chess960</option>
-            </select>
-          </div>
-          <button class="play-button">${waitingForHost ? "Waiting for host" : "Set up &amp; Play"}</button>
+          <div class="game-meta"><span class="meta-tag">2 players</span><span class="meta-tag">Standard / Chess960</span><span class="meta-tag">Local / Computer / Online</span></div>
+          <button class="play-button">${waitingForHost ? "View game setup" : "Set up &amp; Play"}</button>
         `;
-
-        const select = content.querySelector("#chessVariantSelect");
-        const button = content.querySelector("button");
-        select.value = ["standard", "chess960"].includes(selectedVariant) ? selectedVariant : "standard";
-        select.disabled = waitingForHost;
-        button.disabled = waitingForHost;
-        button.onclick = () => openGame("chess", select.value);
-
-        card.append(image, content);
-        gamesGrid.appendChild(card);
+        content.querySelector("button").onclick = () => openGameSetup("chess");
+        card.append(image, content); gamesGrid.appendChild(card);
       }
 
       function renderOnline() {
@@ -1015,6 +1524,7 @@ No diagnostics run yet.</pre
               onlineState.participants = m.room?.participants || [];
               onlineState.config = m.room?.config || null;
               renderOnline();
+              if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
               // Returning to the Game Library reconnects to the existing room,
               // but does not reopen the previous match automatically. A fresh
               // game:start message starts the next match.
@@ -1024,25 +1534,29 @@ No diagnostics run yet.</pre
                 ? m.participants
                 : [];
               renderOnline();
+              if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
               break;
             case "room:config":
               onlineState.config = m.config || null;
               renderOnline();
+              if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
               break;
             case "game:select":
               onlineState.config = { ...(onlineState.config || {}), game: m.game || "chess", variant: m.variant || "standard" };
-              try { sessionStorage.setItem("gameLibrarySelectedGame", JSON.stringify({ game: onlineState.config.game, variant: onlineState.config.variant })); } catch {}
-              if (onlineState.connected && !onlineState.isHost) {
-                const params = new URLSearchParams({ game: onlineState.config.game || "chess", variant: onlineState.config.variant || "standard", online: "1", onlineCode: roomCode(), onlineServer: serverBase(), onlineClientId: onlineState.clientId });
-                window.location.href = `chess/chess.html?${params}`;
-              }
+              if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
               renderOnline();
               renderGames();
               break;
-            case "game:start":
+            case "game:start": {
               onlineState.config = m.config || onlineState.config;
+              try { sessionStorage.setItem("gameLibraryOnlineConfig", JSON.stringify(onlineState.config || {})); } catch {}
               renderOnline();
+              if (onlineState.connected && !onlineState.isHost) {
+                const params = new URLSearchParams({ game: onlineState.config?.game || "chess", variant: onlineState.config?.variant || "standard", online: "1", onlineCode: roomCode(), onlineServer: serverBase(), onlineClientId: onlineState.clientId, onlineConfig: JSON.stringify(onlineState.config || {}) });
+                window.location.href = `chess/chess.html?${params}`;
+              }
               break;
+            }
             case "error":
               error(m.message || "Server error");
               break;
@@ -1161,7 +1675,12 @@ No diagnostics run yet.</pre
         backdrop.classList.remove("open");
         setupDrawer.setAttribute("aria-hidden", "true");
       };
-      backdrop.onclick = closeSetup.onclick;
+      backdrop.onclick = () => {
+        if (gameSetupOpen) closeGameSetup();
+        closeSetup.onclick();
+      };
+      closeGameSetupButton.onclick = closeGameSetup;
+      gameSetupPlay.onclick = startSelectedGame;
       requestOnlineCodeButton.onclick = createRoom;
       disconnectOnlineButton.onclick = () => {
         closeSocket();
@@ -1195,6 +1714,9 @@ No diagnostics run yet.</pre
         onlineCodeStatus.textContent = `Reconnecting to room ${savedCode}…`;
         connectRoom(savedCode, host);
       }
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && gameSetupOpen) closeGameSetup();
+      });
       joinOnlineCode.addEventListener(
         "input",
         () =>
