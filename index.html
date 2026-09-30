@@ -432,6 +432,21 @@
         border: 1px solid var(--border);
         border-radius: 8px;
       }
+      .profile-edit-area {
+        flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
+        padding: 0; color: var(--text); background: transparent; border: 0;
+        text-align: left; cursor: pointer;
+      }
+      .profile-edit-area:hover { background: transparent; }
+      .profile-use { flex: 0 0 auto; }
+      .profile-remove {
+        width: 30px; height: 30px; flex: 0 0 30px; color: var(--muted);
+        background: transparent; border: 1px solid transparent; border-radius: 6px;
+        font-size: 20px; line-height: 1; cursor: pointer;
+      }
+      .profile-remove:hover:not(:disabled) {
+        color: var(--text); background: #353a45; border-color: var(--border);
+      }
       .avatar {
         width: 34px;
         height: 34px;
@@ -739,8 +754,8 @@ No diagnostics run yet.</pre
       let gameSetupOpen = false;
 
       const CHESS_VARIANTS = [
-        { id: "standard", name: "Standard Chess" },
-        { id: "chess960", name: "Chess960" },
+        { id: "standard", name: "Standard Chess", players: { min: 2, max: 2 } },
+        { id: "chess960", name: "Chess960", players: { min: 2, max: 2 } },
       ];
 
       const AVATARS = [
@@ -838,19 +853,59 @@ No diagnostics run yet.</pre
       function renderProfiles() {
         profileList.innerHTML = "";
         for (const p of profiles) {
-          const row = document.createElement("button");
-          row.type = "button";
+          const row = document.createElement("div");
           row.className = "profile-row" + (p.id === activeProfileId ? " current" : "");
-          row.style.textAlign = "left";
-          row.innerHTML = `<div class="avatar">${escapeHtml(p.avatar || "♟")}</div><div class="grow"><div class="player-name">${escapeHtml(p.name)}</div><div class="player-type">${p.id === activeProfileId ? "Active profile • Click to edit" : "Click to use this profile"}</div></div>`;
-          row.onclick = () => {
+
+          const editButton = document.createElement("button");
+          editButton.type = "button";
+          editButton.className = "profile-edit-area";
+          editButton.innerHTML = `<div class="avatar">${escapeHtml(p.avatar || "♟")}</div><div class="grow"><div class="player-name">${escapeHtml(p.name)}</div><div class="player-type">${p.id === activeProfileId ? "Active profile • Click to edit" : "Click to edit"}</div></div>`;
+          editButton.onclick = () => openProfileEditor(p.id);
+
+          const useButton = document.createElement("button");
+          useButton.type = "button";
+          useButton.className = "profile-use small";
+          useButton.textContent = p.id === activeProfileId ? "Active" : "Use";
+          useButton.disabled = p.id === activeProfileId;
+          useButton.onclick = () => {
             activeProfileId = p.id;
             localStorage.setItem("gameLibraryActiveProfileId", activeProfileId);
             sendIdentify();
             renderProfiles();
+            renderOnline();
           };
-          row.oncontextmenu = (event) => { event.preventDefault(); openProfileEditor(p.id); };
+
+          const removeButton = document.createElement("button");
+          removeButton.type = "button";
+          removeButton.className = "profile-remove";
+          removeButton.textContent = "×";
+          removeButton.title = profiles.length === 1 ? "At least one local profile is required" : `Remove ${p.name}`;
+          removeButton.disabled = profiles.length === 1;
+          removeButton.onclick = () => removeProfile(p.id);
+
+          row.append(editButton, useButton, removeButton);
           profileList.appendChild(row);
+        }
+      }
+
+      function removeProfile(profileId) {
+        if (profiles.length <= 1) return;
+        const index = profiles.findIndex((p) => p.id === profileId);
+        if (index < 0) return;
+        const wasActive = profiles[index].id === activeProfileId;
+        profiles.splice(index, 1);
+        if (wasActive || !profiles.some((p) => p.id === activeProfileId)) {
+          activeProfileId = profiles[0]?.id || "";
+          localStorage.setItem("gameLibraryActiveProfileId", activeProfileId);
+        }
+        saveProfiles();
+        profileEditor.innerHTML = "";
+        renderProfiles();
+        sendIdentify();
+        renderOnline();
+        if (gameSetupOpen) {
+          initializeSetupState();
+          renderGameSetup();
         }
       }
       function openProfileEditor(profileId = null) {
@@ -981,8 +1036,9 @@ No diagnostics run yet.</pre
         }
 
         const activeHumans = setupEntries().filter((entry) => !setupSpectatorTokens.has(entry.token)).length;
-        setupComputerCount = Math.max(0, 2 - activeHumans);
-        setupComputerCount = Math.min(2, setupComputerCount);
+        const initialRange = selectedPlayerRange();
+        setupComputerCount = Math.max(0, initialRange.min - activeHumans);
+        setupComputerCount = Math.min(Math.max(0, initialRange.max - activeHumans), setupComputerCount);
 
         if (onlineState.config?.players?.length) {
           const ordered = [];
@@ -998,7 +1054,8 @@ No diagnostics run yet.</pre
             }
           }
           setupComputerCount = onlineState.config.players.filter((p) => p.type === "computer").length;
-          setupComputerCount = Math.max(0, Math.min(2, setupComputerCount));
+          const configuredBounds = computerBounds();
+          setupComputerCount = Math.max(configuredBounds.min, Math.min(configuredBounds.max, setupComputerCount));
           for (let i = 0; i < setupComputerCount; i++) {
             const configured = onlineState.config.players.find((p) => String(p.id || "").includes(`computer:${i}`));
             setupComputerDifficulties[`computer:${i}`] = configured?.difficulty || "normal";
@@ -1006,21 +1063,38 @@ No diagnostics run yet.</pre
           setupPlayerOrder = ordered;
         }
 
+        ensureSetupCounts();
         const active = activeSetupEntries();
         if (!setupPlayerOrder.length) setupPlayerOrder = active.map((entry) => entry.token);
       }
 
-      function ensureSetupCounts() {
+      function selectedVariantDefinition() {
+        return CHESS_VARIANTS.find((variant) => variant.id === selectedSetupVariant) || CHESS_VARIANTS[0];
+      }
+
+      function selectedPlayerRange() {
+        const range = selectedVariantDefinition()?.players || { min: 2, max: 2 };
+        const min = Number.isFinite(Number(range.min)) ? Number(range.min) : 2;
+        const max = Number.isFinite(Number(range.max)) ? Number(range.max) : min;
+        return { min, max: Math.max(min, max) };
+      }
+
+      function computerBounds() {
+        const { min, max } = selectedPlayerRange();
         const humans = setupEntries().filter((entry) => !setupSpectatorTokens.has(entry.token)).length;
-        const minimumComputers = Math.max(0, 2 - humans);
-        setupComputerCount = Math.max(setupComputerCount, minimumComputers);
-        setupComputerCount = Math.min(setupComputerCount, 2);
+        return { min: Math.max(0, min - humans), max: Math.max(0, max - humans) };
+      }
+
+      function ensureSetupCounts() {
+        const bounds = computerBounds();
+        setupComputerCount = Math.max(bounds.min, Math.min(setupComputerCount, bounds.max));
       }
 
       function setupConfigFromState() {
         ensureSetupCounts();
         const active = activeSetupEntries();
-        if (active.length < 2 || active.length > 2) return null;
+        const range = selectedPlayerRange();
+        if (active.length < range.min || active.length > range.max) return null;
 
         const entries = new Map(active.map((entry) => [entry.token, entry]));
         const order = setupPlayerOrder
@@ -1100,9 +1174,12 @@ No diagnostics run yet.</pre
         body.innerHTML = "";
 
         const host = onlineState.connected && !onlineState.isHost;
+        ensureSetupCounts();
         const active = activeSetupEntries();
         const humans = setupEntries().filter((entry) => !setupSpectatorTokens.has(entry.token)).length;
-        const valid = active.length === 2;
+        const playerRange = selectedPlayerRange();
+        const bounds = computerBounds();
+        const valid = active.length >= playerRange.min && active.length <= playerRange.max;
 
         $("gameSetupTitle").textContent = "Chess Setup";
         subtitle.textContent = onlineState.connected
@@ -1120,6 +1197,8 @@ No diagnostics run yet.</pre
           if (variant.id === selectedSetupVariant) b.classList.add("selected");
           b.onclick = () => {
             selectedSetupVariant = variant.id;
+            ensureSetupCounts();
+            normalizeSetupOrder();
             if (onlineState.connected && onlineState.isHost) sendPreGameConfig();
             renderGameSetup();
           };
@@ -1177,18 +1256,16 @@ No diagnostics run yet.</pre
         const lab = document.createElement("span"); lab.textContent = "Number of computers";
         const val = document.createElement("span"); val.className = "range-value"; val.textContent = String(setupComputerCount);
         rl.append(lab, val);
-        const slider = document.createElement("input"); slider.type = "range"; slider.min = "0"; slider.max = "2"; slider.step = "1"; slider.value = String(setupComputerCount); slider.disabled = host;
+        const slider = document.createElement("input"); slider.type = "range"; slider.min = String(bounds.min); slider.max = String(bounds.max); slider.step = "1"; slider.value = String(setupComputerCount); slider.disabled = host || bounds.min === bounds.max;
         slider.oninput = () => {
           setupComputerCount = Number(slider.value);
-          const humansNow = setupEntries().filter((entry) => !setupSpectatorTokens.has(entry.token)).length;
-          if (humansNow + setupComputerCount > 2) setupComputerCount = Math.max(0, 2 - humansNow);
           ensureSetupCounts();
           normalizeSetupOrder();
           renderGameSetup();
           if (onlineState.connected && onlineState.isHost) sendPreGameConfig();
         };
         const rh = document.createElement("div"); rh.className = "range-help";
-        rh.textContent = "Chess requires exactly two active sides. Make extra people spectators or use computers to fill empty sides.";
+        rh.textContent = `Allowed computer players: ${bounds.min}–${bounds.max} (game limit ${playerRange.min}–${playerRange.max}, minus ${humans} active human${humans === 1 ? "" : "s"}).`;
         main.append(rl, slider, rh); rangeRow.appendChild(main); compSection.append(ch, rangeRow); body.appendChild(compSection);
 
         const orderSection = document.createElement("section"); orderSection.className = "setup-section";
@@ -1227,7 +1304,7 @@ No diagnostics run yet.</pre
 
         const message = document.createElement("div"); message.className = "setup-message";
         if (host) message.textContent = "Waiting for the host to finish configuring the match.";
-        else if (activeSetupEntries().length !== 2) { message.classList.add("error"); message.textContent = "Chess requires exactly two active sides."; }
+        else if (activeSetupEntries().length < playerRange.min || activeSetupEntries().length > playerRange.max) { message.classList.add("error"); message.textContent = `This variant requires ${playerRange.min}–${playerRange.max} active players.`; }
         else message.textContent = onlineState.connected ? "Both sides are configured. Start the match when ready." : "Start the match when ready.";
         body.appendChild(message);
 
@@ -1272,7 +1349,8 @@ No diagnostics run yet.</pre
       function startSelectedGame() {
         if (onlineState.connected && !onlineState.isHost) return;
         const config = setupConfigFromState();
-        if (!config || config.players?.length !== 2) return;
+        const range = selectedPlayerRange();
+        if (!config || config.players?.length !== 2 || range.min > 2 || range.max < 2) return;
 
         onlineState.config = config;
         try { sessionStorage.setItem("gameLibraryOnlineConfig", JSON.stringify(config)); } catch {}
