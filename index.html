@@ -214,6 +214,10 @@
       }
       .drawer.open {
         transform: translateX(0);
+        pointer-events: auto;
+      }
+      .drawer:not(.open) {
+        pointer-events: none;
       }
       .game-setup-drawer {
         position: fixed;
@@ -230,7 +234,8 @@
         transform: translateX(100%);
         transition: transform .2s ease;
       }
-      .game-setup-drawer.open { transform: translateX(0); }
+      .game-setup-drawer.open { transform: translateX(0); pointer-events: auto; }
+      .game-setup-drawer:not(.open) { pointer-events: none; }
       .game-setup-drawer .drawer-header {
         background: #1d2027;
       }
@@ -860,20 +865,16 @@ No diagnostics run yet.</pre
           editButton.type = "button";
           editButton.className = "profile-edit-area";
           editButton.innerHTML = `<div class="avatar">${escapeHtml(p.avatar || "♟")}</div><div class="grow"><div class="player-name">${escapeHtml(p.name)}</div><div class="player-type">${p.id === activeProfileId ? "Active profile • Click to edit" : "Click to edit"}</div></div>`;
-          editButton.onclick = () => openProfileEditor(p.id);
+          editButton.dataset.profileAction = "edit";
+          editButton.dataset.profileId = p.id;
 
           const useButton = document.createElement("button");
           useButton.type = "button";
           useButton.className = "profile-use small";
           useButton.textContent = p.id === activeProfileId ? "Active" : "Use";
           useButton.disabled = p.id === activeProfileId;
-          useButton.onclick = () => {
-            activeProfileId = p.id;
-            localStorage.setItem("gameLibraryActiveProfileId", activeProfileId);
-            sendIdentify();
-            renderProfiles();
-            renderOnline();
-          };
+          useButton.dataset.profileAction = "use";
+          useButton.dataset.profileId = p.id;
 
           const removeButton = document.createElement("button");
           removeButton.type = "button";
@@ -881,7 +882,8 @@ No diagnostics run yet.</pre
           removeButton.textContent = "×";
           removeButton.title = profiles.length === 1 ? "At least one local profile is required" : `Remove ${p.name}`;
           removeButton.disabled = profiles.length === 1;
-          removeButton.onclick = () => removeProfile(p.id);
+          removeButton.dataset.profileAction = "remove";
+          removeButton.dataset.profileId = p.id;
 
           row.append(editButton, useButton, removeButton);
           profileList.appendChild(row);
@@ -1774,6 +1776,30 @@ No diagnostics run yet.</pre
       joinOnlineGroupButton.onclick = joinRoom;
       runDiagnosticsButton.onclick = runDiagnostics;
       addProfileButton.onclick = () => openProfileEditor();
+
+      // Profile controls are rendered dynamically. Handle them from the
+      // stable parent so Edit, Use, and × remain clickable after every
+      // profile-list refresh.
+      profileList.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-profile-action]");
+        if (!button || !profileList.contains(button) || button.disabled) return;
+        const profileId = button.dataset.profileId;
+        switch (button.dataset.profileAction) {
+          case "edit":
+            openProfileEditor(profileId);
+            break;
+          case "use":
+            activeProfileId = profileId;
+            localStorage.setItem("gameLibraryActiveProfileId", activeProfileId);
+            sendIdentify();
+            renderProfiles();
+            renderOnline();
+            break;
+          case "remove":
+            removeProfile(profileId);
+            break;
+        }
+      });
 
       // Keep the online room across trips between the Game Library and the
       // game page. The WebSocket closes during navigation, but the room
