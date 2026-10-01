@@ -2361,7 +2361,7 @@ function renderThreeManBoard(game, legal, selectedCell, status) {
       mark.setAttribute("cx", cell.svgCenter.x.toFixed(3));
       mark.setAttribute("cy", cell.svgCenter.y.toFixed(3));
       if (game.board[cell.r][cell.c]) {
-        mark.setAttribute("r", "2.4");
+        mark.setAttribute("r", "4.5");
         mark.classList.add("three-legal-capture");
       } else {
         mark.setAttribute("r", "0.95");
