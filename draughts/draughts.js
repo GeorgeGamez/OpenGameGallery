@@ -281,47 +281,136 @@ function isComputerTurn() { return playerForColor(game.turn)?.type === "computer
 function boardFlipped() { return false; }
 
 function render() {
-  const title=document.getElementById("pageTitle");
-  const subtitle=document.getElementById("subtitle");
-  title.textContent=selectedVariantId === "international" ? "International Draughts" : "American Checkers";
-  subtitle.textContent=mandatoryCapture ? "Forced captures enabled" : "Forced captures disabled";
-  document.getElementById("status").textContent=game.gameStatus().text;
+  const pageTitle = document.getElementById("pageTitle");
+  const subtitle = document.getElementById("subtitle");
+  const gameName = document.getElementById("gameName");
+  const variantName = document.getElementById("variantName");
+  const status = game.gameStatus();
 
-  const list=document.getElementById("playerList");
-  list.innerHTML="";
-  for(const p of gamePlayers) {
-    const color=p.seat === "white" ? "White" : "Black";
-    const row=document.createElement("div"); row.className="player-row" + ((game.turn === (p.seat === "white"?"w":"b")) ? " active":"");
-    row.innerHTML=`<span class="avatar">${escapeHtml(p.avatar||"♟")}</span><span class="player-name">${escapeHtml(p.name||color)}</span><span class="player-type">${escapeHtml(p.type === "computer" ? `Computer • ${p.difficulty||"normal"}` : p.playerType||"Human")} • ${color}</span>`;
+  const isInternational = selectedVariantId === "international";
+  pageTitle.textContent = "Draughts";
+  subtitle.textContent = "Game Player";
+  gameName.textContent = "Draughts";
+  variantName.textContent = isInternational ? "International Draughts" : "American Checkers";
+  document.title = `${variantName.textContent} — Game Library`;
+  document.getElementById("status").textContent = status.text;
+
+  const list = document.getElementById("playerList");
+  list.innerHTML = "";
+  for (const p of gamePlayers) {
+    const color = p.seat === "white" ? "White" : "Black";
+    const colorCode = p.seat === "white" ? "w" : "b";
+    const row = document.createElement("div");
+    row.className = "player-row" + (game.turn === colorCode ? " current" : "");
+
+    const avatar = document.createElement("div");
+    avatar.className = "player-avatar";
+    avatar.textContent = p.avatar || "♟";
+
+    const details = document.createElement("div");
+    details.className = "player-details";
+    const name = document.createElement("div");
+    name.className = "player-name";
+    name.textContent = p.name || color;
+    const type = document.createElement("div");
+    type.className = "player-type";
+    type.textContent = `${p.type === "computer" ? `Computer • ${p.difficulty || "normal"}` : p.playerType || "Human"} • ${color}`;
+    details.append(name, type);
+    row.append(avatar, details);
     list.appendChild(row);
   }
 
-  const board=document.getElementById("board");
-  board.style.gridTemplateColumns=`repeat(${game.size},1fr)`;
-  board.innerHTML="";
-  const rows=[...Array(game.size).keys()];
-  const cols=[...Array(game.size).keys()];
-  for(const r of rows) for(const c of cols) {
-    const cell=document.createElement("button"); cell.type="button"; cell.className="cell " + (((r+c)%2===1)?"dark":"light");
-    cell.dataset.r=r; cell.dataset.c=c;
-    const piece=game.board[r][c];
-    if(piece) {
-      const el=document.createElement("span"); el.className=`piece ${piece.color}`+(piece.type === "K"?" king":"");
-      el.textContent=piece.type === "K" ? "♛" : "●";
-      cell.appendChild(el);
-    }
-    if(selected && sameSquare(selected,{r,c})) cell.classList.add("selected");
-    const target=legalTargets.some((m)=>sameSquare(m.to,{r,c}));
-    if(target) cell.classList.add("target");
-    if(game.lastMove && (sameSquare(game.lastMove.from,{r,c})||sameSquare(game.lastMove.to,{r,c}))) cell.classList.add("last");
-    cell.onclick=()=>handleCell(r,c);
-    board.appendChild(cell);
+  const frame = document.getElementById("boardFrame");
+  frame.classList.toggle("eight", game.size === 8);
+
+  const rowLabels = document.getElementById("rowLabels");
+  const colLabels = document.getElementById("colLabels");
+  rowLabels.innerHTML = "";
+  colLabels.innerHTML = "";
+  for (let r = 0; r < game.size; r++) {
+    const label = document.createElement("span");
+    label.textContent = String(game.size - r);
+    rowLabels.appendChild(label);
+  }
+  for (let c = 0; c < game.size; c++) {
+    const label = document.createElement("span");
+    label.textContent = String.fromCharCode(97 + c);
+    colLabels.appendChild(label);
   }
 
-  const history=document.getElementById("history");
-  history.innerHTML=(game.sanHistory||[]).slice(-40).map((x,i)=>`<div>${i+1}. ${escapeHtml(x)}</div>`).join("") || '<div class="muted">No moves yet.</div>';
+  const board = document.getElementById("board");
+  board.style.gridTemplateColumns = `repeat(${game.size}, minmax(0, 1fr))`;
+  board.style.gridTemplateRows = `repeat(${game.size}, minmax(0, 1fr))`;
+  board.innerHTML = "";
+
+  for (let r = 0; r < game.size; r++) {
+    for (let c = 0; c < game.size; c++) {
+      const cell = document.createElement("button");
+      cell.type = "button";
+      cell.className = "square " + (((r + c) % 2 === 1) ? "dark" : "light");
+      cell.dataset.r = r;
+      cell.dataset.c = c;
+
+      const piece = game.board[r][c];
+      if (piece) {
+        const el = document.createElement("span");
+        el.className = `piece ${piece.color}` + (piece.type === "K" ? " king" : "");
+        el.textContent = piece.type === "K" ? "♛" : "●";
+        cell.appendChild(el);
+      }
+
+      if (selected && sameSquare(selected, { r, c })) cell.classList.add("selected");
+      const target = legalTargets.some((m) => sameSquare(m.to, { r, c }));
+      if (target) {
+        cell.classList.add("target");
+        const isCapture = legalTargets.some((m) => sameSquare(m.to, { r, c }) && Boolean(m.jump));
+        const marker = document.createElement("span");
+        marker.className = isCapture ? "legal-capture" : "legal-dot";
+        cell.appendChild(marker);
+      }
+      if (game.lastMove && (sameSquare(game.lastMove.from, { r, c }) || sameSquare(game.lastMove.to, { r, c }))) {
+        cell.classList.add("last-move");
+      }
+      cell.onclick = () => handleCell(r, c);
+      board.appendChild(cell);
+    }
+  }
+
+  const moveList = document.getElementById("moveList");
+  const history = game.sanHistory || [];
+  moveList.innerHTML = history.length
+    ? history.map((move, i) => `<div class="move-row"><div class="move-number">${i + 1}.</div><div class="move" style="grid-column:2/-1">${escapeHtml(move)}</div></div>`).join("")
+    : '<div class="note" style="padding:10px">No moves yet.</div>';
+
+  const capturedPanel = document.getElementById("capturedPanel");
+  const captured = game.captured || [];
+  const capturedWhite = captured.filter((p) => p.color === "w");
+  const capturedBlack = captured.filter((p) => p.color === "b");
+  capturedPanel.innerHTML = "";
+  for (const [label, pieces, cls] of [["White pieces captured", capturedWhite, "w"], ["Black pieces captured", capturedBlack, "b"]]) {
+    const group = document.createElement("div");
+    group.className = "captured-group";
+    const heading = document.createElement("div");
+    heading.className = "captured-label";
+    heading.textContent = label;
+    const icons = document.createElement("div");
+    icons.className = "captured";
+    if (pieces.length) {
+      for (const piece of pieces) {
+        const el = document.createElement("span");
+        el.className = `captured-piece ${cls}`;
+        el.textContent = piece.type === "K" ? "♛" : "●";
+        icons.appendChild(el);
+      }
+    } else {
+      icons.innerHTML = '<span class="note">None</span>';
+    }
+    group.append(heading, icons);
+    capturedPanel.appendChild(group);
+  }
+
   scheduleComputerMove();
-  if(ONLINE_HOST_TOKEN && onlineConnected) publishOnlineState();
+  if (ONLINE_HOST_TOKEN && onlineConnected) publishOnlineState();
 }
 
 function handleCell(r,c) {
@@ -370,7 +459,7 @@ function onlineWsUrl() {
   const base=ONLINE_SERVER.replace(/\/$/,"").replace(/^http:/,"ws:").replace(/^https:/,"wss:");
   return `${base}/ws/${encodeURIComponent(ONLINE_CODE)}?clientId=${encodeURIComponent(ONLINE_CLIENT_ID)}&role=${ONLINE_HOST_TOKEN?"host":"player"}`;
 }
-function setOnlineStatus(t,error=false){ const el=document.getElementById("onlineStatus"); el.textContent=t; el.className=error?"status error":"status"; }
+function setOnlineStatus(t,error=false){ const el=document.getElementById("onlineBar"); el.textContent=t; el.className=error?"online-bar error":"online-bar"; }
 function publishOnlineState() {
   if(!ONLINE_MODE || !ONLINE_HOST_TOKEN || !onlineSocket || onlineSocket.readyState!==WebSocket.OPEN || game.gameStatus().over) return;
   onlineSocket.send(JSON.stringify({type:"game:state",state:{game:game.clone(),variant:selectedVariantId,mandatoryCapture}}));
@@ -451,10 +540,10 @@ function goBackToLibrary() {
 
 function escapeHtml(value){return String(value).replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 
-document.getElementById("newGameBtn").onclick=()=>{clearTimeout(computerTimer);computerPending=false;game=createGame();selected=null;legalTargets=[];onlineResultSent=false;render();};
+document.getElementById("newGameBtn").onclick=goBackToLibrary;
+document.getElementById("clearBtn").onclick=()=>{clearTimeout(computerTimer);computerPending=false;if(ONLINE_MODE&&!ONLINE_HOST_TOKEN)return;game=createGame();selected=null;legalTargets=[];onlineResultSent=false;render();};
 document.getElementById("undoBtn").onclick=()=>{clearTimeout(computerTimer);computerPending=false;if(ONLINE_MODE&&!ONLINE_HOST_TOKEN)return;if(game.undo()){selected=null;legalTargets=[];onlineResultSent=false;render();}};
-document.getElementById("backBtn").onclick=goBackToLibrary;
-document.getElementById("onlineStatus").textContent=ONLINE_MODE?"Connecting…":"Offline/local game";
+document.getElementById("onlineBar").textContent=ONLINE_MODE?"Connecting…":"Offline/local game";
 
 if (params.get("game") && params.get("game") !== "draughts") console.warn("Draughts page opened for unexpected game", params.get("game"));
 render();
