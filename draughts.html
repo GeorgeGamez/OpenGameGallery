@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Draughts</title>
+<style>
+:root{--bg:#17191f;--panel:#22252d;--panel2:#2b2f39;--text:#f1f3f5;--muted:#aeb4c0;--accent:#78a9ff;--border:#3a3f4a;--light:#d9dee7;--dark:#596170;--target:#78a9ff;--last:#86d89a;}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:var(--bg)}button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--border);border-radius:8px;cursor:pointer}button:hover{background:#353a45}button:disabled{opacity:.45;cursor:not-allowed}
+header{padding:16px 22px;border-bottom:1px solid var(--border);background:#1d2027;display:flex;align-items:center;justify-content:space-between;gap:16px}header h1{margin:0;font-size:25px}header p{margin:4px 0 0;color:var(--muted);font-size:13px}.back{padding:8px 12px}
+main{width:min(1180px,100%);margin:0 auto;padding:20px;display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px}.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px}.panel h2{margin:0 0 10px;font-size:15px}.left{display:flex;flex-direction:column;gap:14px}.board-wrap{display:flex;justify-content:center}.board{display:grid;width:min(78vw,720px);aspect-ratio:1;border:1px solid var(--border);box-shadow:0 8px 30px rgba(0,0,0,.25)}.cell{position:relative;border:0;border-radius:0;padding:0;display:grid;place-items:center}.cell.light{background:var(--light);cursor:default}.cell.dark{background:var(--dark);cursor:pointer}.cell.target::after{content:"";width:34%;height:34%;border:4px solid var(--target);border-radius:50%;box-sizing:border-box}.cell.selected{outline:4px solid var(--accent);outline-offset:-4px}.cell.last{box-shadow:inset 0 0 0 4px var(--last)}.piece{font-size:clamp(22px,5.2vw,54px);line-height:1;text-shadow:0 2px 3px rgba(0,0,0,.35);user-select:none}.piece.w{color:#fff}.piece.b{color:#12141a}.piece.king{font-size:clamp(25px,5.6vw,58px)}
+.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.controls button{padding:9px}.status{padding:10px 12px;background:#1d2027;border:1px solid var(--border);border-radius:8px;font-size:13px}.status.error{color:#ffb4b4}.player-list{display:flex;flex-direction:column;gap:7px}.player-row{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center;padding:9px;background:var(--panel2);border:1px solid var(--border);border-radius:8px}.player-row.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}.avatar{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--bg);font-size:17px}.player-name{font-weight:700;font-size:12px}.player-type{color:var(--muted);font-size:10px;margin-top:2px}.history{max-height:250px;overflow:auto;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#dfe4ec}.muted{color:var(--muted);font-size:12px}.rules{color:var(--muted);font-size:11px;line-height:1.45}.rules strong{color:var(--text)}
+@media(max-width:900px){main{grid-template-columns:1fr}.board{width:min(92vw,720px)}}@media(max-width:520px){main{padding:12px}.controls{grid-template-columns:1fr 1fr}.controls button:last-child{grid-column:1/-1}header{padding:13px 14px}}
+</style>
+</head>
+<body>
+<header><div><h1 id="pageTitle">Draughts</h1><p id="subtitle">Loading…</p></div><button class="back" id="backBtn">← Game Library</button></header>
+<main>
+<section class="left">
+  <div class="panel board-wrap"><div id="board" class="board" aria-label="Draughts board"></div></div>
+  <div class="panel"><h2>Controls</h2><div class="controls"><button id="newGameBtn">New Game</button><button id="undoBtn">Undo</button><button id="backBtn2" style="display:none">Back</button></div></div>
+  <div class="panel"><h2>Move history</h2><div id="history" class="history"></div></div>
+</section>
+<aside class="left">
+  <div class="panel"><h2>Players</h2><div id="playerList" class="player-list"></div></div>
+  <div class="panel"><h2>Status</h2><div id="status" class="status">Loading…</div></div>
+  <div class="panel"><h2>Online</h2><div id="onlineStatus" class="status">Offline/local game</div></div>
+  <div class="panel rules"><strong>Rules</strong><br>International Draughts uses a 10×10 board and flying kings. American Checkers uses an 8×8 board and non-flying kings. Captures are forced only when the setup toggle is enabled.</div>
+</aside>
+</main>
+<script src="draughts-ai.js?v=20261001-draughts1"></script>
+<script src="draughts.js?v=20261001-draughts1"></script>
+</body>
+</html>
