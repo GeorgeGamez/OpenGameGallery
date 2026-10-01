@@ -26,19 +26,63 @@
           "name": "Chess960"
         },
         {
+          "id": "threeman",
+          "name": "3-Player Chess",
+          "players": {
+            "min": 3,
+            "max": 3
+          }
+        },
+        {
           "id": "fourplayer",
           "name": "4-Player Chess",
           "players": {
             "min": 4,
             "max": 4
           }
+        }
+        
+      ],
+      "capabilities": {
+        "local": true,
+        "online": true,
+        "computer": true
+      },
+      "options": {}
+    },
+    {
+      "id": "draughts",
+      "name": "Draughts",
+      "type": "board",
+      "page": "draughts/draughts.html",
+      "description": "A tactical jumping game in which players capture opposing pieces and promote them to kings.",
+      "image": "images/cover/draughts.jpg",
+      "categories": [
+        "board",
+        "strategy"
+      ],
+      "searchTerms": [
+        "checkers"
+      ],
+      "players": {
+        "min": 2,
+        "max": 2
+      },
+      "variants": [
+        {
+          "id": "international",
+          "name": "International Draughts",
+          "players": {
+            "min": 2,
+            "max": 2
+          }
         },
         {
-          "id": "threeman",
-          "name": "3-Player Chess",
+          "id": "american",
+          "name": "American Checkers",
           "players": {
-            "min": 3,
-            "max": 3
+            "min": 2,
+            "max": 2
           }
         }
       ],
@@ -47,7 +91,14 @@
         "online": true,
         "computer": true
       },
-      "options": {}
+      "options": {
+        "mandatoryCapture": {
+          "type": "toggle",
+          "name": "Force captures",
+          "help": "When enabled, any available capture must be played instead of a non-capturing move.",
+          "default": true
+        }
+      }
     }
   ]
 }
