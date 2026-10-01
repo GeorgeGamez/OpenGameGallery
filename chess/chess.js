@@ -1488,6 +1488,7 @@ updateGameHeader();
 
 function render() {
   const g = manager.game, s = g.gameStatus(), size = g.size;
+  const cols = size === 12 ? 8 : size;
   boardEl.innerHTML = "";
   boardEl.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
   boardEl.classList.toggle("four-player", size === 14);
