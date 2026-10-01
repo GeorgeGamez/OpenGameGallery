@@ -760,7 +760,7 @@ No diagnostics run yet.</pre
       let setupSpectatorTokens = new Set();
       let gameSetupOpen = false;
 
-      const LIBRARY_URL = "library.json?v=20261001-library1";
+      const LIBRARY_URL = "library.json?v=20261001-library2";
 
       function libraryGame(gameId) {
         return games.find((game) => game.id === gameId) || null;
@@ -1065,11 +1065,14 @@ No diagnostics run yet.</pre
           ? roomVariant
           : (variants[0]?.id || "standard");
 
-        selectedSetupOptions = { ...(onlineState.config?.options || {}) };
+        const gameDefinition = libraryGame(selectedSetupGame);
+        const variantDefinition = (gameDefinition?.variants || []).find((v) => v.id === selectedSetupVariant) || gameDefinition?.variants?.[0];
+        selectedSetupOptions = {};
+        for (const [key, option] of Object.entries(gameDefinition?.options || {})) {
+          selectedSetupOptions[key] = onlineState.config?.options?.[key] ?? option.default ?? false;
+        }
         if (selectedSetupGame === "chess") {
           selectedSetupOptions.fogOfWar = Boolean(onlineState.config?.options?.fogOfWar);
-        } else {
-          delete selectedSetupOptions.fogOfWar;
         }
         setupComputerDifficulties = {};
 
@@ -1197,7 +1200,7 @@ No diagnostics run yet.</pre
         };
 
         return {
-          game: "chess",
+          game: selectedSetupGame,
           variant: selectedSetupVariant,
           hostClientId: onlineState.connected
             ? (onlineState.participants.find((p) => p.role === "host")?.clientId || "")
@@ -1303,6 +1306,47 @@ No diagnostics run yet.</pre
         optionList.appendChild(note);
         optionSection.append(optionsHeading, optionList);
         body.appendChild(optionSection);
+        }
+
+        const libraryOptions = gameDefinition?.options || {};
+        const libraryOptionEntries = Object.entries(libraryOptions);
+        if (libraryOptionEntries.length) {
+          const optionSection = document.createElement("section");
+          optionSection.className = "setup-section";
+          const optionsHeading = document.createElement("h3");
+          optionsHeading.textContent = "Game options";
+          const optionList = document.createElement("div");
+          optionList.className = "setup-option-list";
+
+          for (const [key, option] of libraryOptionEntries) {
+            if (option.type !== "toggle") continue;
+            const row = document.createElement("label");
+            row.className = "toggle-option";
+            const label = document.createElement("span");
+            label.className = "toggle-label";
+            label.innerHTML = `<strong>${escapeHtml(option.name || formatSetupLabel(key))}</strong>`;
+            if (option.help) label.innerHTML += `<br><span class="range-help">${escapeHtml(option.help)}</span>`;
+            const sw = document.createElement("span");
+            sw.className = "toggle-switch";
+            const cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.checked = Boolean(selectedSetupOptions[key] ?? option.default);
+            cb.disabled = host;
+            const slider = document.createElement("span");
+            slider.className = "toggle-slider";
+            cb.addEventListener("change", () => {
+              selectedSetupOptions[key] = cb.checked;
+              if (onlineState.connected && onlineState.isHost) sendPreGameConfig();
+            });
+            sw.append(cb, slider);
+            row.append(label, sw);
+            optionList.appendChild(row);
+          }
+
+          if (optionList.children.length) {
+            optionSection.append(optionsHeading, optionList);
+            body.appendChild(optionSection);
+          }
         }
 
         const playerSection = document.createElement("section");
@@ -1454,9 +1498,8 @@ No diagnostics run yet.</pre
         const gameDefinition = selectedGameDefinition();
         if (!gameDefinition) return;
 
-        // Chess is the currently connected game page. Other library entries
-        // remain catalogued in library.json until their game pages are wired in.
-        if (selectedSetupGame !== "chess") return;
+        // Only games with a connected player page can be launched.
+        if (!(selectedSetupGame === "chess" || selectedSetupGame === "draughts")) return;
 
         const config = setupConfigFromState();
         const range = selectedPlayerRange();
@@ -1536,7 +1579,7 @@ No diagnostics run yet.</pre
             ? (min === max ? `${min} player${min === 1 ? "" : "s"}` : `${min}–${max} players`)
             : "Players vary";
           const variantsLabel = (game.variants || []).map((v) => v.name).join(" / ");
-          const playable = game.id === "chess";
+          const playable = game.id === "chess" || game.id === "draughts";
 
           content.innerHTML = `
             <h2>${escapeHtml(game.name || "Untitled Game")}</h2>
