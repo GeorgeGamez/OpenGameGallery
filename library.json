@@ -7,10 +7,7 @@
       "page": "chess/chess.html",
       "description": "The classic two-player strategy game of kings, queens, and tactical manoeuvring.",
       "image": "images/cover/chess.jpg",
-      "categories": [
-        "board",
-        "strategy"
-      ],
+      "categories": ["board", "strategy"],
       "searchTerms": [],
       "players": {
         "min": 2,
@@ -26,22 +23,21 @@
           "name": "Chess960"
         },
         {
-          "id": "threeman",
-          "name": "3-Player Chess",
-          "players": {
-            "min": 3,
-            "max": 3
-          }
-        },
-        {
           "id": "fourplayer",
           "name": "4-Player Chess",
           "players": {
             "min": 4,
             "max": 4
           }
+        },
+        {
+          "id": "threeman",
+          "name": "Three Player Chess",
+          "players": {
+            "min": 3,
+            "max": 3
+          }
         }
-        
       ],
       "capabilities": {
         "local": true,
@@ -57,13 +53,8 @@
       "page": "draughts/draughts.html",
       "description": "A tactical jumping game in which players capture opposing pieces and promote them to kings.",
       "image": "images/cover/draughts.jpg",
-      "categories": [
-        "board",
-        "strategy"
-      ],
-      "searchTerms": [
-        "checkers"
-      ],
+      "categories": ["board", "strategy"],
+      "searchTerms": ["checkers"],
       "players": {
         "min": 2,
         "max": 2
