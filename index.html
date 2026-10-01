@@ -760,7 +760,7 @@ No diagnostics run yet.</pre
       let setupSpectatorTokens = new Set();
       let gameSetupOpen = false;
 
-      const LIBRARY_URL = "library.json?v=20261001-library2";
+      const LIBRARY_URL = "library.json?v=20261001-library3";
 
       function libraryGame(gameId) {
         return games.find((game) => game.id === gameId) || null;
@@ -1525,8 +1525,18 @@ No diagnostics run yet.</pre
           onlineState.socket.send(JSON.stringify({ type: "game:start", config, resetState: true }));
         }
 
+        // Keep the library data-driven while making the two currently playable
+        // pages unambiguous. This prevents an old/incorrect page field from
+        // ever routing Chess to the Draughts player (or vice versa).
+        const playablePages = {
+          chess: "chess/chess.html",
+          draughts: "draughts/draughts.html",
+        };
+        const gamePage = playablePages[selectedSetupGame] || gameDefinition.page;
+        if (!gamePage) return;
+
         closeGameSetup();
-        window.location.href = `${gameDefinition.page}?${params}`;
+        window.location.href = `${gamePage}?${params}`;
       }
 
       function openGame(gameId, variantId) {
@@ -1594,7 +1604,7 @@ No diagnostics run yet.</pre
           button.className = "play-button";
           button.textContent = playable ? (waitingForHost ? "View game setup" : "Set up & Play") : "Coming soon";
           button.disabled = !playable;
-          if (playable) button.onclick = () => openGameSetup(game.id);
+          if (playable) button.onclick = () => openGame(game.id, game.variants?.[0]?.id);
           content.appendChild(button);
           card.append(image, content);
           gamesGrid.appendChild(card);
