@@ -749,6 +749,8 @@ No diagnostics run yet.</pre
         participants: [],
         config: null,
       };
+      let games = [];
+      let libraryLoaded = false;
       let selectedSetupGame = "chess";
       let selectedSetupVariant = "standard";
       let selectedSetupOptions = {};
@@ -758,12 +760,47 @@ No diagnostics run yet.</pre
       let setupSpectatorTokens = new Set();
       let gameSetupOpen = false;
 
-      const CHESS_VARIANTS = [
-        { id: "standard", name: "Standard Chess", players: { min: 2, max: 2 } },
-        { id: "chess960", name: "Chess960", players: { min: 2, max: 2 } },
-        { id: "threeman", name: "Three Player Chess", players: { min: 3, max: 3 } },
-        { id: "fourplayer", name: "4-Player Chess", players: { min: 4, max: 4 } },
-      ];
+      const LIBRARY_URL = "library.json?v=20261001-library1";
+
+      function libraryGame(gameId) {
+        return games.find((game) => game.id === gameId) || null;
+      }
+
+      function libraryVariants(gameId) {
+        return libraryGame(gameId)?.variants || [];
+      }
+
+      function selectedGameDefinition() {
+        return libraryGame(selectedSetupGame) || libraryGame("chess");
+      }
+
+      async function loadLibrary() {
+        try {
+          const response = await fetch(LIBRARY_URL, { cache: "no-store" });
+          if (!response.ok) throw new Error(`library.json: ${response.status}`);
+          const data = await response.json();
+          const loaded = Array.isArray(data) ? data : data.games || [];
+          if (!Array.isArray(loaded) || !loaded.length) {
+            throw new Error("library.json does not contain any games.");
+          }
+          games = loaded;
+          libraryLoaded = true;
+
+          if (!libraryGame(selectedSetupGame)) selectedSetupGame = games[0].id;
+          if (!libraryVariants(selectedSetupGame).some((v) => v.id === selectedSetupVariant)) {
+            selectedSetupVariant = libraryVariants(selectedSetupGame)[0]?.id || "standard";
+          }
+
+          renderGames();
+          if (gameSetupOpen) {
+            initializeSetupState();
+            renderGameSetup();
+          }
+        } catch (e) {
+          console.error("Could not load library.json:", e);
+          gamesGrid.innerHTML = `<div class="setup-message error">Could not load library.json. Make sure it is beside index.html and that the site is being served through a web server.</div>`;
+        }
+      }
 
       const AVATARS = [
         "♟",
@@ -1017,17 +1054,23 @@ No diagnostics run yet.</pre
       }
 
       function initializeSetupState() {
-        const roomVariant = onlineState.config?.game === "chess"
-          ? onlineState.config?.variant
-          : null;
-        selectedSetupVariant = ["standard", "chess960", "threeman", "fourplayer"].includes(roomVariant)
+        const requestedGame = selectedSetupGame;
+        const configuredGame = onlineState.config?.game;
+        const roomGame = configuredGame && libraryGame(configuredGame) ? configuredGame : null;
+        selectedSetupGame = roomGame || (libraryGame(requestedGame) ? requestedGame : "chess");
+
+        const variants = libraryVariants(selectedSetupGame);
+        const roomVariant = roomGame ? onlineState.config?.variant : null;
+        selectedSetupVariant = variants.some((v) => v.id === roomVariant)
           ? roomVariant
-          : "standard";
-        selectedSetupGame = "chess";
-        selectedSetupOptions = {
-          ...(onlineState.config?.options || {}),
-          fogOfWar: Boolean(onlineState.config?.options?.fogOfWar),
-        };
+          : (variants[0]?.id || "standard");
+
+        selectedSetupOptions = { ...(onlineState.config?.options || {}) };
+        if (selectedSetupGame === "chess") {
+          selectedSetupOptions.fogOfWar = Boolean(onlineState.config?.options?.fogOfWar);
+        } else {
+          delete selectedSetupOptions.fogOfWar;
+        }
         setupComputerDifficulties = {};
 
         if (onlineState.connected) {
@@ -1076,7 +1119,8 @@ No diagnostics run yet.</pre
       }
 
       function selectedVariantDefinition() {
-        return CHESS_VARIANTS.find((variant) => variant.id === selectedSetupVariant) || CHESS_VARIANTS[0];
+        const variants = libraryVariants(selectedSetupGame);
+        return variants.find((variant) => variant.id === selectedSetupVariant) || variants[0] || { id: "standard", name: "Standard", players: { min: 2, max: 2 } };
       }
 
       function selectedPlayerRange() {
@@ -1193,16 +1237,20 @@ No diagnostics run yet.</pre
         const bounds = computerBounds();
         const valid = active.length >= playerRange.min && active.length <= playerRange.max;
 
-        $("gameSetupTitle").textContent = "Chess Setup";
+        const gameDefinition = selectedGameDefinition();
+        const isChess = selectedSetupGame === "chess";
+        $("gameSetupTitle").textContent = `${gameDefinition?.name || "Game"} Setup`;
         subtitle.textContent = onlineState.connected
           ? (host ? "The host controls the match configuration." : `Room ${roomCode()} • Host setup`)
           : "Choose the variant and configure this match.";
 
-        const variantSection = document.createElement("section");
-        variantSection.className = "setup-section";
-        const vh = document.createElement("h3"); vh.textContent = "Variant";
-        const variantList = document.createElement("div"); variantList.className = "variant-list";
-        for (const variant of CHESS_VARIANTS) {
+        const variants = libraryVariants(selectedSetupGame);
+        if (variants.length) {
+          const variantSection = document.createElement("section");
+          variantSection.className = "setup-section";
+          const vh = document.createElement("h3"); vh.textContent = "Variant";
+          const variantList = document.createElement("div"); variantList.className = "variant-list";
+          for (const variant of variants) {
           const b = document.createElement("button");
           b.type = "button"; b.className = "variant-button"; b.textContent = variant.name;
           b.disabled = host;
@@ -1214,11 +1262,13 @@ No diagnostics run yet.</pre
             if (onlineState.connected && onlineState.isHost) sendPreGameConfig();
             renderGameSetup();
           };
-          variantList.appendChild(b);
+            variantList.appendChild(b);
+          }
+          variantSection.append(vh, variantList);
+          body.appendChild(variantSection);
         }
-        variantSection.append(vh, variantList);
-        body.appendChild(variantSection);
 
+        if (isChess) {
         const optionSection = document.createElement("section");
         optionSection.className = "setup-section";
         const optionsHeading = document.createElement("h3");
@@ -1253,6 +1303,7 @@ No diagnostics run yet.</pre
         optionList.appendChild(note);
         optionSection.append(optionsHeading, optionList);
         body.appendChild(optionSection);
+        }
 
         const playerSection = document.createElement("section");
         playerSection.className = "setup-section";
@@ -1400,6 +1451,13 @@ No diagnostics run yet.</pre
 
       function startSelectedGame() {
         if (onlineState.connected && !onlineState.isHost) return;
+        const gameDefinition = selectedGameDefinition();
+        if (!gameDefinition) return;
+
+        // Chess is the currently connected game page. Other library entries
+        // remain catalogued in library.json until their game pages are wired in.
+        if (selectedSetupGame !== "chess") return;
+
         const config = setupConfigFromState();
         const range = selectedPlayerRange();
         if (!config || config.players?.length !== range.min || range.min !== range.max) return;
@@ -1408,7 +1466,7 @@ No diagnostics run yet.</pre
         try { sessionStorage.setItem("gameLibraryOnlineConfig", JSON.stringify(config)); } catch {}
 
         const params = new URLSearchParams({
-          game: "chess",
+          game: selectedSetupGame,
           variant: selectedSetupVariant,
           online: onlineState.connected ? "1" : "0",
           onlineCode: onlineState.connected ? roomCode() : "",
@@ -1421,38 +1479,83 @@ No diagnostics run yet.</pre
         if (onlineState.connected) {
           if (!onlineState.socket || onlineState.socket.readyState !== WebSocket.OPEN) return;
           onlineState.socket.send(JSON.stringify({ type: "room:config", config }));
-          // Chess960 positions are randomized by chess.js, so chess.js will publish the
-          // authoritative initial position after the host connects to the room.
           onlineState.socket.send(JSON.stringify({ type: "game:start", config, resetState: true }));
         }
 
         closeGameSetup();
-        window.location.href = `chess/chess.html?${params}`;
+        window.location.href = `${gameDefinition.page}?${params}`;
       }
 
       function openGame(gameId, variantId) {
         openGameSetup(gameId);
-        if (variantId) selectedSetupVariant = variantId;
+        if (variantId && libraryVariants(gameId).some((v) => v.id === variantId)) selectedSetupVariant = variantId;
         renderGameSetup();
       }
 
       function renderGames() {
         gamesGrid.innerHTML = "";
-        const card = document.createElement("article"); card.className = "game-card";
-        const image = document.createElement("div"); image.className = "game-image";
-        const img = document.createElement("img"); img.src = "images/cover/chess.jpg"; img.alt = "Chess preview";
-        img.onerror = () => { img.remove(); const p = document.createElement("div"); p.className = "placeholder-image"; p.textContent = "♟"; image.appendChild(p); };
-        image.appendChild(img);
-        const content = document.createElement("div"); content.className = "game-content";
+        if (!libraryLoaded || !games.length) {
+          const loading = document.createElement("div");
+          loading.className = "setup-message";
+          loading.textContent = "Loading game library…";
+          gamesGrid.appendChild(loading);
+          return;
+        }
+
         const waitingForHost = onlineState.connected && !onlineState.isHost;
-        content.innerHTML = `
-          <h2>Chess</h2>
-          <p class="description">The classic two-player strategy game.</p>
-          <div class="game-meta"><span class="meta-tag">2–4 players</span><span class="meta-tag">Standard / Chess960 / Three Player / 4-Player</span><span class="meta-tag">Local / Computer / Online</span></div>
-          <button class="play-button">${waitingForHost ? "View game setup" : "Set up &amp; Play"}</button>
-        `;
-        content.querySelector("button").onclick = () => openGameSetup("chess");
-        card.append(image, content); gamesGrid.appendChild(card);
+        for (const game of games) {
+          const card = document.createElement("article");
+          card.className = "game-card";
+
+          const image = document.createElement("div");
+          image.className = "game-image";
+          if (game.image) {
+            const img = document.createElement("img");
+            img.src = game.image;
+            img.alt = `${game.name} preview`;
+            img.onerror = () => {
+              img.remove();
+              const p = document.createElement("div");
+              p.className = "placeholder-image";
+              p.textContent = game.id === "chess" ? "♟" : "🎲";
+              image.appendChild(p);
+            };
+            image.appendChild(img);
+          } else {
+            const p = document.createElement("div");
+            p.className = "placeholder-image";
+            p.textContent = game.id === "chess" ? "♟" : "🎲";
+            image.appendChild(p);
+          }
+
+          const content = document.createElement("div");
+          content.className = "game-content";
+          const min = Number(game.players?.min);
+          const max = Number(game.players?.max);
+          const rangeLabel = Number.isFinite(min) && Number.isFinite(max)
+            ? (min === max ? `${min} player${min === 1 ? "" : "s"}` : `${min}–${max} players`)
+            : "Players vary";
+          const variantsLabel = (game.variants || []).map((v) => v.name).join(" / ");
+          const playable = game.id === "chess";
+
+          content.innerHTML = `
+            <h2>${escapeHtml(game.name || "Untitled Game")}</h2>
+            <p class="description">${escapeHtml(game.description || "")}</p>
+            <div class="game-meta">
+              <span class="meta-tag">${escapeHtml(rangeLabel)}</span>
+              ${variantsLabel ? `<span class="meta-tag">${escapeHtml(variantsLabel)}</span>` : ""}
+              <span class="meta-tag">${playable ? "Local / Computer / Online" : "Coming soon"}</span>
+            </div>`;
+
+          const button = document.createElement("button");
+          button.className = "play-button";
+          button.textContent = playable ? (waitingForHost ? "View game setup" : "Set up & Play") : "Coming soon";
+          button.disabled = !playable;
+          if (playable) button.onclick = () => openGameSetup(game.id);
+          content.appendChild(button);
+          card.append(image, content);
+          gamesGrid.appendChild(card);
+        }
       }
 
       function renderOnline() {
@@ -1878,9 +1981,9 @@ No diagnostics run yet.</pre
             .replace(/\D/g, "")
             .slice(0, 4)),
       );
-      renderGames();
       renderProfiles();
       renderOnline();
+      loadLibrary();
       reconnectSavedRoom();
     </script>
   </body>
