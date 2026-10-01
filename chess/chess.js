@@ -419,80 +419,895 @@ class ChessGame {
 }
 
 // ---------------------------- THREE-PLAYER CHESS ENGINE ----------------------------
-const THREE_ROWS = 12;
-const THREE_COLS = 8;
-function wrapThreeRow(r) { return ((r % THREE_ROWS) + THREE_ROWS) % THREE_ROWS; }
-function playable3(r, c) { return r >= 0 && r < THREE_ROWS && c >= 0 && c < THREE_COLS; }
-function threeStartRow(color) { return color === "white" ? 0 : color === "red" ? 4 : 8; }
-function setupThreeSide(board, color, startRow) {
-  const back = ["r", "n", "b", "q", "k", "b", "n", "r"];
-  for (let c = 0; c < THREE_COLS; c++) {
-    board[startRow][c] = { type: back[c], color };
-    board[startRow + 1][c] = { type: "p", color };
+const THREE_MAN_GEOMETRY = (() => {
+  const SQRT3 = Math.sqrt(3);
+  const LONG = 4;
+  const SHORT = LONG / SQRT3;
+  const C = { x: 0, y: 0 };
+  const A = { x: LONG, y: 0 };
+  const B = { x: LONG, y: SHORT };
+  const D = { x: LONG / 2, y: LONG * SQRT3 / 2 };
+
+  const lerp = (p, q, t) => ({
+    x: p.x + (q.x - p.x) * t,
+    y: p.y + (q.y - p.y) * t,
+  });
+
+  const rotate = (p, angle) => {
+    const cs = Math.cos(angle), sn = Math.sin(angle);
+    return { x: p.x * cs - p.y * sn, y: p.x * sn + p.y * cs };
+  };
+
+  const gridPoint = (u, v) => {
+    const left = lerp(C, D, v);
+    const right = lerp(A, B, v);
+    return lerp(left, right, u);
+  };
+
+  // Six wedges around the center. The +30° rotation gives the normal
+  // flat-top orientation: white bottom, red upper-left, black upper-right.
+  const rawCells = [];
+  for (let wedge = 0; wedge < 6; wedge++) {
+    for (let localRow = 0; localRow < 4; localRow++) {
+      const layer = 3 - localRow;
+      for (let file = 0; file < 4; file++) {
+        const u0 = layer / 4, u1 = (layer + 1) / 4;
+        const v0 = file / 4, v1 = (file + 1) / 4;
+        const points = [
+          gridPoint(u0, v0),
+          gridPoint(u1, v0),
+          gridPoint(u1, v1),
+          gridPoint(u0, v1),
+        ].map((p) => rotate(p, -wedge * Math.PI / 3 + Math.PI / 6));
+
+        const center = points.reduce(
+          (a, p) => ({ x: a.x + p.x / 4, y: a.y + p.y / 4 }),
+          { x: 0, y: 0 },
+        );
+
+        rawCells.push({
+          id: rawCells.length,
+          wedge,
+          localRow,
+          file,
+          points,
+          center,
+          shade: 0,
+          neighbors: [],
+        });
+      }
+    }
   }
-}
-class ThreePlayerChessGame {
-  constructor() { this.size = THREE_ROWS; this.cols = THREE_COLS; this.variant = "threeman"; this.playersCount = 3; this.reset(); }
-  reset() {
-    this.board = Array.from({ length: THREE_ROWS }, () => Array(THREE_COLS).fill(null));
-    setupThreeSide(this.board, "white", 0); setupThreeSide(this.board, "red", 4); setupThreeSide(this.board, "black", 8);
-    this.turnIndex = 0; this.turn = THREE_COLORS[0]; this.history = []; this.sanHistory = []; this.captured = []; this.lastMove = null;
-    this.castling = {
-      white: { kingMoved: false, rooks: [{ col: 0, moved: false }, { col: 7, moved: false }] },
-      red: { kingMoved: false, rooks: [{ col: 0, moved: false }, { col: 7, moved: false }] },
-      black: { kingMoved: false, rooks: [{ col: 0, moved: false }, { col: 7, moved: false }] },
-    };
+
+  const quantize = (p) => `${Math.round(p.x * 1e6)},${Math.round(p.y * 1e6)}`;
+  const edgeMap = new Map();
+  for (const cell of rawCells) {
+    for (let i = 0; i < 4; i++) {
+      const a = quantize(cell.points[i]);
+      const b = quantize(cell.points[(i + 1) % 4]);
+      const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+      if (!edgeMap.has(key)) edgeMap.set(key, []);
+      edgeMap.get(key).push(cell.id);
+    }
   }
-  clone() { return { board: cloneBoard(this.board), turnIndex: this.turnIndex, turn: this.turn, san: [...this.sanHistory], captured: this.captured.map(p => ({...p})), lastMove: this.lastMove ? {from:{...this.lastMove.from},to:{...this.lastMove.to}} : null, castling: JSON.parse(JSON.stringify(this.castling)) }; }
-  restore(s) { this.board=cloneBoard(s.board); this.turnIndex=s.turnIndex; this.turn=s.turn; this.sanHistory=[...s.san]; this.captured=s.captured.map(p=>({...p})); this.lastMove=s.lastMove?{from:{...s.lastMove.from},to:{...s.lastMove.to}}:null; this.castling=JSON.parse(JSON.stringify(s.castling)); }
-  undo() { if (!this.history.length) return false; this.restore(this.history.pop()); return true; }
-  nextRow(r,d) { return wrapThreeRow(r+d); }
-  pawnStartRow(color) { return threeStartRow(color)+1; }
-  promotionRow(color) { return threeStartRow(color); }
-  findKing(color,b=this.board) { for(let r=0;r<THREE_ROWS;r++) for(let c=0;c<THREE_COLS;c++) if(b[r][c]?.color===color&&b[r][c].type==="k") return {r,c}; return null; }
-  otherColors(color) { return THREE_COLORS.filter(c=>c!==color); }
-  attacked(r,c,by,b=this.board) {
-    for(let sr=0;sr<THREE_ROWS;sr++) for(let sc=0;sc<THREE_COLS;sc++) {
-      const p=b[sr][sc]; if(!p||p.color!==by) continue;
-      if(p.type==="p") { const nr=this.nextRow(sr,1); if(nr===r&&(sc-1===c||sc+1===c)) return true; continue; }
-      if(p.type==="n") { for(const [dr,dc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) if(this.nextRow(sr,dr)===r&&sc+dc===c&&playable3(r,c)) return true; continue; }
-      if(p.type==="k") { for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++) if((dr||dc)&&this.nextRow(sr,dr)===r&&sc+dc===c&&playable3(r,c)) return true; continue; }
-      const dirs=[]; if(["b","q"].includes(p.type)) dirs.push([1,1],[1,-1],[-1,1],[-1,-1]); if(["r","q"].includes(p.type)) dirs.push([1,0],[-1,0],[0,1],[0,-1]);
-      for(const [dr,dc] of dirs){ let tr=sr,tc=sc; for(let step=0;step<12;step++){ tr=this.nextRow(tr,dr); tc+=dc; if(tc<0||tc>=THREE_COLS) break; if(tr===r&&tc===c) return true; if(b[tr][tc]) break; } }
+
+  for (const ids of edgeMap.values()) {
+    if (ids.length === 2) {
+      rawCells[ids[0]].neighbors.push(ids[1]);
+      rawCells[ids[1]].neighbors.push(ids[0]);
+    }
+  }
+
+  // Checkerboard shades: every edge-adjacent cell is the opposite color.
+  const queue = [0];
+  const seenShade = new Set([0]);
+  while (queue.length) {
+    const id = queue.shift();
+    const cell = rawCells[id];
+    for (const nid of cell.neighbors) {
+      if (seenShade.has(nid)) continue;
+      rawCells[nid].shade = 1 - cell.shade;
+      seenShade.add(nid);
+      queue.push(nid);
+    }
+  }
+
+  // The eight cells on each of the three starting sides, in the direction
+  // in which that player's back rank reads R N B Q K B N R.
+  // These IDs are derived directly from the six fused wedges.
+  const homeOrders = {
+    black: [3, 2, 1, 0, 31, 27, 23, 19],
+    red:   [67, 66, 65, 64, 95, 91, 87, 83],
+    white: [51, 55, 59, 63, 32, 33, 34, 35],
+  };
+
+  const oppositeSides = {
+    white: "top",
+    red: "lower-right",
+    black: "lower-left",
+  };
+
+  const sideVertices = {
+    top: [[-LONG / SQRT3, 4], [LONG / SQRT3, 4]],
+    "upper-right": [[LONG / SQRT3, 4], [2 * LONG / SQRT3, 0]],
+    "lower-right": [[2 * LONG / SQRT3, 0], [LONG / SQRT3, -4]],
+    bottom: [[LONG / SQRT3, -4], [-LONG / SQRT3, -4]],
+    "lower-left": [[-LONG / SQRT3, -4], [-2 * LONG / SQRT3, 0]],
+    "upper-left": [[-2 * LONG / SQRT3, 0], [-LONG / SQRT3, 4]],
+  };
+
+  const pointLineDistance = (p, a, b) => Math.abs(
+    (b[0] - a[0]) * (a[1] - p.y) -
+    (a[0] - p.x) * (b[1] - a[1])
+  ) / Math.hypot(b[0] - a[0], b[1] - a[1]);
+
+  const touchesSide = (cell, name) => {
+    const [a, b] = sideVertices[name];
+    for (let i = 0; i < 4; i++) {
+      const p = cell.points[i];
+      const q = cell.points[(i + 1) % 4];
+      if (pointLineDistance(p, a, b) < 1e-6 && pointLineDistance(q, a, b) < 1e-6) {
+        return true;
+      }
     }
     return false;
+  };
+
+  const outerSides = {};
+  for (const name of Object.keys(sideVertices)) {
+    outerSides[name] = new Set(
+      rawCells.filter((cell) => touchesSide(cell, name)).map((cell) => cell.id),
+    );
   }
-  moveList(r,c) {
-    const p=this.board[r]?.[c]; if(!p||p.color!==this.turn) return [];
-    const out=[]; const add=(tr,tc,x={})=>{ if(!playable3(tr,tc)) return; const t=this.board[tr][tc]; if(!t||t.color!==p.color) out.push({from:{r,c},to:{r:tr,c:tc},...x}); };
-    if(p.type==="p") {
-      const nr=this.nextRow(r,1); if(!this.board[nr][c]) { add(nr,c,{promotion:nr===this.promotionRow(p.color)}); if(r===this.pawnStartRow(p.color)){const nnr=this.nextRow(r,2); if(!this.board[nnr][c]) add(nnr,c,{promotion:nnr===this.promotionRow(p.color)});} }
-      for(const dc of [-1,1]){const nc=c+dc; if(nc>=0&&nc<THREE_COLS&&this.board[nr][nc]&&this.board[nr][nc].color!==p.color) add(nr,nc,{promotion:nr===this.promotionRow(p.color)});}
-    } else if(p.type==="n") {
-      for(const [dr,dc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) add(this.nextRow(r,dr),c+dc);
-    } else if(p.type==="k") {
-      for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++) if(dr||dc) add(this.nextRow(r,dr),c+dc);
-      const cs=this.castling[p.color];
-      if(r===threeStartRow(p.color)&&c===4&&!cs.kingMoved&&!this.otherColors(p.color).some(e=>this.attacked(r,c,e))) {
-        for(const rook of cs.rooks){ if(rook.moved) continue; const kingSide=rook.col>c,targetKCol=kingSide?6:2,targetRCol=kingSide?5:3; let clear=true;
-          for(let col=Math.min(c,rook.col);col<=Math.max(c,rook.col);col++) if(col!==c&&col!==rook.col&&this.board[r][col]) {clear=false;break;}
-          if(clear&&(this.board[r][targetKCol]||this.board[r][targetRCol])) clear=false;
-          if(clear){const step=targetKCol>c?1:-1;for(let col=c+step;col!==targetKCol+step;col+=step) if(this.otherColors(p.color).some(e=>this.attacked(r,col,e))){clear=false;break;}}
-          if(clear) out.push({from:{r,c},to:{r,c:targetKCol},castling:{rookFromCol:rook.col,targetKCol,targetRCol}});
+
+  // Distance from each cell to each home side. The nearest-side partition
+  // produces exactly three 32-cell territories, each four ranks by eight files.
+  const distanceFromHome = {};
+  for (const color of ["white", "red", "black"]) {
+    const distances = new Map();
+    const start = homeOrders[color];
+    const bfs = [...start];
+    for (const id of start) distances.set(id, 0);
+    let head = 0;
+    while (head < bfs.length) {
+      const id = bfs[head++];
+      const nextDistance = distances.get(id) + 1;
+      for (const nid of rawCells[id].neighbors) {
+        if (distances.has(nid)) continue;
+        distances.set(nid, nextDistance);
+        bfs.push(nid);
+      }
+    }
+    distanceFromHome[color] = distances;
+  }
+
+  const colors = ["white", "red", "black"];
+  const centerAngle = (cell) => Math.atan2(cell.center.y, cell.center.x);
+  const normalAngles = { white: -Math.PI / 2, red: 5 * Math.PI / 6, black: Math.PI / 6 };
+  const angularDifference = (a, b) => {
+    let d = Math.abs(a - b) % (2 * Math.PI);
+    if (d > Math.PI) d = 2 * Math.PI - d;
+    return d;
+  };
+
+  const territoryById = new Map();
+  for (const cell of rawCells) {
+    let min = Infinity;
+    let candidates = [];
+    for (const color of colors) {
+      const d = distanceFromHome[color].get(cell.id);
+      if (d < min) {
+        min = d;
+        candidates = [color];
+      } else if (d === min) {
+        candidates.push(color);
+      }
+    }
+    const region = candidates.length === 1
+      ? candidates[0]
+      : candidates.sort((a, b) => angularDifference(centerAngle(cell), normalAngles[a]) - angularDifference(centerAngle(cell), normalAngles[b]))[0];
+    territoryById.set(cell.id, { region, rank: min });
+  }
+
+  // Reorder each rank along its home side so the first file is the player's
+  // leftmost home-square and the fourth/fifth files meet at the center seam.
+  const axis = {};
+  for (const color of colors) {
+    const start = rawCells[homeOrders[color][0]].center;
+    const end = rawCells[homeOrders[color][7]].center;
+    const dx = end.x - start.x, dy = end.y - start.y;
+    const len = Math.hypot(dx, dy);
+    axis[color] = { x: dx / len, y: dy / len };
+  }
+
+  const byLogical = new Map();
+  const cells = new Map();
+  for (const color of colors) {
+    for (let rank = 0; rank < 4; rank++) {
+      const row = rawCells.filter((cell) => {
+        const info = territoryById.get(cell.id);
+        return info.region === color && info.rank === rank;
+      });
+      row.sort((a, b) => {
+        const ax = axis[color];
+        const ap = a.center.x * ax.x + a.center.y * ax.y;
+        const bp = b.center.x * ax.x + b.center.y * ax.y;
+        return ap - bp;
+      });
+      row.forEach((cell, file) => {
+        cell.region = color;
+        cell.rank = rank;
+        cell.file = file;
+        cell.r = (color === "black" ? 0 : color === "red" ? 4 : 8) + rank;
+        cell.c = file;
+        cell.idLogical = `${cell.r},${cell.c}`;
+        byLogical.set(cell.idLogical, cell);
+        cells.set(cell.idLogical, cell);
+      });
+    }
+  }
+
+  // Cross-center links are the shared edges between territories. There are
+  // twelve such links on the 96-cell board.
+  const cross = new Map();
+  for (const cell of rawCells) {
+    const targets = [];
+    for (const nid of cell.neighbors) {
+      const other = rawCells[nid];
+      if (other.region !== cell.region) targets.push(other);
+    }
+    if (targets.length) cross.set(cell.idLogical, targets.map((x) => x.idLogical));
+    cell.cross = targets.map((x) => x.idLogical);
+  }
+
+  const cellByRawId = new Map(rawCells.map((cell) => [cell.id, cell]));
+  const homeCells = Object.fromEntries(
+    colors.map((color) => [color, homeOrders[color].map((id) => cellByRawId.get(id).idLogical)])
+  );
+
+  // SVG: reverse Y because SVG's y axis grows downward.
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const cell of rawCells) {
+    for (const p of cell.points) {
+      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+    }
+  }
+  const pad = 0.12;
+  minX -= pad; maxX += pad; minY -= pad; maxY += pad;
+  const toSvg = (p) => ({
+    x: ((p.x - minX) / (maxX - minX)) * 100,
+    y: ((maxY - p.y) / (maxY - minY)) * 100,
+  });
+
+  for (const cell of rawCells) {
+    cell.svgPoints = cell.points.map(toSvg)
+      .map((p) => `${p.x.toFixed(3)},${p.y.toFixed(3)}`).join(" ");
+    cell.svgCenter = toSvg(cell.center);
+  }
+
+  return {
+    cells,
+    byLogical,
+    cross,
+    homeCells,
+    outerSides,
+    oppositeSides,
+    homeOrders,
+    rawCells,
+  };
+})();
+
+class ThreePlayerChessGame {
+  constructor() {
+    this.size = 12;
+    this.playersCount = 3;
+    this.variant = "threeman";
+    this.turnOrder = ["white", "red", "black"];
+    this.reset();
+  }
+
+  reset() {
+    this.board = Array.from({ length: 12 }, () => Array(8).fill(null));
+    const back = ["r", "n", "b", "q", "k", "b", "n", "r"];
+    for (const color of this.turnOrder) {
+      const homeRow = color === "white" ? 8 : color === "red" ? 4 : 0;
+      for (let c = 0; c < 8; c++) {
+        this.board[homeRow][c] = { type: back[c], color, home: color, moved: false };
+        this.board[homeRow + 1][c] = { type: "p", color, home: color, moved: false, arrow: false };
+      }
+    }
+
+    this.turnIndex = 0;
+    this.turn = "white";
+    this.history = [];
+    this.sanHistory = [];
+    this.captured = [];
+    this.lastMove = null;
+    this.castling = {
+      white: { kingMoved: false, rooks: { 0: false, 7: false } },
+      red: { kingMoved: false, rooks: { 0: false, 7: false } },
+      black: { kingMoved: false, rooks: { 0: false, 7: false } },
+    };
+  }
+
+  clone() {
+    return {
+      board: cloneBoard(this.board),
+      turnIndex: this.turnIndex,
+      turn: this.turn,
+      san: [...this.sanHistory],
+      captured: this.captured.map((p) => ({ ...p })),
+      lastMove: this.lastMove ? JSON.parse(JSON.stringify(this.lastMove)) : null,
+      castling: JSON.parse(JSON.stringify(this.castling)),
+    };
+  }
+
+  restore(snapshot) {
+    this.board = cloneBoard(snapshot.board);
+    this.turnIndex = snapshot.turnIndex;
+    this.turn = snapshot.turn;
+    this.sanHistory = [...snapshot.san];
+    this.captured = snapshot.captured.map((p) => ({ ...p }));
+    this.lastMove = snapshot.lastMove ? JSON.parse(JSON.stringify(snapshot.lastMove)) : null;
+    this.castling = JSON.parse(JSON.stringify(snapshot.castling));
+  }
+
+  undo() {
+    if (!this.history.length) return false;
+    this.restore(this.history.pop());
+    return true;
+  }
+
+  meta(r, c) {
+    return THREE_MAN_GEOMETRY.byLogical.get(`${r},${c}`) || null;
+  }
+
+  regionOf(r, c) {
+    return this.meta(r, c)?.region || null;
+  }
+
+  rankOf(r, c) {
+    return this.meta(r, c)?.rank ?? -1;
+  }
+
+  fileOf(r, c) {
+    return this.meta(r, c)?.file ?? -1;
+  }
+
+  cellByKey(key) {
+    const cell = THREE_MAN_GEOMETRY.byLogical.get(key);
+    return cell ? { r: cell.r, c: cell.c } : null;
+  }
+
+  crossTargets(r, c) {
+    return (THREE_MAN_GEOMETRY.cross.get(`${r},${c}`) || [])
+      .map((key) => this.cellByKey(key))
+      .filter(Boolean);
+  }
+
+  ownerColors() {
+    return this.turnOrder;
+  }
+
+  findKing(color, board = this.board) {
+    for (let r = 0; r < board.length; r++) {
+      for (let c = 0; c < board[r].length; c++) {
+        const p = board[r][c];
+        if (p?.color === color && p.type === "k") return { r, c };
+      }
+    }
+    return null;
+  }
+
+  isInCheck(color, board = this.board) {
+    const king = this.findKing(color, board);
+    if (!king) return true;
+    return this.ownerColors().some((enemy) => enemy !== color && this.attacked(king.r, king.c, enemy, board));
+  }
+
+  attacked(r, c, byColor, board = this.board) {
+    const oldBoard = this.board;
+    this.board = board;
+    try {
+      for (let rr = 0; rr < 12; rr++) {
+        for (let cc = 0; cc < 8; cc++) {
+          const p = board[rr][cc];
+          if (!p || p.color !== byColor) continue;
+          const pseudo = this.moveList(rr, cc, true);
+          if (pseudo.some((m) => m.to.r === r && m.to.c === c)) return true;
+        }
+      }
+      return false;
+    } finally {
+      this.board = oldBoard;
+    }
+  }
+
+  stepFile(r, c, dir) {
+    const cell = this.meta(r, c);
+    if (!cell) return null;
+    const file = cell.file + dir;
+    if (file < 0 || file > 7) return null;
+    return this.cellByKey(`${cell.r},${file}`);
+  }
+
+  stepRank(r, c, dir) {
+    const cell = this.meta(r, c);
+    if (!cell) return null;
+    if (dir < 0 && cell.rank > 0) return this.cellByKey(`${cell.r - 1},${cell.file}`);
+    if (dir > 0 && cell.rank < 3) return this.cellByKey(`${cell.r + 1},${cell.file}`);
+    if (dir > 0 && cell.rank === 3) {
+      const cross = this.crossTargets(r, c);
+      return cross.find((x) => this.rankOf(x.r, x.c) === 3) || null;
+    }
+    return null;
+  }
+
+  stepDiagonalLocal(r, c, dr, dc) {
+    const cell = this.meta(r, c);
+    if (!cell) return null;
+    const rank = cell.rank + dr;
+    const file = cell.file + dc;
+    if (rank < 0 || rank > 3 || file < 0 || file > 7) return null;
+    const base = cell.r - cell.rank;
+    return this.cellByKey(`${base + rank},${file}`);
+  }
+
+  diagonalCross(r, c, dc) {
+    const key = `${r},${c}`;
+    const transitions = {
+      "3,3": { "-1": ["7,4", -1] },
+      "3,4": { "1": ["11,4", -1] },
+      "11,4": { "-1": ["3,4", 1] },
+      "11,3": { "1": ["7,3", 1] },
+      "7,3": { "-1": ["11,3", -1] },
+      "7,4": { "1": ["3,3", 1] },
+    };
+    const entry = transitions[key]?.[String(dc)];
+    if (!entry) return null;
+    const target = this.cellByKey(entry[0]);
+    if (!target) return null;
+    return { target, exitDc: entry[1] };
+  }
+
+  addMove(out, r, c, to, extra = {}, forAttack = false) {
+    if (!to) return;
+    const p = this.board[r]?.[c];
+    if (!p) return;
+    const target = this.board[to.r]?.[to.c];
+    if (target?.color === p.color) return;
+    if (target?.type === "k" && !forAttack) return;
+    out.push({ from: { r, c }, to: { ...to }, ...extra });
+  }
+
+  rayRank(r, c, dir, p, out, forAttack) {
+    let cur = { r, c };
+    let direction = dir;
+    for (let i = 0; i < 16; i++) {
+      const next = this.stepRank(cur.r, cur.c, direction);
+      if (!next) break;
+      const target = this.board[next.r][next.c];
+      this.addMove(out, r, c, next, {}, forAttack);
+      if (target) break;
+
+      cur = next;
+      // Crossing the center sends a rook/queen ray outward through the
+      // opponent's territory rather than back across the center.
+      if (direction > 0 && this.rankOf(cur.r, cur.c) === 3 && this.regionOf(cur.r, cur.c) !== p.color) {
+        direction = -1;
+      }
+    }
+  }
+
+  rayFile(r, c, dir, out, forAttack) {
+    let cur = { r, c };
+    for (let i = 0; i < 8; i++) {
+      const next = this.stepFile(cur.r, cur.c, dir);
+      if (!next) break;
+      const target = this.board[next.r][next.c];
+      this.addMove(out, r, c, next, {}, forAttack);
+      if (target) break;
+      cur = next;
+    }
+  }
+
+  rayBishop(r, c, dr, dc, out, forAttack) {
+    let cur = { r, c };
+    let rr = dr;
+    let ff = dc;
+    for (let i = 0; i < 16; i++) {
+      const cell = this.meta(cur.r, cur.c);
+      if (!cell) break;
+
+      const local = this.stepDiagonalLocal(cur.r, cur.c, rr, ff);
+      if (local) {
+        const target = this.board[local.r][local.c];
+        this.addMove(out, r, c, local, {}, forAttack);
+        if (target) break;
+        cur = local;
+      } else if (rr > 0 && cell.rank === 3) {
+        const cross = this.diagonalCross(cur.r, cur.c, ff);
+        if (!cross) break;
+        const target = this.board[cross.target.r][cross.target.c];
+        this.addMove(out, r, c, cross.target, {}, forAttack);
+        if (target) break;
+        cur = cross.target;
+        rr = -1;
+        ff = cross.exitDc;
+      } else {
+        break;
+      }
+    }
+  }
+
+  canCastle(color, side) {
+    const state = this.castling[color];
+    if (!state || state.kingMoved) return false;
+    const king = this.findKing(color);
+    if (!king || this.rankOf(king.r, king.c) !== 0 || this.fileOf(king.r, king.c) !== 4) return false;
+
+    const kingside = side === "king";
+    const rookFile = kingside ? 7 : 0;
+    if (state.rooks[rookFile]) return false;
+    const rook = this.board[king.r]?.[rookFile];
+    if (!rook || rook.color !== color || rook.type !== "r") return false;
+
+    const pathFiles = kingside ? [5, 6] : [3, 2, 1];
+    for (const file of pathFiles) {
+      if (this.board[king.r][file]) return false;
+    }
+
+    if (this.isInCheck(color)) return false;
+    const through = this.cellByKey(`${king.r},${kingside ? 5 : 3}`);
+    const destination = this.cellByKey(`${king.r},${kingside ? 6 : 2}`);
+    if (!through || !destination) return false;
+    for (const enemy of this.ownerColors()) {
+      if (enemy === color) continue;
+      if (this.attacked(through.r, through.c, enemy, this.board)) return false;
+      if (this.attacked(destination.r, destination.c, enemy, this.board)) return false;
+    }
+    return true;
+  }
+
+  fourthRankCaptures(r, c, p, out, forAttack) {
+    if (this.rankOf(r, c) !== 3) return;
+    const origin = this.meta(r, c);
+    if (!origin) return;
+    const candidateKeys = new Set();
+    const sources = [c - 1, c, c + 1].filter((file) => file >= 0 && file <= 7);
+    for (const file of sources) {
+      const source = this.cellByKey(`${r},${file}`);
+      if (!source) continue;
+      for (const target of this.crossTargets(source.r, source.c)) {
+        if (this.rankOf(target.r, target.c) !== 3) continue;
+        candidateKeys.add(`${target.r},${target.c}`);
+      }
+    }
+    for (const key of candidateKeys) {
+      const target = this.cellByKey(key);
+      const piece = this.board[target.r][target.c];
+      if (!piece || piece.color === p.color) continue;
+      const destination = this.meta(target.r, target.c);
+      if (!destination || destination.shade !== origin.shade) continue;
+      this.addMove(out, r, c, target, { specialPawnCapture: true }, forAttack);
+    }
+  }
+
+  arrowDiagonalTargets(r, c, p, out, forAttack) {
+    const cell = this.meta(r, c);
+    if (!cell) return;
+    for (const dr of [-1, 1]) {
+      for (const dc of [-1, 1]) {
+        const local = this.stepDiagonalLocal(r, c, dr, dc);
+        if (local) {
+          const target = this.board[local.r][local.c];
+          if (target && target.color !== p.color) {
+            this.addMove(out, r, c, local, { promotion: this.isPromotionSquare(local.r, local.c, p.home) }, forAttack);
+          }
+          continue;
+        }
+
+        if (dr > 0 && this.rankOf(r, c) === 3) {
+          const cross = this.diagonalCross(r, c, dc);
+          if (cross) {
+            const target = this.board[cross.target.r][cross.target.c];
+            if (target && target.color !== p.color) {
+              this.addMove(out, r, c, cross.target, { promotion: this.isPromotionSquare(cross.target.r, cross.target.c, p.home) }, forAttack);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  moveList(r, c, forAttack = false) {
+    const p = this.board[r]?.[c];
+    if (!p || (!forAttack && p.color !== this.turn)) return [];
+
+    const out = [];
+    const rank = this.rankOf(r, c);
+    const file = this.fileOf(r, c);
+
+    if (p.type === "p") {
+      if (p.arrow) {
+        // Arrow pawn: orthogonal moves and diagonal captures in any direction,
+        // but it may never return to its home third of the board.
+        for (const dir of [-1, 1]) {
+          const target = this.stepRank(r, c, dir);
+          if (target && this.regionOf(target.r, target.c) !== p.home && !this.board[target.r][target.c]) {
+            this.addMove(out, r, c, target, { promotion: this.isPromotionSquare(target.r, target.c, p.home) }, forAttack);
+          }
+        }
+        for (const dir of [-1, 1]) {
+          const target = this.stepFile(r, c, dir);
+          if (target && this.regionOf(target.r, target.c) !== p.home && !this.board[target.r][target.c]) {
+            this.addMove(out, r, c, target, { promotion: this.isPromotionSquare(target.r, target.c, p.home) }, forAttack);
+          }
+        }
+        this.arrowDiagonalTargets(r, c, p, out, forAttack);
+
+        // Dekle's documented cross-center en-passant example: a pawn that has
+        // just made its initial double-step may be taken diagonally backwards
+        // by an arrow pawn in the same territory.
+        if (!forAttack && this.lastMove?.pawnDouble && this.lastMove.pieceColor !== p.color) {
+          const lm = this.lastMove;
+          if (this.regionOf(lm.to.r, lm.to.c) === this.regionOf(r, c) && this.rankOf(r, c) === 3 && this.rankOf(lm.to.r, lm.to.c) === 3) {
+            for (const dc of [-1, 1]) {
+              const target = this.stepDiagonalLocal(r, c, -1, dc) || null;
+              if (!target || this.board[target.r][target.c]) continue;
+              if (Math.abs(this.fileOf(lm.to.r, lm.to.c) - this.fileOf(r, c)) === 1) {
+                out.push({ from: { r, c }, to: target, enPassant: true, captureSquare: { ...lm.to }, promotion: this.isPromotionSquare(target.r, target.c, p.home) });
+              }
+            }
+          }
+        }
+      } else if (rank < 3) {
+        const one = this.stepRank(r, c, 1);
+        if (one && !this.board[one.r][one.c]) {
+          this.addMove(out, r, c, one, { promotion: this.isPromotionSquare(one.r, one.c, p.home) }, forAttack);
+          if (!forAttack && rank === 1 && !p.moved) {
+            const two = this.stepRank(one.r, one.c, 1);
+            if (two && !this.board[two.r][two.c]) {
+              out.push({ from: { r, c }, to: two, pawnDouble: true });
+            }
+          }
+        }
+
+        {
+          for (const dc of [-1, 1]) {
+            const target = this.stepDiagonalLocal(r, c, 1, dc);
+            if (!target) continue;
+            const enemy = this.board[target.r][target.c];
+            if (enemy && enemy.color !== p.color) {
+              this.addMove(out, r, c, target, { promotion: this.isPromotionSquare(target.r, target.c, p.home) }, forAttack);
+            }
+          }
+        }
+
+        if (!forAttack && this.lastMove?.pawnDouble && this.lastMove.pieceColor !== p.color && rank === 2) {
+          const lm = this.lastMove;
+          if (this.regionOf(lm.to.r, lm.to.c) === p.home && this.rankOf(lm.to.r, lm.to.c) === 3 && Math.abs(this.fileOf(lm.to.r, lm.to.c) - file) === 1) {
+            const target = this.cellByKey(`${this.meta(r, c).r + 1},${this.fileOf(lm.to.r, lm.to.c)}`);
+            if (target && !this.board[target.r][target.c]) {
+              out.push({ from: { r, c }, to: target, enPassant: true, captureSquare: { ...lm.to } });
+            }
+          }
+        }
+      } else {
+        // The fourth rank has the special three-way forward capture rule.
+        const forward = this.stepRank(r, c, 1);
+        if (forward && !this.board[forward.r][forward.c]) {
+          this.addMove(out, r, c, forward, { promotion: this.isPromotionSquare(forward.r, forward.c, p.home) }, forAttack);
+        }
+        this.fourthRankCaptures(r, c, p, out, forAttack);
+      }
+    } else if (p.type === "n") {
+      // Knight: two orthogonal steps in one direction, then one orthogonal
+      // step to the side. The rank/file step helpers carry this through the
+      // center correctly.
+      for (const [dr, dc] of [[2, 1], [2, -1], [-2, 1], [-2, -1]]) {
+        let x = { r, c };
+        let ok = true;
+        for (let i = 0; i < 2; i++) {
+          x = this.stepRank(x.r, x.c, dr > 0 ? 1 : -1);
+          if (!x) { ok = false; break; }
+        }
+        if (ok) this.addMove(out, r, c, this.stepFile(x.r, x.c, dc > 0 ? 1 : -1), {}, forAttack);
+      }
+      for (const [dc, dr] of [[2, 1], [2, -1], [-2, 1], [-2, -1]]) {
+        let x = { r, c };
+        let ok = true;
+        for (let i = 0; i < 2; i++) {
+          x = this.stepFile(x.r, x.c, dc > 0 ? 1 : -1);
+          if (!x) { ok = false; break; }
+        }
+        if (ok) this.addMove(out, r, c, this.stepRank(x.r, x.c, dr > 0 ? 1 : -1), {}, forAttack);
+      }
+    } else if (p.type === "k") {
+      for (const dr of [-1, 0, 1]) {
+        for (const dc of [-1, 0, 1]) {
+          if (!dr && !dc) continue;
+          const local = dr ? (dc ? this.stepDiagonalLocal(r, c, dr, dc) : this.stepRank(r, c, dr)) : this.stepFile(r, c, dc);
+          this.addMove(out, r, c, local, {}, forAttack);
+        }
+      }
+      if (!forAttack && rank === 0 && file === 4) {
+        if (this.canCastle(p.color, "king")) {
+          out.push({ from: { r, c }, to: { r, c: 6 }, castle: "king", rookFrom: { r, c: 7 }, rookTo: { r, c: 5 } });
+        }
+        if (this.canCastle(p.color, "queen")) {
+          out.push({ from: { r, c }, to: { r, c: 2 }, castle: "queen", rookFrom: { r, c: 0 }, rookTo: { r, c: 3 } });
         }
       }
     } else {
-      const ds=[]; if(["b","q"].includes(p.type)) ds.push([1,1],[1,-1],[-1,1],[-1,-1]); if(["r","q"].includes(p.type)) ds.push([1,0],[-1,0],[0,1],[0,-1]);
-      for(const [dr,dc] of ds){let tr=r,tc=c;for(let step=0;step<12;step++){tr=this.nextRow(tr,dr);tc+=dc;if(tc<0||tc>=THREE_COLS)break;const t=this.board[tr][tc];if(!t)add(tr,tc);else{if(t.color!==p.color)add(tr,tc);break;}}}
+      if (["r", "q"].includes(p.type)) {
+        this.rayRank(r, c, -1, p, out, forAttack);
+        this.rayRank(r, c, 1, p, out, forAttack);
+        this.rayFile(r, c, -1, out, forAttack);
+        this.rayFile(r, c, 1, out, forAttack);
+      }
+      if (["b", "q"].includes(p.type)) {
+        this.rayBishop(r, c, -1, -1, out, forAttack);
+        this.rayBishop(r, c, -1, 1, out, forAttack);
+        this.rayBishop(r, c, 1, -1, out, forAttack);
+        this.rayBishop(r, c, 1, 1, out, forAttack);
+      }
     }
+
     return out;
   }
-  legalMovesFrom(r,c){ return this.moveList(r,c).filter(m=>{const snap=this.clone();const p=this.board[m.from.r][m.from.c];if(m.castling){const rook=this.board[m.from.r][m.castling.rookFromCol];this.board[m.from.r][m.from.c]=null;this.board[m.from.r][m.castling.rookFromCol]=null;this.board[m.from.r][m.castling.targetKCol]=p;this.board[m.from.r][m.castling.targetRCol]=rook;}else{this.board[m.from.r][m.from.c]=null;this.board[m.to.r][m.to.c]=p;}const king=this.findKing(p.color);const safe=king&&!this.otherColors(p.color).some(e=>this.attacked(king.r,king.c,e));this.restore(snap);return safe;}); }
-  allLegal(color){const old=this.turn;this.turn=color;const a=[];for(let r=0;r<THREE_ROWS;r++)for(let c=0;c<THREE_COLS;c++)if(this.board[r][c]?.color===color)a.push(...this.legalMovesFrom(r,c));this.turn=old;return a;}
-  makeMove(m,promotion="q"){const legal=this.legalMovesFrom(m.from.r,m.from.c).find(x=>x.to.r===m.to.r&&x.to.c===m.to.c);if(!legal)return false;this.history.push(this.clone());const p=this.board[legal.from.r][legal.from.c];if(legal.castling){const rook=this.board[legal.from.r][legal.castling.rookFromCol];this.board[legal.from.r][legal.from.c]=null;this.board[legal.from.r][legal.castling.rookFromCol]=null;this.board[legal.from.r][legal.castling.targetKCol]=p;this.board[legal.from.r][legal.castling.targetRCol]=rook;this.castling[p.color].kingMoved=true;const rk=this.castling[p.color].rooks.find(x=>x.col===legal.castling.rookFromCol);if(rk)rk.moved=true;this.sanHistory.push(legal.castling.targetKCol===6?"O-O":"O-O-O");}else{const cap=this.board[legal.to.r][legal.to.c];this.board[legal.from.r][legal.from.c]=null;this.board[legal.to.r][legal.to.c]={...p,type:legal.promotion?promotion:p.type};if(p.type==="k")this.castling[p.color].kingMoved=true;if(p.type==="r"){const rk=this.castling[p.color].rooks.find(x=>x.col===legal.from.c);if(rk)rk.moved=true;}if(cap)this.captured.push(cap);const file="abcdefgh";this.sanHistory.push(`${p.type==="p"?"":p.type.toUpperCase()}${cap?"x":""}${file[legal.to.c]}${THREE_ROWS-legal.to.r}${legal.promotion?"="+promotion.toUpperCase():""}`);}this.lastMove={from:{...legal.from},to:{...legal.to}};this.turnIndex=(this.turnIndex+1)%3;this.turn=THREE_COLORS[this.turnIndex];return true;}
-  gameStatus(){const king=this.findKing(this.turn);const check=king&&this.otherColors(this.turn).some(e=>this.attacked(king.r,king.c,e));const moves=this.allLegal(this.turn);if(!moves.length){const winner=this.turnIndex===0?"black":this.turnIndex===1?"white":"red";return{over:true,check:Boolean(check),winner,text:check?`Checkmate — ${winner[0].toUpperCase()+winner.slice(1)} wins`:"Stalemate — draw"};}return{over:false,check:Boolean(check),text:`${this.turn[0].toUpperCase()+this.turn.slice(1)}${check?" is in check":" to move"}`};}
-}
 
+  applyMoveToBoard(board, move, promotion) {
+    const p = board[move.from.r][move.from.c];
+    board[move.from.r][move.from.c] = null;
+    if (move.enPassant && move.captureSquare) {
+      board[move.captureSquare.r][move.captureSquare.c] = null;
+    }
+    board[move.to.r][move.to.c] = {
+      ...p,
+      type: move.promotion ? promotion : p.type,
+      arrow: p.type === "p" && !move.promotion ? p.arrow : false,
+    };
+    if (move.castle) {
+      const rook = board[move.rookFrom.r][move.rookFrom.c];
+      board[move.rookFrom.r][move.rookFrom.c] = null;
+      board[move.rookTo.r][move.rookTo.c] = rook;
+    }
+    return board;
+  }
+
+  legalMovesFrom(r, c) {
+    const p = this.board[r]?.[c];
+    if (!p || p.color !== this.turn) return [];
+    return this.moveList(r, c, false).filter((move) => {
+      const board = cloneBoard(this.board);
+      this.applyMoveToBoard(board, move, move.promotion ? "q" : null);
+      const king = this.findKing(p.color, board);
+      if (!king) return false;
+      return !this.isInCheck(p.color, board);
+    });
+  }
+
+  isPromotionSquare(r, c, homeColor) {
+    const cell = this.meta(r, c);
+    if (!cell || !homeColor) return false;
+
+    for (const color of this.ownerColors()) {
+      if (color === homeColor) continue;
+      if (THREE_MAN_GEOMETRY.homeOrders[color].includes(cell.id)) return true;
+    }
+
+    const oppositeSide = THREE_MAN_GEOMETRY.oppositeSides[homeColor];
+    return THREE_MAN_GEOMETRY.outerSides[oppositeSide]?.has(cell.id) || false;
+  }
+
+  getPromotionChoices() {
+    return ["q", "r", "b", "n"];
+  }
+
+  simpleLabel(square) {
+    const cell = this.meta(square.r, square.c);
+    if (!cell) return "?";
+    const region = cell.region[0].toUpperCase();
+    return `${region}${cell.rank + 1}${String.fromCharCode(97 + cell.file)}`;
+  }
+
+  makeMove(move, promotion = "q") {
+    const legal = this.legalMovesFrom(move.from.r, move.from.c).find(
+      (m) => m.to.r === move.to.r && m.to.c === move.to.c && Boolean(m.castle) === Boolean(move.castle)
+    );
+    if (!legal) return false;
+
+    this.history.push(this.clone());
+    const p = this.board[legal.from.r][legal.from.c];
+    const captured = legal.enPassant
+      ? this.board[legal.captureSquare.r][legal.captureSquare.c]
+      : this.board[legal.to.r][legal.to.c];
+
+    this.applyMoveToBoard(this.board, legal, promotion);
+    if (captured) this.captured.push(captured);
+
+    if (p.type === "k") this.castling[p.color].kingMoved = true;
+    if (p.type === "r" && this.rankOf(legal.from.r, legal.from.c) === 0) {
+      const f = this.fileOf(legal.from.r, legal.from.c);
+      if (f === 0 || f === 7) this.castling[p.color].rooks[f] = true;
+    }
+    if (captured?.type === "r" && this.rankOf(legal.to.r, legal.to.c) === 0) {
+      const f = this.fileOf(legal.to.r, legal.to.c);
+      if (f === 0 || f === 7) this.castling[captured.color].rooks[f] = true;
+    }
+
+    const moved = this.board[legal.to.r][legal.to.c];
+    if (p.type === "p") {
+      moved.moved = true;
+      if (!legal.promotion && !moved.arrow && this.regionOf(legal.to.r, legal.to.c) !== p.home) {
+        moved.arrow = true;
+      }
+      if (legal.promotion) moved.arrow = false;
+    }
+
+    this.lastMove = {
+      from: { ...legal.from },
+      to: { ...legal.to },
+      pieceColor: p.color,
+      pieceType: p.type,
+      pawnDouble: Boolean(legal.pawnDouble),
+      enPassant: Boolean(legal.enPassant),
+      castle: legal.castle || null,
+      captureSquare: legal.captureSquare ? { ...legal.captureSquare } : null,
+    };
+
+    const actor = p.color[0].toUpperCase() + p.color.slice(1);
+    this.sanHistory.push(`${actor}: ${this.simpleLabel(legal.from)}-${this.simpleLabel(legal.to)}${legal.promotion ? `=${promotion.toUpperCase()}` : ""}`);
+
+    this.turnIndex = (this.turnIndex + 1) % this.turnOrder.length;
+    this.turn = this.turnOrder[this.turnIndex];
+
+    // A stalemated player loses their turn under the official rules.
+    for (let i = 0; i < this.turnOrder.length; i++) {
+      const king = this.findKing(this.turn);
+      const moves = this.allLegal(this.turn);
+      const check = king ? this.isInCheck(this.turn) : true;
+      if (moves.length || check) break;
+      this.turnIndex = (this.turnIndex + 1) % this.turnOrder.length;
+      this.turn = this.turnOrder[this.turnIndex];
+    }
+    return true;
+  }
+
+  gameStatus() {
+    const king = this.findKing(this.turn);
+    const check = king ? this.isInCheck(this.turn) : true;
+    const moves = this.allLegal(this.turn);
+
+    if (!king || !moves.length && check) {
+      const winner = this.turnOrder[(this.turnIndex + this.turnOrder.length - 1) % this.turnOrder.length];
+      return { over: true, check: true, text: `Checkmate — ${winner[0].toUpperCase() + winner.slice(1)} wins` };
+    }
+    if (!moves.length) {
+      return { over: false, check: false, text: `${this.turn[0].toUpperCase() + this.turn.slice(1)} is stalemated` };
+    }
+    return {
+      over: false,
+      check,
+      text: `${this.turn[0].toUpperCase() + this.turn.slice(1)}${check ? " is in check" : " to move"}`,
+    };
+  }
+
+  allLegal(color) {
+    const oldTurn = this.turn;
+    this.turn = color;
+    const moves = [];
+    for (let r = 0; r < 12; r++) {
+      for (let c = 0; c < 8; c++) {
+        if (this.board[r][c]?.color === color) moves.push(...this.legalMovesFrom(r, c));
+      }
+    }
+    this.turn = oldTurn;
+    return moves;
+  }
+}
 // ---------------------------- 4-PLAYER CHESS ENGINE ----------------------------
 function playable4(r, c) {
   return (r >= 3 && r <= 10) || (c >= 3 && c <= 10);
@@ -1464,6 +2279,17 @@ function scheduleComputerMove() {
     computerMovePending = false;
     makeComputerMove();
     selected = null;
+
+    if (FOG_OF_WAR) {
+      // Keep computer moves completely off-screen. Continue through any
+      // consecutive computer turns until the next human player (or game end).
+      const status = manager.game.gameStatus();
+      if (!status.over && isComputerTurn()) {
+        scheduleComputerMove();
+        return;
+      }
+    }
+
     render();
     beginLocalHandoff();
   }, 350);
@@ -1486,48 +2312,137 @@ function updateGameHeader() {
 }
 updateGameHeader();
 
+function renderThreeManBoard(game, legal, selectedCell, status) {
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("class", "three-man-svg");
+  svg.setAttribute("aria-label", "Three-Man Chess board");
+
+  const legalMap = new Map(legal.map(m => [`${m.to.r},${m.to.c}`, m]));
+  const viewerColor = fogViewerColor();
+  const king = status.check ? game.findKing(game.turn) : null;
+
+  for (const cell of THREE_MAN_GEOMETRY.cells.values()) {
+    const poly = document.createElementNS(svgNS, "polygon");
+    poly.setAttribute("points", cell.svgPoints);
+    poly.classList.add("three-cell", cell.shade ? "dark" : "light");
+
+    const move = legalMap.get(`${cell.r},${cell.c}`);
+    const visible = !FOG_OF_WAR || !viewerColor || squareVisibleToViewer(cell.r, cell.c, game) || Boolean(move);
+
+    if (!visible) poly.classList.add("fogged");
+    if (selectedCell?.r === cell.r && selectedCell?.c === cell.c) poly.classList.add("selected");
+    if (game.lastMove && visible &&
+        ((game.lastMove.from?.r === cell.r && game.lastMove.from?.c === cell.c) ||
+         (game.lastMove.to?.r === cell.r && game.lastMove.to?.c === cell.c))) {
+      poly.classList.add("last-move");
+    }
+    if (move) poly.classList.add(game.board[cell.r][cell.c] ? "legal-capture" : "legal");
+    if (king && visible && king.r === cell.r && king.c === cell.c) poly.classList.add("in-check");
+
+    svg.appendChild(poly);
+
+    const piece = game.board[cell.r]?.[cell.c];
+    if (piece && visible) {
+      const text = document.createElementNS(svgNS, "text");
+      text.setAttribute("x", cell.svgCenter.x.toFixed(3));
+      text.setAttribute("y", cell.svgCenter.y.toFixed(3));
+      text.setAttribute("text-anchor", "middle");
+      text.setAttribute("dominant-baseline", "middle");
+      text.classList.add("three-man-piece", ...pieceClass(piece, game).split(" "));
+      text.textContent = pieceGlyph(game, piece);
+      text.style.pointerEvents = "none";
+      svg.appendChild(text);
+    }
+
+    if (move) {
+      const mark = document.createElementNS(svgNS, "circle");
+      mark.setAttribute("cx", cell.svgCenter.x.toFixed(3));
+      mark.setAttribute("cy", cell.svgCenter.y.toFixed(3));
+      if (game.board[cell.r][cell.c]) {
+        mark.setAttribute("r", "2.4");
+        mark.classList.add("three-legal-capture");
+      } else {
+        mark.setAttribute("r", "0.95");
+        mark.classList.add("three-legal-dot");
+      }
+      mark.style.pointerEvents = "none";
+      svg.appendChild(mark);
+    }
+  }
+
+  svg.addEventListener("click", event => {
+    const matrix = svg.getScreenCTM();
+    if (!matrix) return;
+    const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse());
+    let best = null;
+    let bestDistance = Infinity;
+    for (const candidate of THREE_MAN_GEOMETRY.cells.values()) {
+      const dx = candidate.svgCenter.x - point.x;
+      const dy = candidate.svgCenter.y - point.y;
+      const distance = dx * dx + dy * dy;
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = candidate;
+      }
+    }
+    if (best) clickSquare(best.r, best.c);
+  });
+
+  boardEl.appendChild(svg);
+}
+
 function render() {
   const g = manager.game, s = g.gameStatus(), size = g.size;
-  const cols = size === 12 ? 8 : size;
+  renderCoordinates(size, g.variant);
   boardEl.innerHTML = "";
-  boardEl.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
   boardEl.classList.toggle("four-player", size === 14);
-  boardFrameEl.classList.toggle("four-player", size === 14);
-  renderCoordinates(size);
+  boardEl.classList.toggle("three-player-layout", g.variant === "threeman");
   const legal = selected ? g.legalMovesFrom(selected.r, selected.c) : [];
-  const king = s.check ? g.findKing(g.turn) : null;
 
-  for (let r = 0; r < size; r++) for (let c = 0; c < cols; c++) {
-    const sq = document.createElement("button");
-    sq.className = "square " + ((r + c) % 2 ? "dark" : "light");
-    if (size === 14 && !playable4(r, c)) sq.classList.add("unplayable");
-    if (selected?.r === r && selected?.c === c) sq.classList.add("selected");
-    const legalDestination = !!legal.find((m) => m.to.r === r && m.to.c === c);
-    const visible = squareVisibleToViewer(r, c, g) || Boolean(selected && legalDestination);
-    if (g.lastMove && visible && ((g.lastMove.from?.r === r && g.lastMove.from?.c === c) || (g.lastMove.to?.r === r && g.lastMove.to?.c === c))) sq.classList.add("last-move");
-    if (king && visible && king.r === r && king.c === c) sq.classList.add("in-check");
-
-    const isLegalMove = visible && legalDestination;
-    if (isLegalMove) {
-const mark = document.createElement("span");
-mark.className = g.board[r][c] ? "legal-capture" : "legal-dot";
-sq.appendChild(mark);
+  if (g.variant === "threeman") {
+    boardEl.style.display = "block";
+    boardEl.style.gridTemplateColumns = "";
+    boardEl.style.gridTemplateRows = "";
+    renderThreeManBoard(g, legal, selected, s);
+  } else {
+    boardEl.style.display = "grid";
+    boardEl.classList.remove("three-player-layout");
+    boardEl.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+    boardEl.style.gridTemplateRows = `repeat(${size}, 1fr)`;
+    const king = s.check && typeof g.findKing === "function" ? g.findKing(g.turn) : null;
+    for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) {
+      const sq = document.createElement("button");
+      sq.className = "square " + ((r + c) % 2 ? "dark" : "light");
+      if (size === 14 && !playable4(r, c)) sq.classList.add("unplayable");
+      if (selected?.r === r && selected?.c === c) sq.classList.add("selected");
+      const legalDestination = !!legal.find(m => m.to.r === r && m.to.c === c);
+      const visible = squareVisibleToViewer(r, c, g) || Boolean(selected && legalDestination);
+      if (g.lastMove && visible && ((g.lastMove.from?.r === r && g.lastMove.from?.c === c) || (g.lastMove.to?.r === r && g.lastMove.to?.c === c))) sq.classList.add("last-move");
+      if (king && visible && king.r === r && king.c === c) sq.classList.add("in-check");
+      if (visible && legalDestination) {
+        const mark = document.createElement("span");
+        mark.className = g.board[r][c] ? "legal-capture" : "legal-dot";
+        sq.appendChild(mark);
+      }
+      const p = g.board[r][c];
+      if (p && visible) {
+        const pe = document.createElement("span");
+        pe.className = "piece " + pieceClass(p, g);
+        pe.textContent = pieceGlyph(g, p);
+        sq.appendChild(pe);
+      }
+      if (!visible) {
+        const fog = document.createElement("span");
+        fog.className = "fog-mask";
+        sq.appendChild(fog);
+      }
+      sq.onclick = () => clickSquare(r, c);
+      boardEl.appendChild(sq);
     }
-    const p = g.board[r][c];
-    if (p && visible) {
-const pe = document.createElement("span");
-pe.className = "piece " + p.color;
-pe.textContent = size === 14 ? FOUR_PIECES[p.color][p.type] : size === 12 ? THREE_PIECES[p.color][p.type] : PIECES[p.color][p.type];
-sq.appendChild(pe);
-    }
-    if (!visible) {
-      const fog = document.createElement("span");
-      fog.className = "fog-mask";
-      sq.appendChild(fog);
-    }
-    sq.onclick = () => clickSquare(r, c);
-    boardEl.appendChild(sq);
   }
+
   statusEl.textContent = `${playerInfo(currentPlayerIndex(g)).name}: ${s.text}`;
   renderMoves();
   renderCaptured();
@@ -1535,18 +2450,23 @@ sq.appendChild(pe);
 }
 
 
-function renderCoordinates(size) {
-  const cols = size === 12 ? 8 : size;
+function renderCoordinates(size, variant) {
+  const isThreeMan = variant === "threeman";
+  rowLabelsEl.innerHTML = "";
+  colLabelsEl.innerHTML = "";
+  boardFrameEl.classList.toggle("three-player", isThreeMan);
+  boardFrameEl.classList.toggle("four-player", size === 14);
+  rowLabelsEl.style.display = isThreeMan ? "none" : "";
+  colLabelsEl.style.display = isThreeMan ? "none" : "";
+  if (isThreeMan) return;
+
+  const cols = size;
   const files = "abcdefghijklmnopqrstuvwxyz".slice(0, cols).split("");
   const ranks = Array.from({ length: size }, (_, i) => size - i);
-
-  rowLabelsEl.innerHTML = ranks
-    .map((rank) => `<span>${rank}</span>`)
-    .join("");
-
-  colLabelsEl.innerHTML = files
-    .map((file) => `<span>${file}</span>`)
-    .join("");
+  rowLabelsEl.style.gridTemplateRows = `repeat(${size}, 1fr)`;
+  colLabelsEl.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+  rowLabelsEl.innerHTML = ranks.map(rank => `<span>${rank}</span>`).join("");
+  colLabelsEl.innerHTML = files.map(file => `<span>${file}</span>`).join("");
 }
 
 function clickSquare(r, c) {
