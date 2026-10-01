@@ -13,13 +13,13 @@ In the future, more games are planned, such as Draughts and Reversi.
 Standard  
 Chess 960  
 Fog Of War (toggleable)  
+Three-Player Chess  
 Four-Player Chess  
 
 ## Coming Soon
 ### Chess
 Grand Chess  
-Shako  
-Three Player Chess  
+Shako    
 ### Draughts
 International  
 American (Checkers)  
