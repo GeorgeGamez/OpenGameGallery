@@ -426,6 +426,32 @@
         flex-direction: column;
         gap: 7px;
       }
+      .party-list { display:flex; flex-direction:column; gap:7px; }
+      .party-row {
+        display:flex; align-items:center; gap:10px; padding:9px 10px;
+        background:var(--panel2); border:1px solid var(--border); border-radius:8px;
+      }
+      .party-score {
+        margin-left:auto; min-width:58px; text-align:right; color:var(--accent);
+        font-size:12px; font-weight:700;
+      }
+      .party-remove {
+        width:30px; height:30px; flex:0 0 30px; color:var(--muted);
+        background:transparent; border:1px solid transparent; border-radius:6px;
+        font-size:20px; line-height:1; cursor:pointer;
+      }
+      .party-remove:hover:not(:disabled) {
+        color:var(--text); background:#353a45; border-color:var(--border);
+      }
+      .party-empty {
+        padding:10px; border:1px dashed var(--border); border-radius:8px;
+        color:var(--muted); font-size:12px; text-align:center;
+      }
+      .profile-party-button { flex:0 0 auto; }
+      .management-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:9px; }
+      .management-actions button { width:100%; }
+      .danger-button { color:#ffbcbc; border-color:#6b3d45; background:#2b2024; }
+      .danger-button:hover { background:#3a262b; }
 .profile-row,
       .player-row,
       .setup-slot {
@@ -674,19 +700,26 @@ No diagnostics run yet.</pre
           </div>
         </section>
         <section class="section">
+          <h3>Current party</h3>
+          <div class="muted" style="margin-bottom: 9px">
+            Your party is the group of local players participating in this browser session. The party can contain multiple people at this computer.
+          </div>
+          <div id="partyList" class="party-list"></div>
+        </section>
+        <section class="section">
           <h3>Player profiles</h3>
           <div class="muted" style="margin-bottom: 9px">
-            Profiles are selected here. The selected profile is used for your online identity and can be assigned to either side in a game.
+            Profiles save player names and avatars on this device. Add any profiles you want to the current party.
           </div>
           <div id="profileList" class="profile-list"></div>
-          <button
-            id="addProfile"
-            class="small"
-            style="margin-top: 9px; width: 100%"
-          >
+          <button id="addProfile" class="small" style="margin-top: 9px; width: 100%">
             + Add profile
           </button>
           <div id="profileEditor"></div>
+          <div class="management-actions">
+            <button id="resetScores" class="small">Reset all scores</button>
+            <button id="resetPlayerInfo" class="small danger-button">Reset player info</button>
+          </div>
         </section>
       </div>
     </aside>
@@ -722,9 +755,12 @@ No diagnostics run yet.</pre
         joinOnlineGroupButton = $("joinOnlineGroup"),
         onlineParticipants = $("onlineParticipants"),
         onlineError = $("onlineError"),
+        partyList = $("partyList"),
         profileList = $("profileList"),
         addProfileButton = $("addProfile"),
         profileEditor = $("profileEditor"),
+        resetScoresButton = $("resetScores"),
+        resetPlayerInfoButton = $("resetPlayerInfo"),
         runDiagnosticsButton = $("runDiagnostics"),
         debugOutput = $("debugOutput"),
         onlineWinsCorner = $("onlineWinsCorner"),
@@ -733,10 +769,10 @@ No diagnostics run yet.</pre
         closeGameSetupButton = $("closeGameSetup");
       let profiles = loadProfiles(),
         editingProfileId = null,
-        activeProfileId = localStorage.getItem("gameLibraryActiveProfileId") || profiles[0]?.id || "";
-      if (!profiles.some((p) => p.id === activeProfileId)) {
-        activeProfileId = profiles[0]?.id || "";
-        localStorage.setItem("gameLibraryActiveProfileId", activeProfileId);
+        partyProfileIds = loadPartyProfileIds();
+      if (!partyProfileIds.some((id) => profiles.some((p) => p.id === id))) {
+        partyProfileIds = profiles[0]?.id ? [profiles[0].id] : [];
+        savePartyProfileIds();
       }
       const onlineState = {
         code: sessionStorage.getItem("gameLibraryOnlineCode") || "",
@@ -831,19 +867,91 @@ No diagnostics run yet.</pre
       }
       function loadProfiles() {
         try {
-          const p = JSON.parse(
-            localStorage.getItem("gameLibraryProfiles") || "null",
-          );
+          const p = JSON.parse(localStorage.getItem("gameLibraryProfiles") || "null");
           if (Array.isArray(p) && p.length) return p;
         } catch {}
-        return [
-          {
-            id: "p_" + Math.random().toString(36).slice(2, 10),
-            name: "Player 1",
-            avatar: "♟",
-          },
-        ];
+        return [{
+          id: "p_" + Math.random().toString(36).slice(2, 10),
+          name: "Player 1",
+          avatar: "♟",
+        }];
       }
+
+      function loadPartyProfileIds() {
+        try {
+          const p = JSON.parse(sessionStorage.getItem("gameLibraryParty") || "null");
+          if (Array.isArray(p)) return p.filter((id) => typeof id === "string");
+        } catch {}
+        return profiles[0]?.id ? [profiles[0].id] : [];
+      }
+
+      function savePartyProfileIds() {
+        try { sessionStorage.setItem("gameLibraryParty", JSON.stringify(partyProfileIds)); } catch {}
+      }
+
+      function partyProfiles() {
+        return partyProfileIds.map((id) => profiles.find((p) => p.id === id)).filter(Boolean);
+      }
+
+      function loadLocalScores() {
+        try {
+          const scores = JSON.parse(localStorage.getItem("gameLibraryLocalScores") || "{}");
+          return scores && typeof scores === "object" && !Array.isArray(scores) ? scores : {};
+        } catch { return {}; }
+      }
+
+      function saveLocalScores(scores) {
+        localStorage.setItem("gameLibraryLocalScores", JSON.stringify(scores));
+      }
+
+      function localWins(profileId) {
+        const scores = loadLocalScores();
+        return Math.max(0, Number(scores[profileId]) || 0);
+      }
+
+      function awardLocalWin(profileId) {
+        if (!profileId) return;
+        const scores = loadLocalScores();
+        scores[profileId] = Math.max(0, Number(scores[profileId]) || 0) + 1;
+        saveLocalScores(scores);
+      }
+
+      function resetLocalScores() {
+        localStorage.removeItem("gameLibraryLocalScores");
+        renderParty();
+        if (onlineState.connected && onlineState.socket?.readyState === WebSocket.OPEN) {
+          try { onlineState.socket.send(JSON.stringify({ type: "scores:reset" })); } catch {}
+        }
+      }
+
+      function addProfileToParty(profileId) {
+        if (!profiles.some((p) => p.id === profileId) || partyProfileIds.includes(profileId)) return;
+        partyProfileIds.push(profileId);
+        savePartyProfileIds();
+        renderParty(); renderProfiles(); sendIdentify();
+        if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
+      }
+
+      function removeProfileFromParty(profileId) {
+        if (!partyProfileIds.includes(profileId)) return;
+        partyProfileIds = partyProfileIds.filter((id) => id !== profileId);
+        savePartyProfileIds();
+        renderParty(); renderProfiles(); sendIdentify();
+        if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
+      }
+
+      function resetPlayerInfo() {
+        localStorage.removeItem("gameLibraryProfiles");
+        localStorage.removeItem("gameLibraryActiveProfileId");
+        profiles = [];
+        partyProfileIds = [];
+        savePartyProfileIds();
+        editingProfileId = null;
+        profileEditor.innerHTML = "";
+        renderParty(); renderProfiles(); sendIdentify();
+        if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
+      }
+
       function saveProfiles() {
         localStorage.setItem("gameLibraryProfiles", JSON.stringify(profiles));
       }
@@ -894,60 +1002,50 @@ No diagnostics run yet.</pre
         onlineState.isHost = false;
         onlineState.participants = [];
       }
+      function renderParty() {
+        partyList.innerHTML = "";
+        const party = partyProfiles();
+        if (!party.length) {
+          partyList.innerHTML = '<div class="party-empty">No players in the current party. Add a profile below.</div>';
+          return;
+        }
+        party.forEach((p, index) => {
+          const row = document.createElement("div"); row.className = "party-row";
+          const avatar = document.createElement("div"); avatar.className = "avatar"; avatar.textContent = p.avatar || "♟";
+          const info = document.createElement("div"); info.className = "grow";
+          const name = document.createElement("div"); name.className = "player-name"; name.textContent = p.name || `Player ${index + 1}`;
+          const type = document.createElement("div"); type.className = "player-type"; type.textContent = `Local player${onlineState.connected ? " • This computer" : ""}`;
+          info.append(name, type);
+          const wins = localWins(p.id);
+          const score = document.createElement("div"); score.className = "party-score"; score.textContent = `${wins} win${wins === 1 ? "" : "s"}`;
+          const remove = document.createElement("button"); remove.type = "button"; remove.className = "party-remove"; remove.textContent = "×"; remove.title = "Remove from party"; remove.dataset.partyAction = "remove"; remove.dataset.profileId = p.id;
+          row.append(avatar, info, score, remove); partyList.appendChild(row);
+        });
+      }
+
       function renderProfiles() {
         profileList.innerHTML = "";
         for (const p of profiles) {
-          const row = document.createElement("div");
-          row.className = "profile-row" + (p.id === activeProfileId ? " current" : "");
-
-          const editButton = document.createElement("button");
-          editButton.type = "button";
-          editButton.className = "profile-edit-area";
-          editButton.innerHTML = `<div class="avatar">${escapeHtml(p.avatar || "♟")}</div><div class="grow"><div class="player-name">${escapeHtml(p.name)}</div><div class="player-type">${p.id === activeProfileId ? "Active profile • Click to edit" : "Click to edit"}</div></div>`;
-          editButton.dataset.profileAction = "edit";
-          editButton.dataset.profileId = p.id;
-
-          const useButton = document.createElement("button");
-          useButton.type = "button";
-          useButton.className = "profile-use small";
-          useButton.textContent = p.id === activeProfileId ? "Active" : "Use";
-          useButton.disabled = p.id === activeProfileId;
-          useButton.dataset.profileAction = "use";
-          useButton.dataset.profileId = p.id;
-
-          const removeButton = document.createElement("button");
-          removeButton.type = "button";
-          removeButton.className = "profile-remove";
-          removeButton.textContent = "×";
-          removeButton.title = profiles.length === 1 ? "At least one local profile is required" : `Remove ${p.name}`;
-          removeButton.disabled = profiles.length === 1;
-          removeButton.dataset.profileAction = "remove";
-          removeButton.dataset.profileId = p.id;
-
-          row.append(editButton, useButton, removeButton);
-          profileList.appendChild(row);
+          const inParty = partyProfileIds.includes(p.id);
+          const row = document.createElement("div"); row.className = "profile-row";
+          const editButton = document.createElement("button"); editButton.type = "button"; editButton.className = "profile-edit-area";
+          editButton.innerHTML = `<div class="avatar">${escapeHtml(p.avatar || "♟")}</div><div class="grow"><div class="player-name">${escapeHtml(p.name)}</div><div class="player-type">${inParty ? "In current party • Click to edit" : "Not in current party • Click to edit"}</div></div>`;
+          editButton.dataset.profileAction = "edit"; editButton.dataset.profileId = p.id;
+          const partyButton = document.createElement("button"); partyButton.type="button"; partyButton.className="profile-party-button small"; partyButton.textContent=inParty?"In party":"Add"; partyButton.disabled=inParty; partyButton.dataset.profileAction="party"; partyButton.dataset.profileId=p.id;
+          const removeButton = document.createElement("button"); removeButton.type="button"; removeButton.className="profile-remove"; removeButton.textContent="×"; removeButton.title=`Remove ${p.name}`; removeButton.dataset.profileAction="remove"; removeButton.dataset.profileId=p.id;
+          row.append(editButton, partyButton, removeButton); profileList.appendChild(row);
         }
+        if (!profiles.length) profileList.innerHTML = '<div class="party-empty">No saved player profiles.</div>';
       }
 
       function removeProfile(profileId) {
-        if (profiles.length <= 1) return;
         const index = profiles.findIndex((p) => p.id === profileId);
         if (index < 0) return;
-        const wasActive = profiles[index].id === activeProfileId;
         profiles.splice(index, 1);
-        if (wasActive || !profiles.some((p) => p.id === activeProfileId)) {
-          activeProfileId = profiles[0]?.id || "";
-          localStorage.setItem("gameLibraryActiveProfileId", activeProfileId);
-        }
-        saveProfiles();
-        profileEditor.innerHTML = "";
-        renderProfiles();
-        sendIdentify();
-        renderOnline();
-        if (gameSetupOpen) {
-          initializeSetupState();
-          renderGameSetup();
-        }
+        partyProfileIds = partyProfileIds.filter((id) => id !== profileId);
+        savePartyProfileIds(); saveProfiles(); profileEditor.innerHTML = "";
+        renderParty(); renderProfiles(); sendIdentify(); renderOnline();
+        if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
       }
       function openProfileEditor(profileId = null) {
         editingProfileId = profileId;
@@ -971,25 +1069,15 @@ No diagnostics run yet.</pre
           const avatar = $("profileNameInput").dataset.avatar || "♟";
           if (editingProfileId) {
             const x = profiles.find((y) => y.id === editingProfileId);
-            if (x) {
-              x.name = name;
-              x.avatar = avatar;
-            }
+            if (x) { x.name = name; x.avatar = avatar; }
           } else {
-            const created = {
-              id: "p_" + Math.random().toString(36).slice(2, 10),
-              name,
-              avatar,
-            };
+            const created = { id: "p_" + Math.random().toString(36).slice(2, 10), name, avatar };
             profiles.push(created);
-            activeProfileId = created.id;
-            localStorage.setItem("gameLibraryActiveProfileId", activeProfileId);
+            if (!partyProfileIds.includes(created.id)) partyProfileIds.push(created.id);
+            savePartyProfileIds();
           }
-          saveProfiles();
-          profileEditor.innerHTML = "";
-          renderProfiles();
-          sendIdentify();
-          renderProfiles();
+          saveProfiles(); profileEditor.innerHTML = ""; renderParty(); renderProfiles(); sendIdentify(); renderOnline();
+          if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
         };
         $("cancelProfile").onclick = () => (profileEditor.innerHTML = "");
       }
@@ -1001,33 +1089,30 @@ No diagnostics run yet.</pre
         renderOnline();
       }
       function selectedProfile() {
-        return profiles.find((p) => p.id === activeProfileId) || profiles[0] || { name: "Player 1", avatar: "♟", id: "" };
+        return partyProfiles()[0] || profiles[0] || { name: "Player 1", avatar: "♟", id: "" };
       }
 
       function setupEntries() {
-        if (onlineState.connected) {
-          return onlineState.participants
-            .filter((p) => p.connected)
-            .map((p) => ({
-              token: `online:${p.clientId}`,
-              id: p.clientId,
-              name: p.name || "Player",
-              avatar: p.avatar || "♟",
-              type: p.role === "host" ? "Host / Online player" : "Online player",
-              online: true,
-              spectator: Boolean(p.spectator),
-            }));
-        }
-
-        return profiles.map((p) => ({
-          token: `local:${p.id}`,
-          id: p.id,
-          name: p.name || "Player",
-          avatar: p.avatar || "♟",
-          type: "Local player",
-          online: false,
-          spectator: setupSpectatorTokens.has(`local:${p.id}`),
+        const localEntries = partyProfiles().map((p) => ({
+          token: `local:${p.id}`, id: p.id, profileId: p.id, name: p.name || "Player", avatar: p.avatar || "♟",
+          type: onlineState.connected ? "Local player • This computer" : "Local player", online: false,
+          spectator: setupSpectatorTokens.has(`local:${p.id}`), controllerClientId: onlineState.connected ? onlineState.clientId : "",
         }));
+        if (!onlineState.connected) return localEntries;
+        const remoteEntries = [];
+        for (const participant of onlineState.participants.filter((p) => p.connected && p.clientId !== onlineState.clientId)) {
+          const remoteParty = Array.isArray(participant.party) && participant.party.length ? participant.party : [{ id: participant.profileId || participant.clientId, name: participant.name, avatar: participant.avatar }];
+          for (const member of remoteParty) {
+            const memberId = String(member.id || participant.clientId);
+            remoteEntries.push({
+              token: `online:${participant.clientId}:${memberId}`, id: memberId, profileId: memberId,
+              name: member.name || participant.name || "Online player", avatar: member.avatar || participant.avatar || "♟",
+              type: "Online player • Remote computer", online: true, participantClientId: participant.clientId,
+              controllerClientId: participant.clientId, spectator: Boolean(participant.spectator),
+            });
+          }
+        }
+        return [...localEntries, ...remoteEntries];
       }
 
       function setupComputerEntry(index) {
@@ -1078,14 +1163,13 @@ No diagnostics run yet.</pre
 
         if (onlineState.connected) {
           setupSpectatorTokens = new Set(
-            onlineState.participants
-              .filter((p) => p.connected && p.spectator)
-              .map((p) => `online:${p.clientId}`),
+            onlineState.participants.filter((p) => p.connected && p.spectator).flatMap((p) => {
+              const members = Array.isArray(p.party) && p.party.length ? p.party : [{ id: p.profileId || p.clientId }];
+              return members.map((member) => `online:${p.clientId}:${String(member.id || p.clientId)}`);
+            }),
           );
         } else {
-          setupSpectatorTokens = new Set(
-            profiles.slice(2).map((p) => `local:${p.id}`),
-          );
+          setupSpectatorTokens = new Set();
         }
 
         const activeHumans = setupEntries().filter((entry) => !setupSpectatorTokens.has(entry.token)).length;
@@ -1096,15 +1180,13 @@ No diagnostics run yet.</pre
         if (onlineState.config?.players?.length) {
           const ordered = [];
           for (const p of onlineState.config.players) {
-            if (p.type === "computer") {
+            if (p.id) ordered.push(p.id);
+            else if (p.type === "computer") {
               const id = p.id || p.seat || "";
               const m = String(id).match(/computer:(\d+)/);
               if (m) ordered.push(`computer:${m[1]}`);
-            } else if (p.controllerClientId) {
-              ordered.push(`online:${p.controllerClientId}`);
-            } else if (p.profileId) {
-              ordered.push(`local:${p.profileId}`);
-            }
+            } else if (p.controllerClientId && p.profileId) ordered.push(`online:${p.controllerClientId}:${p.profileId}`);
+            else if (p.profileId) ordered.push(`local:${p.profileId}`);
           }
           setupComputerCount = onlineState.config.players.filter((p) => p.type === "computer").length;
           const configuredBounds = computerBounds();
@@ -1174,16 +1256,9 @@ No diagnostics run yet.</pre
             };
           }
           if (entry.online) {
-            const p = onlineState.participants.find((x) => x.clientId === entry.id) || {};
             return {
-              seat: "",
-              type: "human",
-              controllerClientId: entry.id,
-              profileId: p.profileId || "",
-              name: p.name || entry.name,
-              avatar: p.avatar || entry.avatar,
-              playerType: "Online player",
-              id: entry.token,
+              seat: "", type: "human", controllerClientId: entry.controllerClientId || entry.participantClientId || "",
+              profileId: entry.profileId || "", name: entry.name, avatar: entry.avatar, playerType: "Online player", id: entry.token,
             };
           }
           const p = profiles.find((x) => x.id === entry.id) || {};
@@ -1621,9 +1696,9 @@ No diagnostics run yet.</pre
             '<div class="muted">No connected players yet.</div>';
         else
           for (const p of ps) {
-            const row = document.createElement("div");
-            row.className = "player-row";
-            row.innerHTML = `<div class="avatar">${escapeHtml(p.avatar || "🎮")}</div><div class="grow"><div class="player-name">${escapeHtml(p.name || "Player")}</div><div class="player-type">${p.clientId === onlineState.clientId ? "You • " : ""}${p.role === "host" ? "Host" : "Online player"}</div></div>`;
+            const row = document.createElement("div"); row.className = "player-row";
+            const partyNames = Array.isArray(p.party) && p.party.length ? p.party.map((member) => member.name || "Player").join(", ") : (p.name || "Player");
+            row.innerHTML = `<div class="avatar">${escapeHtml(p.avatar || "🎮")}</div><div class="grow"><div class="player-name">${escapeHtml(partyNames)}</div><div class="player-type">${p.clientId === onlineState.clientId ? "You • " : ""}${p.role === "host" ? "Host" : "Online computer"}</div></div>`;
             onlineParticipants.appendChild(row);
           }
         if (onlineState.connected) {
@@ -1749,21 +1824,10 @@ No diagnostics run yet.</pre
         return base.replace(/^https:/i, "wss:").replace(/^http:/i, "ws:");
       }
       function sendIdentify() {
-        if (
-          !onlineState.socket ||
-          onlineState.socket.readyState !== WebSocket.OPEN
-        )
-          return;
-        const p = selectedProfile();
-        onlineState.socket.send(
-          JSON.stringify({
-            type: "player:identify",
-            profileId: p.id,
-            name: p.name,
-            avatar: p.avatar,
-            spectator: false,
-          }),
-        );
+        if (!onlineState.socket || onlineState.socket.readyState !== WebSocket.OPEN) return;
+        const party = partyProfiles().map((p) => ({ id: p.id, name: p.name || "Player", avatar: p.avatar || "♟" }));
+        const primary = party[0] || { id: "", name: "Player 1", avatar: "♟" };
+        onlineState.socket.send(JSON.stringify({ type:"player:identify", profileId:primary.id, name:primary.name, avatar:primary.avatar, party, spectator:false }));
       }
       function wsUrl(code) {
         const base = serverBase().replace(
@@ -1833,13 +1897,18 @@ No diagnostics run yet.</pre
               renderOnline();
               renderGames();
               break;
+            case "scores:reset":
+              renderOnline();
+              break;
             case "game:start": {
               onlineState.config = m.config || onlineState.config;
               try { sessionStorage.setItem("gameLibraryOnlineConfig", JSON.stringify(onlineState.config || {})); } catch {}
               renderOnline();
               if (onlineState.connected && !onlineState.isHost) {
-                const params = new URLSearchParams({ game: onlineState.config?.game || "chess", variant: onlineState.config?.variant || "standard", online: "1", onlineCode: roomCode(), onlineServer: serverBase(), onlineClientId: onlineState.clientId, onlineConfig: JSON.stringify(onlineState.config || {}) });
-                window.location.href = `chess/chess.html?${params}`;
+                const gameId = onlineState.config?.game || "chess";
+                const page = gameId === "draughts" ? "draughts/draughts.html" : "chess/chess.html";
+                const params = new URLSearchParams({ game: gameId, variant: onlineState.config?.variant || "standard", online: "1", onlineCode: roomCode(), onlineServer: serverBase(), onlineClientId: onlineState.clientId, onlineConfig: JSON.stringify(onlineState.config || {}) });
+                window.location.href = `${page}?${params}`;
               }
               break;
             }
@@ -1982,6 +2051,13 @@ No diagnostics run yet.</pre
       joinOnlineGroupButton.onclick = joinRoom;
       runDiagnosticsButton.onclick = runDiagnostics;
       addProfileButton.onclick = () => openProfileEditor();
+      resetScoresButton.onclick = () => resetLocalScores();
+      resetPlayerInfoButton.onclick = () => resetPlayerInfo();
+      partyList.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-party-action]");
+        if (!button || !partyList.contains(button) || button.disabled) return;
+        if (button.dataset.partyAction === "remove") removeProfileFromParty(button.dataset.profileId);
+      });
 
       // Profile controls are rendered dynamically. Handle them from the
       // stable parent so Edit, Use, and × remain clickable after every
@@ -1994,12 +2070,8 @@ No diagnostics run yet.</pre
           case "edit":
             openProfileEditor(profileId);
             break;
-          case "use":
-            activeProfileId = profileId;
-            localStorage.setItem("gameLibraryActiveProfileId", activeProfileId);
-            sendIdentify();
-            renderProfiles();
-            renderOnline();
+          case "party":
+            addProfileToParty(profileId);
             break;
           case "remove":
             removeProfile(profileId);
@@ -2034,6 +2106,7 @@ No diagnostics run yet.</pre
             .replace(/\D/g, "")
             .slice(0, 4)),
       );
+      renderParty();
       renderProfiles();
       renderOnline();
       loadLibrary();
