@@ -16,11 +16,17 @@ Fog Of War (toggleable)
 Three-Player Chess  
 Four-Player Chess  
 
-## Coming Soon
-### Chess
-Grand Chess  
-Shako    
 ### Draughts
 International  
 American (Checkers)  
+
+## Coming Soon
+### Chess
+Grand Chess  
+Shako  
+
+## Draughts
+Canadian
+Russian
+
 ### Reversi
