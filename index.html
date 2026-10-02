@@ -1141,11 +1141,18 @@ No diagnostics run yet.</pre
       function initializeSetupState() {
         const requestedGame = selectedSetupGame;
         const configuredGame = onlineState.config?.game;
-        const roomGame = configuredGame && libraryGame(configuredGame) ? configuredGame : null;
+        // Non-host clients must follow the host's room game, but the host
+        // must be able to click a different game card and open that game's
+        // setup menu. Previously the room game always overrode the clicked
+        // game, which caused every setup button to open (for example) Reversi.
+        const nonHostOnline = onlineState.connected && !onlineState.isHost;
+        const roomGame = nonHostOnline && configuredGame && libraryGame(configuredGame)
+          ? configuredGame
+          : null;
         selectedSetupGame = roomGame || (libraryGame(requestedGame) ? requestedGame : "chess");
 
         const variants = libraryVariants(selectedSetupGame);
-        const roomVariant = roomGame ? onlineState.config?.variant : null;
+        const roomVariant = nonHostOnline && roomGame ? onlineState.config?.variant : null;
         selectedSetupVariant = variants.some((v) => v.id === roomVariant)
           ? roomVariant
           : (variants[0]?.id || "standard");
