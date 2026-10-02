@@ -13,6 +13,7 @@ let onlineConfig = null;
 let onlineParticipants = [];
 let onlineMatchId = "";
 let onlineResultSent = false;
+let localScoreRecorded = false;
 
 let selectedVariantId = params.get("variant") || "international";
 let mandatoryCapture = params.get("mandatoryCapture") !== "false";
@@ -270,7 +271,28 @@ function activePlayers() {
 let gamePlayers=activePlayers();
 
 function playerForColor(color) { return gamePlayers.find((p)=>p.seat=== (color === "w" ? "white" : "black")) || null; }
-function localProfileForIdentity() { return profiles.find((p)=>p.id===localStorage.getItem("gameLibraryActiveProfileId")) || profiles[0] || {id:"",name:"Player 1",avatar:"♟"}; }
+function localPartyProfiles() {
+  try {
+    const ids=JSON.parse(sessionStorage.getItem("gameLibraryParty")||"[]");
+    if(Array.isArray(ids)) {
+      const party=ids.map((id)=>profiles.find((p)=>p.id===id)).filter(Boolean);
+      if(party.length) return party;
+    }
+  } catch {}
+  return profiles;
+}
+function localProfileForIdentity() { return localPartyProfiles()[0] || {id:"",name:"Player 1",avatar:"♟"}; }
+function recordLocalWinIfOver() {
+  if(ONLINE_MODE || localScoreRecorded) return;
+  const status=game.gameStatus(); if(!status.over) return;
+  const winner=playerForColor(status.winner);
+  const profileId=winner?.profileId||"";
+  if(!profileId) return;
+  let scores={}; try{scores=JSON.parse(localStorage.getItem("gameLibraryLocalScores")||"{}");}catch{}
+  scores[profileId]=Math.max(0,Number(scores[profileId])||0)+1;
+  localStorage.setItem("gameLibraryLocalScores",JSON.stringify(scores));
+  localScoreRecorded=true;
+}
 function humanControlsTurn() {
   const p=playerForColor(game.turn);
   if(!p || p.type !== "human") return false;
@@ -281,6 +303,7 @@ function isComputerTurn() { return playerForColor(game.turn)?.type === "computer
 function boardFlipped() { return false; }
 
 function render() {
+  recordLocalWinIfOver();
   const pageTitle = document.getElementById("pageTitle");
   const subtitle = document.getElementById("subtitle");
   const gameName = document.getElementById("gameName");
@@ -434,6 +457,7 @@ function applyMove(move, fromRemote=false) {
   if(ONLINE_MODE && !fromRemote) publishOnlineMove(move);
   const status=game.gameStatus();
   if(status.over) publishOnlineResult();
+  recordLocalWinIfOver();
   return true;
 }
 
@@ -497,7 +521,7 @@ function connectOnline() {
   onlineSocket.addEventListener("open",()=>{
     onlineConnected=true;
     const p=localProfileForIdentity();
-    onlineSocket.send(JSON.stringify({type:"player:identify",profileId:p.id||"",name:p.name||"Player 1",avatar:p.avatar||"♟",spectator:Boolean((onlineConfig?.spectators||[]).includes(ONLINE_CLIENT_ID))}));
+    onlineSocket.send(JSON.stringify({type:"player:identify",profileId:p.id||"",name:p.name||"Player 1",avatar:p.avatar||"♟",party:localPartyProfiles().map((x)=>({id:x.id,name:x.name||"Player",avatar:x.avatar||"♟"})),spectator:Boolean((onlineConfig?.spectators||[]).includes(ONLINE_CLIENT_ID))}));
     setOnlineStatus("Connected");
     if(onlineConfig?.players?.length) refreshPlayers();
     render();
@@ -510,6 +534,7 @@ function connectOnline() {
     if(message.type==="game:start") {
       onlineMatchId=message.matchId||onlineMatchId;
       onlineResultSent=false;
+      localScoreRecorded=false;
       onlineConfig=message.config||onlineConfig;
       mandatoryCapture=Boolean(onlineConfig?.options?.mandatoryCapture ?? mandatoryCapture);
       selectedVariantId=onlineConfig?.variant||selectedVariantId;
@@ -541,7 +566,7 @@ function goBackToLibrary() {
 function escapeHtml(value){return String(value).replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 
 document.getElementById("newGameBtn").onclick=goBackToLibrary;
-document.getElementById("clearBtn").onclick=()=>{clearTimeout(computerTimer);computerPending=false;if(ONLINE_MODE&&!ONLINE_HOST_TOKEN)return;game=createGame();selected=null;legalTargets=[];onlineResultSent=false;render();};
+document.getElementById("clearBtn").onclick=()=>{clearTimeout(computerTimer);computerPending=false;if(ONLINE_MODE&&!ONLINE_HOST_TOKEN)return;game=createGame();selected=null;legalTargets=[];onlineResultSent=false;localScoreRecorded=false;render();};
 document.getElementById("undoBtn").onclick=()=>{clearTimeout(computerTimer);computerPending=false;if(ONLINE_MODE&&!ONLINE_HOST_TOKEN)return;if(game.undo()){selected=null;legalTargets=[];onlineResultSent=false;render();}};
 document.getElementById("onlineBar").textContent=ONLINE_MODE?"Connecting…":"Offline/local game";
 
