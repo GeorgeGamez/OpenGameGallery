@@ -192,10 +192,30 @@ function recordLocalWinIfOver() {
   localStorage.setItem("gameLibraryLocalScores",JSON.stringify(scores));
   localScoreRecorded=true;
 }
-function humanControlsTurn() {
-  const p=playerForColor(game.turn); if(!p || p.type!=="human") return false;
+function currentParticipantProfileIds() {
+  if(!ONLINE_MODE) return new Set();
+  const me=onlineParticipants.find(p=>String(p.clientId||"")===String(ONLINE_CLIENT_ID));
+  if(!me) return new Set();
+  const ids=new Set();
+  if(me.profileId) ids.add(String(me.profileId));
+  if(Array.isArray(me.party)) for(const member of me.party) if(member?.id) ids.add(String(member.id));
+  return ids;
+}
+
+function playerControlledByCurrentClient(p) {
+  if(!p || p.type!=="human") return false;
   if(!ONLINE_MODE) return true;
-  return p.controllerClientId===ONLINE_CLIENT_ID;
+  const controller=String(p.controllerClientId || p.participantClientId || "");
+  if(controller && controller===String(ONLINE_CLIENT_ID)) return true;
+
+  // Older/stale room configurations may lack controllerClientId. Fall back to
+  // matching the configured profile against this participant's profile/party.
+  const profileId=String(p.profileId || "");
+  return Boolean(profileId && currentParticipantProfileIds().has(profileId));
+}
+
+function humanControlsTurn() {
+  return playerControlledByCurrentClient(playerForColor(game.turn));
 }
 function isComputerTurn() { return playerForColor(game.turn)?.type==="computer" && (!ONLINE_MODE || (onlineConnected && Boolean(ONLINE_HOST_TOKEN))); }
 
@@ -279,7 +299,14 @@ function setOnlineStatus(t,error=false){const el=document.getElementById("online
 function publishOnlineState(){if(!ONLINE_MODE||!ONLINE_HOST_TOKEN||!onlineSocket||onlineSocket.readyState!==WebSocket.OPEN)return;onlineSocket.send(JSON.stringify({type:"game:state",state:{game:game.clone(),variant:selectedVariantId}}));}
 function publishOnlineMove(move){if(!ONLINE_MODE||!onlineSocket||onlineSocket.readyState!==WebSocket.OPEN)return false;onlineSocket.send(JSON.stringify({type:"game:move",payload:{r:move.r,c:move.c}}));return true;}
 function publishOnlineResult(){if(!ONLINE_MODE||!ONLINE_HOST_TOKEN||onlineResultSent||!onlineSocket||onlineSocket.readyState!==WebSocket.OPEN)return;const status=game.gameStatus();if(!status.over||!status.winner)return;const winner=playerForColor(status.winner);const winnerClientId=winner?.controllerClientId||"";if(!winnerClientId)return;onlineResultSent=true;onlineSocket.send(JSON.stringify({type:"game:result",winnerClientId,matchId:onlineMatchId}));}
-function applyRemoteState(state){if(!state?.game)return;if(state.variant)selectedVariantId=state.variant;game.restore(state.game);selected=null;legalTargets=[];render();}
+function applyRemoteState(state){
+  if(!state?.game || !Array.isArray(state.game.board) || state.game.board.length!==8) return;
+  if(state.variant)selectedVariantId=state.variant;
+  game.restore(state.game);
+  selected=null;
+  legalTargets=[];
+  render();
+}
 function refreshPlayers(){if(onlineConfig?.players?.length)gamePlayers=onlineConfig.players;}
 function connectOnline(){
   if(!ONLINE_MODE||!ONLINE_SERVER||!ONLINE_CODE)return;
@@ -293,7 +320,24 @@ function connectOnline(){
     let message;try{message=JSON.parse(event.data);}catch{return;}
     if(message.type==="room:participants"){onlineParticipants=message.participants||[];refreshPlayers();render();return;}
     if(message.type==="room:config"){onlineConfig=message.config||onlineConfig;selectedVariantId=onlineConfig?.variant||selectedVariantId;refreshPlayers();game=new ReversiGame();render();return;}
-    if(message.type==="game:start"){onlineMatchId=message.matchId||onlineMatchId;onlineResultSent=false;localScoreRecorded=false;onlineConfig=message.config||onlineConfig;selectedVariantId=onlineConfig?.variant||selectedVariantId;refreshPlayers();game=new ReversiGame();if(message.state)applyRemoteState(message.state);else{selected=null;legalTargets=[];render();if(ONLINE_HOST_TOKEN)setTimeout(()=>publishOnlineState(),75);}return;}
+    if(message.type==="game:start"){
+      onlineMatchId=message.matchId||onlineMatchId;
+      onlineResultSent=false;
+      localScoreRecorded=false;
+      onlineConfig=message.config||onlineConfig;
+      selectedVariantId=onlineConfig?.variant||selectedVariantId;
+      refreshPlayers();
+
+      // A new match must begin from Reversi's initial position. The Worker may
+      // still have a state from the previous match when it broadcasts game:start.
+      // The host publishes the fresh authoritative state immediately afterwards.
+      game=new ReversiGame();
+      selected=null;
+      legalTargets=[];
+      render();
+      if(ONLINE_HOST_TOKEN)setTimeout(()=>publishOnlineState(),75);
+      return;
+    }
     if(message.type==="game:state"){applyRemoteState(message.state);return;}
     if(message.type==="game:move"){if(message.sender?.clientId===ONLINE_CLIENT_ID)return;const ok=applyMove(message.payload,true);if(ok)render();return;}
     if(message.type==="game:back"){window.location.href="../index.html";return;}
