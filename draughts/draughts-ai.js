@@ -10,14 +10,14 @@
       san: [...game.sanHistory],
       captured: game.captured.map((p)=>({...p})),
       lastMove: game.lastMove ? {from:{...game.lastMove.from},to:{...game.lastMove.to}} : null,
-      captureChain: game.captureChain ? {from:{...game.captureChain.from},current:{...game.captureChain.current}} : null,
+      captureChain: game.captureChain ? {from:{...game.captureChain.from},current:{...game.captureChain.current},capturedSquares:[...(game.captureChain.capturedSquares||[])]} : null,
       history: game.history.map((h)=>({
         board: h.board.map((row)=>row.map((p)=>p?{...p}:null)),
         turn: h.turn,
         san: [...(h.san||[])],
         captured: (h.captured||[]).map((p)=>({...p})),
         lastMove: h.lastMove ? {from:{...h.lastMove.from},to:{...h.lastMove.to}} : null,
-        captureChain: h.captureChain ? {from:{...h.captureChain.from},current:{...h.captureChain.current}} : null,
+        captureChain: h.captureChain ? {from:{...h.captureChain.from},current:{...h.captureChain.current},capturedSquares:[...(h.captureChain.capturedSquares||[])]} : null,
       })),
       turnSnapshot: game.turnSnapshot ? snapshotSnapshot(game.turnSnapshot) : null,
     };
@@ -40,7 +40,7 @@
     game.sanHistory=[...before.san];
     game.captured=before.captured.map((p)=>({...p}));
     game.lastMove=before.lastMove ? {from:{...before.lastMove.from},to:{...before.lastMove.to}} : null;
-    game.captureChain=before.captureChain ? {from:{...before.captureChain.from},current:{...before.captureChain.current}} : null;
+    game.captureChain=before.captureChain ? {from:{...before.captureChain.from},current:{...before.captureChain.current},capturedSquares:[...(before.captureChain.capturedSquares||[])]} : null;
     game.history=before.history.map((h)=>({
       board:h.board.map((row)=>row.map((p)=>p?{...p}:null)),
       turn:h.turn,
@@ -68,6 +68,12 @@
     return score;
   }
   function depthFor(game,difficulty){
+    if(game.size===12){
+      if(difficulty==="easy") return 1;
+      if(difficulty==="hard") return 2;
+      if(difficulty==="expert") return 3;
+      return 2;
+    }
     if(difficulty==="easy") return 1;
     if(difficulty==="hard") return game.size===10?3:4;
     if(difficulty==="expert") return game.size===10?4:5;
