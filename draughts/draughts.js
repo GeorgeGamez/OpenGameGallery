@@ -44,16 +44,20 @@ function sameSquare(a, b) { return a?.r === b?.r && a?.c === b?.c; }
 
 class DraughtsGame {
   constructor(size = 10, mandatoryCapture = true, variant = null) {
-    this.size = size;
+    this.variant = variant || (size === 12 ? "canadian" : size === 10 ? "international" : "american");
+    this.size = this.variant === "canadian" ? 12 : this.variant === "international" ? 10 : 8;
     this.mandatoryCapture = mandatoryCapture;
-    this.variant = variant || (size === 10 ? "international" : "american");
-    this.international = this.variant === "international";
+    this.flyingKings = ["international", "russian", "canadian"].includes(this.variant);
+    this.menCaptureBackward = ["international", "russian", "canadian"].includes(this.variant);
+    this.majorityCapture = ["international", "canadian"].includes(this.variant);
+    this.delayedCaptureRemoval = ["international", "canadian"].includes(this.variant);
+    this.midCapturePromotion = this.variant === "russian";
     this.reset();
   }
 
   reset() {
     this.board = Array.from({ length: this.size }, () => Array(this.size).fill(null));
-    const rowsPerSide = this.size === 10 ? 4 : 3;
+    const rowsPerSide = this.variant === "canadian" ? 5 : this.size === 10 ? 4 : 3;
     for (let r = 0; r < rowsPerSide; r++) {
       for (let c = 0; c < this.size; c++) {
         if ((r + c) % 2 === 1) this.board[r][c] = { type: "m", color: "b" };
@@ -80,7 +84,11 @@ class DraughtsGame {
       san: [...this.sanHistory],
       captured: this.captured.map((p) => ({ ...p })),
       lastMove: this.lastMove ? { from: { ...this.lastMove.from }, to: { ...this.lastMove.to } } : null,
-      captureChain: this.captureChain ? { from: { ...this.captureChain.from }, current: { ...this.captureChain.current } } : null,
+      captureChain: this.captureChain ? {
+        from: { ...this.captureChain.from },
+        current: { ...this.captureChain.current },
+        capturedSquares: [...(this.captureChain.capturedSquares || [])],
+      } : null,
       turnSnapshot: null,
     };
   }
@@ -91,7 +99,11 @@ class DraughtsGame {
     this.sanHistory = [...(s.san || [])];
     this.captured = (s.captured || []).map((p) => ({ ...p }));
     this.lastMove = s.lastMove ? { from: { ...s.lastMove.from }, to: { ...s.lastMove.to } } : null;
-    this.captureChain = s.captureChain ? { from: { ...s.captureChain.from }, current: { ...s.captureChain.current } } : null;
+    this.captureChain = s.captureChain ? {
+      from: { ...s.captureChain.from },
+      current: { ...s.captureChain.current },
+      capturedSquares: [...(s.captureChain.capturedSquares || [])],
+    } : null;
     this.turnSnapshot = null;
   }
 
@@ -101,160 +113,254 @@ class DraughtsGame {
     return true;
   }
 
-  directionsForStep(piece) {
-    if (piece.type === "K" || this.international) {
-      // International kings can move/capture in every diagonal direction.
-      if (piece.type === "K") return [[1,1],[1,-1],[-1,1],[-1,-1]];
-    }
-    if (piece.color === "w") return [[-1,-1],[-1,1]];
-    return [[1,-1],[1,1]];
+  squareKey(r, c) { return `${r},${c}`; }
+
+  stepDirections(piece) {
+    if (piece.type === "K") return [[1,1],[1,-1],[-1,1],[-1,-1]];
+    return piece.color === "w" ? [[-1,-1],[-1,1]] : [[1,-1],[1,1]];
+  }
+
+  captureDirections(piece) {
+    if (piece.type === "K" || this.menCaptureBackward) return [[1,1],[1,-1],[-1,1],[-1,-1]];
+    return piece.color === "w" ? [[-1,-1],[-1,1]] : [[1,-1],[1,1]];
   }
 
   simpleMovesFor(r, c) {
     const p = this.board[r]?.[c];
-    if (!p || p.color !== this.turn) return [];
+    if (!p || p.color !== this.turn || this.captureChain) return [];
     const out = [];
-    if (p.type === "K" && this.international) {
-      for (const [dr, dc] of [[1,1],[1,-1],[-1,1],[-1,-1]]) {
-        let tr=r+dr, tc=c+dc;
-        while (inside(tr,tc,this.size) && !this.board[tr][tc]) {
-          out.push({from:{r,c},to:{r:tr,c:tc}});
-          tr+=dr; tc+=dc;
+    if (p.type === "K" && this.flyingKings) {
+      for (const [dr, dc] of this.stepDirections(p)) {
+        let tr = r + dr, tc = c + dc;
+        while (inside(tr, tc, this.size) && !this.board[tr][tc]) {
+          out.push({ from: { r, c }, to: { r: tr, c: tc } });
+          tr += dr; tc += dc;
         }
       }
       return out;
     }
-    for (const [dr,dc] of this.directionsForStep(p)) {
-      const tr=r+dr, tc=c+dc;
-      if (inside(tr,tc,this.size) && !this.board[tr][tc]) out.push({from:{r,c},to:{r:tr,c:tc}});
-    }
-    return out;
-  }
-
-  captureMovesFor(r, c) {
-    const p = this.board[r]?.[c];
-    if (!p || p.color !== this.turn) return [];
-    const out = [];
-    const dirs = [[1,1],[1,-1],[-1,1],[-1,-1]];
-
-    if (p.type === "K" && this.international) {
-      for (const [dr,dc] of dirs) {
-        let tr=r+dr, tc=c+dc;
-        while (inside(tr,tc,this.size) && !this.board[tr][tc]) { tr+=dr; tc+=dc; }
-        if (!inside(tr,tc,this.size)) continue;
-        const jumped=this.board[tr][tc];
-        if (!jumped || jumped.color===p.color) continue;
-        let lr=tr+dr, lc=tc+dc;
-        while (inside(lr,lc,this.size) && !this.board[lr][lc]) {
-          out.push({from:{r,c},to:{r:lr,c:lc},jump:{r:tr,c:tc}});
-          lr+=dr; lc+=dc;
-        }
-      }
-      return out;
-    }
-
-    let captureDirs = dirs;
-    if (p.type !== "K" && !this.international) {
-      captureDirs = p.color === "w" ? [[-1,-1],[-1,1]] : [[1,-1],[1,1]];
-    }
-    for (const [dr,dc] of captureDirs) {
-      const mr=r+dr, mc=c+dc, tr=r+2*dr, tc=c+2*dc;
-      if (!inside(tr,tc,this.size) || !inside(mr,mc,this.size)) continue;
-      const jumped=this.board[mr][mc];
-      if (jumped && jumped.color!==p.color && !this.board[tr][tc]) {
-        out.push({from:{r,c},to:{r:tr,c:tc},jump:{r:mr,c:mc}});
+    for (const [dr, dc] of this.stepDirections(p)) {
+      const tr = r + dr, tc = c + dc;
+      if (inside(tr, tc, this.size) && !this.board[tr][tc]) {
+        out.push({ from: { r, c }, to: { r: tr, c: tc } });
       }
     }
     return out;
   }
 
-  hasAnyCaptures(color=this.turn) {
-    const saveTurn=this.turn;
-    this.turn=color;
-    for(let r=0;r<this.size;r++) for(let c=0;c<this.size;c++) {
-      if(this.board[r][c]?.color===color && this.captureMovesFor(r,c).length) { this.turn=saveTurn; return true; }
+  captureMovesFor(r, c, board = this.board, turnColor = this.turn, capturedSquares = new Set()) {
+    const p = board[r]?.[c];
+    if (!p || p.color !== turnColor) return [];
+    const out = [];
+    const dirs = this.captureDirections(p);
+
+    if (p.type === "K" && this.flyingKings) {
+      for (const [dr, dc] of dirs) {
+        let tr = r + dr, tc = c + dc;
+        while (inside(tr, tc, this.size) && !board[tr][tc]) {
+          tr += dr; tc += dc;
+        }
+        if (!inside(tr, tc, this.size)) continue;
+        const key = this.squareKey(tr, tc);
+        const jumped = board[tr][tc];
+        if (!jumped || jumped.color === p.color || capturedSquares.has(key)) continue;
+        let lr = tr + dr, lc = tc + dc;
+        while (inside(lr, lc, this.size) && !board[lr][lc]) {
+          out.push({ from: { r, c }, to: { r: lr, c: lc }, jump: { r: tr, c: tc } });
+          lr += dr; lc += dc;
+        }
+      }
+      return out;
     }
-    this.turn=saveTurn;
+
+    for (const [dr, dc] of dirs) {
+      const mr = r + dr, mc = c + dc, tr = r + 2 * dr, tc = c + 2 * dc;
+      if (!inside(tr, tc, this.size) || !inside(mr, mc, this.size)) continue;
+      const jumpKey = this.squareKey(mr, mc);
+      const jumped = board[mr][mc];
+      if (jumped && jumped.color !== p.color && !capturedSquares.has(jumpKey) && !board[tr][tc]) {
+        out.push({ from: { r, c }, to: { r: tr, c: tc }, jump: { r: mr, c: mc } });
+      }
+    }
+    return out;
+  }
+
+  simulateCaptureState(board, r, c, move, capturedSquares) {
+    const next = cloneBoard(board);
+    const p = next[r][c];
+    next[r][c] = null;
+    const jumpKey = this.squareKey(move.jump.r, move.jump.c);
+    if (!this.delayedCaptureRemoval) next[move.jump.r][move.jump.c] = null;
+    const promoted = p.type === "m" && this.promotionRow(p.color, move.to.r);
+    const nextPiece = this.midCapturePromotion && promoted ? { ...p, type: "K" } : { ...p };
+    next[move.to.r][move.to.c] = nextPiece;
+    const nextCaptured = new Set(capturedSquares);
+    nextCaptured.add(jumpKey);
+    return { board: next, r: move.to.r, c: move.to.c, piece: nextPiece, capturedSquares: nextCaptured };
+  }
+
+  maxCaptureCountFromState(board, r, c, piece, capturedSquares = new Set()) {
+    const moves = this.captureMovesFor(r, c, board, piece.color, capturedSquares);
+    let best = 0;
+    for (const move of moves) {
+      const state = this.simulateCaptureState(board, r, c, move, capturedSquares);
+      best = Math.max(best, 1 + this.maxCaptureCountFromState(state.board, state.r, state.c, state.piece, state.capturedSquares));
+    }
+    return best;
+  }
+
+  maxCaptureAfterMove(move, capturedSquares = new Set()) {
+    const state = this.simulateCaptureState(this.board, move.from.r, move.from.c, move, capturedSquares);
+    return 1 + this.maxCaptureCountFromState(state.board, state.r, state.c, state.piece, state.capturedSquares);
+  }
+
+  hasAnyCaptures(color = this.turn) {
+    const capturedSquares = new Set(this.captureChain?.capturedSquares || []);
+    for (let r = 0; r < this.size; r++) for (let c = 0; c < this.size; c++) {
+      if (this.board[r][c]?.color === color && this.captureMovesFor(r, c, this.board, color, capturedSquares).length) return true;
+    }
     return false;
   }
 
+  bestCaptureMoves(moves, capturedSquares = new Set()) {
+    if (!this.majorityCapture || !moves.length) return moves;
+    let best = -1;
+    const result = [];
+    for (const move of moves) {
+      const count = this.maxCaptureAfterMove(move, capturedSquares);
+      if (count > best) {
+        best = count;
+        result.length = 0;
+        result.push(move);
+      } else if (count === best) {
+        result.push(move);
+      }
+    }
+    return result;
+  }
+
+  captureMovesForCurrent(r, c) {
+    const capturedSquares = new Set(this.captureChain?.capturedSquares || []);
+    const moves = this.captureMovesFor(r, c, this.board, this.turn, capturedSquares);
+    if (!this.majorityCapture || !moves.length) return moves;
+    return this.bestCaptureMoves(moves, capturedSquares);
+  }
+
   allLegalMoves() {
-    const moves=[];
-    if (this.captureChain) return this.captureMovesFor(this.captureChain.current.r,this.captureChain.current.c);
-    const forced=this.mandatoryCapture && this.hasAnyCaptures(this.turn);
-    for(let r=0;r<this.size;r++) for(let c=0;c<this.size;c++) {
-      if(this.board[r][c]?.color!==this.turn) continue;
-      const captures=this.captureMovesFor(r,c);
-      if(forced) moves.push(...captures);
-      else moves.push(...captures,...this.simpleMovesFor(r,c));
+    if (this.captureChain) return this.captureMovesForCurrent(this.captureChain.current.r, this.captureChain.current.c);
+    const captures = [];
+    for (let r = 0; r < this.size; r++) for (let c = 0; c < this.size; c++) {
+      if (this.board[r][c]?.color !== this.turn) continue;
+      captures.push(...this.captureMovesFor(r, c));
+    }
+    if (this.mandatoryCapture && captures.length) return this.bestCaptureMoves(captures);
+
+    const moves = [...captures];
+    for (let r = 0; r < this.size; r++) for (let c = 0; c < this.size; c++) {
+      if (this.board[r][c]?.color !== this.turn) continue;
+      moves.push(...this.simpleMovesFor(r, c));
     }
     return moves;
   }
 
-  legalMovesFrom(r,c) {
-    const p=this.board[r]?.[c];
-    if(!p || p.color!==this.turn) return [];
-    if(this.captureChain && !sameSquare(this.captureChain.current,{r,c})) return [];
-    const captures=this.captureMovesFor(r,c);
-    const forced=this.captureChain || (this.mandatoryCapture && this.hasAnyCaptures(this.turn));
-    return forced ? captures : [...captures,...this.simpleMovesFor(r,c)];
+  legalMovesFrom(r, c) {
+    const p = this.board[r]?.[c];
+    if (!p || p.color !== this.turn) return [];
+    if (this.captureChain && !sameSquare(this.captureChain.current, { r, c })) return [];
+    const captures = this.captureMovesForCurrent(r, c);
+    if (this.captureChain || (this.mandatoryCapture && this.hasAnyCaptures(this.turn))) return captures;
+    return [...captures, ...this.simpleMovesFor(r, c)];
   }
 
-  promotionRow(color,r) { return color === "w" ? r === 0 : r === this.size-1; }
+  promotionRow(color, r) { return color === "w" ? r === 0 : r === this.size - 1; }
 
   makeMove(move) {
-    const legal=this.legalMovesFrom(move.from.r,move.from.c).find((m)=>sameSquare(m.to,move.to));
-    if(!legal) return false;
+    const legal = this.legalMovesFrom(move.from.r, move.from.c).find((m) => sameSquare(m.to, move.to));
+    if (!legal) return false;
 
-    if(!this.turnSnapshot) this.turnSnapshot=this.clone();
-    const p=this.board[legal.from.r][legal.from.c];
-    this.board[legal.from.r][legal.from.c]=null;
-    let capturedPiece=null;
-    if(legal.jump){
-      capturedPiece=this.board[legal.jump.r][legal.jump.c];
-      this.board[legal.jump.r][legal.jump.c]=null;
-      if(capturedPiece) this.captured.push(capturedPiece);
+    if (!this.turnSnapshot) this.turnSnapshot = this.clone();
+    const p = this.board[legal.from.r][legal.from.c];
+    this.board[legal.from.r][legal.from.c] = null;
+    let capturedPiece = null;
+    if (legal.jump) {
+      capturedPiece = this.board[legal.jump.r][legal.jump.c];
+      if (this.delayedCaptureRemoval) {
+        // International/Canadian keep the captured man on the board until the entire sequence ends.
+        // It is tracked in captureChain so it cannot be captured again in the same sequence.
+      } else {
+        this.board[legal.jump.r][legal.jump.c] = null;
+      }
+      if (capturedPiece) this.captured.push({ ...capturedPiece });
     }
 
-    let nextType=p.type;
-    const promoted=p.type === "m" && this.promotionRow(p.color,legal.to.r);
-    if(promoted) nextType="K";
-    this.board[legal.to.r][legal.to.c]={...p,type:nextType};
-    this.lastMove={from:{...legal.from},to:{...legal.to}};
-    this.sanHistory.push(`${this.turn === "w" ? "White" : "Black"}: ${squareName(legal.from,this.size)}-${squareName(legal.to,this.size)}${legal.jump ? "x" : ""}`);
+    const reachesPromotion = p.type === "m" && this.promotionRow(p.color, legal.to.r);
+    const kingNow = p.type === "K" || (this.midCapturePromotion && reachesPromotion);
+    this.board[legal.to.r][legal.to.c] = { ...p, type: kingNow ? "K" : "m" };
+    this.lastMove = { from: { ...legal.from }, to: { ...legal.to } };
 
-    if(legal.jump) {
-      const canContinue=this.captureMovesFor(legal.to.r,legal.to.c).length>0 && !(promoted && !this.international);
-      if(canContinue) {
-        this.captureChain={from:{...this.turnSnapshot?.lastMove?.from || legal.from},current:{...legal.to}};
+    const actor = this.turn === "w" ? "White" : "Black";
+    const notation = `${actor}: ${squareName(legal.from, this.size)}-${squareName(legal.to, this.size)}${legal.jump ? "x" : ""}${kingNow && p.type === "m" ? "K" : ""}`;
+    this.sanHistory.push(notation);
+
+    if (legal.jump) {
+      const chainCaptured = [...new Set([...(this.captureChain?.capturedSquares || []), this.squareKey(legal.jump.r, legal.jump.c)])];
+      const continuation = this.captureMovesFor(legal.to.r, legal.to.c, this.board, this.turn, new Set(chainCaptured));
+      if (continuation.length) {
+        this.captureChain = {
+          from: { ...(this.captureChain?.from || legal.from) },
+          current: { ...legal.to },
+          capturedSquares: chainCaptured,
+        };
         return true;
       }
+
+      // Promotion is delayed until the capture sequence ends in International/Canadian/American.
+      if (!this.midCapturePromotion && reachesPromotion && this.board[legal.to.r][legal.to.c]?.type === "m") {
+        this.board[legal.to.r][legal.to.c].type = "K";
+      }
+
+      if (this.delayedCaptureRemoval) {
+        for (const key of chainCaptured) {
+          const [rr, cc] = key.split(",").map(Number);
+          if (this.board[rr][cc] && this.board[rr][cc].color !== this.turn) this.board[rr][cc] = null;
+        }
+      }
+    } else if (reachesPromotion) {
+      this.board[legal.to.r][legal.to.c].type = "K";
     }
 
     this.history.push(this.turnSnapshot);
-    this.turnSnapshot=null;
-    this.captureChain=null;
-    this.turn=opposite(this.turn);
+    this.turnSnapshot = null;
+    this.captureChain = null;
+    this.turn = opposite(this.turn);
     return true;
   }
 
   gameStatus() {
-    let white=0,black=0;
-    for(const row of this.board) for(const p of row) { if(p?.color==="w") white++; if(p?.color==="b") black++; }
-    if(!white) return {over:true,winner:"b",text:"Game Over — Black wins!"};
-    if(!black) return {over:true,winner:"w",text:"Game Over — White wins!"};
-    const moves=this.allLegalMoves();
-    if(!moves.length) return {over:true,winner:opposite(this.turn),text:`Game Over — ${opposite(this.turn)==="w"?"White":"Black"} wins!`};
-    if(this.captureChain) return {over:false,text:`${this.turn==="w"?"White":"Black"} must continue capturing`};
-    return {over:false,text:`${this.turn==="w"?"White":"Black"} to move`};
+    let white = 0, black = 0;
+    for (const row of this.board) for (const p of row) {
+      if (p?.color === "w") white++;
+      if (p?.color === "b") black++;
+    }
+    if (!white) return { over: true, winner: "b", text: "Game Over — Black wins!" };
+    if (!black) return { over: true, winner: "w", text: "Game Over — White wins!" };
+    if (this.captureChain) return { over: false, text: `${this.turn === "w" ? "White" : "Black"} must continue capturing` };
+    const moves = this.allLegalMoves();
+    if (!moves.length) return { over: true, winner: opposite(this.turn), text: `Game Over — ${opposite(this.turn) === "w" ? "White" : "Black"} wins!` };
+    return { over: false, text: `${this.turn === "w" ? "White" : "Black"} to move` };
   }
 }
-
 if (typeof window !== "undefined") window.DraughtsGame = DraughtsGame;
 
 function squareName(s,n) { return String.fromCharCode(97+s.c)+(n-s.r); }
 
-function createGame() { return new DraughtsGame(selectedVariantId === "international" ? 10 : 8, mandatoryCapture, selectedVariantId); }
+function draughtsSizeForVariant(variant) {
+  return variant === "canadian" ? 12 : variant === "international" ? 10 : 8;
+}
+function draughtsVariantLabel(variant) {
+  return ({ international: "International Draughts", american: "American Checkers", russian: "Russian Draughts", canadian: "Canadian Draughts" })[variant] || "Draughts";
+}
+function createGame() { return new DraughtsGame(draughtsSizeForVariant(selectedVariantId), mandatoryCapture, selectedVariantId); }
 let game=createGame();
 let selected=null;
 let legalTargets=[];
@@ -310,11 +416,10 @@ function render() {
   const variantName = document.getElementById("variantName");
   const status = game.gameStatus();
 
-  const isInternational = selectedVariantId === "international";
   pageTitle.textContent = "Draughts";
   subtitle.textContent = "Game Player";
   gameName.textContent = "Draughts";
-  variantName.textContent = isInternational ? "International Draughts" : "American Checkers";
+  variantName.textContent = draughtsVariantLabel(selectedVariantId);
   document.title = `${variantName.textContent} — Game Library`;
   document.getElementById("status").textContent = status.text;
 
@@ -345,6 +450,7 @@ function render() {
 
   const frame = document.getElementById("boardFrame");
   frame.classList.toggle("eight", game.size === 8);
+  frame.classList.toggle("twelve", game.size === 12);
 
   const rowLabels = document.getElementById("rowLabels");
   const colLabels = document.getElementById("colLabels");
@@ -507,7 +613,7 @@ function applyRemoteState(state) {
   if(!state?.game) return;
   if(state.variant) selectedVariantId=state.variant;
   if(typeof state.mandatoryCapture === "boolean") mandatoryCapture=state.mandatoryCapture;
-  const size=selectedVariantId === "international" ? 10 : 8;
+  const size=draughtsSizeForVariant(selectedVariantId);
   if(game.size!==size || game.variant!==selectedVariantId || game.mandatoryCapture!==mandatoryCapture) game=new DraughtsGame(size,mandatoryCapture,selectedVariantId);
   game.restore(state.game);
   selected=null; legalTargets=[]; render();
