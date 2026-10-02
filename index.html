@@ -1869,7 +1869,7 @@ No diagnostics run yet.</pre
           sendIdentify();
           renderOnline();
         };
-        ws.onmessage = (e) => {
+        ws.onmessage = async (e) => {
           let m;
           try {
             m = JSON.parse(e.data);
@@ -1912,8 +1912,16 @@ No diagnostics run yet.</pre
               try { sessionStorage.setItem("gameLibraryOnlineConfig", JSON.stringify(onlineState.config || {})); } catch {}
               renderOnline();
               if (onlineState.connected && !onlineState.isHost) {
-                const gameId = onlineState.config?.game || "chess";
-                const page = gameId === "draughts" ? "draughts/draughts.html" : "chess/chess.html";
+                const gameId = onlineState.config?.game || "";
+                if (!libraryLoaded) {
+                  try { await loadLibrary(); } catch {}
+                }
+                const gameDefinition = libraryGame(gameId);
+                const page = gameDefinition?.page || "";
+                if (!page) {
+                  error(`Could not find the game page for "${gameId || "unknown game"}".`);
+                  break;
+                }
                 const params = new URLSearchParams({ game: gameId, variant: onlineState.config?.variant || "standard", online: "1", onlineCode: roomCode(), onlineServer: serverBase(), onlineClientId: onlineState.clientId, onlineConfig: JSON.stringify(onlineState.config || {}) });
                 window.location.href = `${page}?${params}`;
               }
