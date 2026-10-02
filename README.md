@@ -26,7 +26,7 @@ Grand Chess
 Shako  
 
 ## Draughts
-Canadian
-Russian
+Canadian  
+Russian  
 
 ### Reversi
