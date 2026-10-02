@@ -796,7 +796,7 @@ No diagnostics run yet.</pre
       let setupSpectatorTokens = new Set();
       let gameSetupOpen = false;
 
-      const LIBRARY_URL = "library.json?v=20261001-library3";
+      const LIBRARY_URL = "library.json?v=20261001-library4";
 
       function libraryGame(gameId) {
         return games.find((game) => game.id === gameId) || null;
@@ -1240,7 +1240,9 @@ No diagnostics run yet.</pre
           ? ["white", "red", "black", "blue"]
           : selectedSetupVariant === "threeman"
             ? ["white", "red", "black"]
-            : ["white", "black"];
+            : selectedSetupGame === "reversi"
+              ? ["black", "white"]
+              : ["white", "black"];
         if (order.length < seatOrder.length) return null;
 
         const human = (entry) => {
@@ -1492,7 +1494,9 @@ No diagnostics run yet.</pre
           ? "Order determines the four sides: White, Red, Black, Blue."
           : selectedSetupVariant === "threeman"
             ? "Order determines the three sides: White, Red, Black."
-            : "The first active player becomes White; the second becomes Black.";
+            : selectedSetupGame === "reversi"
+              ? "Order determines the two sides: Black, then White."
+              : "The first active player becomes White; the second becomes Black.";
         const orderList = document.createElement("div"); orderList.className = "setup-order-list";
         normalizeSetupOrder();
         const entries = new Map(activeSetupEntries().map((entry) => [entry.token, entry]));
@@ -1505,7 +1509,9 @@ No diagnostics run yet.</pre
             ? ["White", "Red", "Black", "Blue"]
             : selectedSetupVariant === "threeman"
               ? ["White", "Red", "Black"]
-              : ["White", "Black"];
+              : selectedSetupGame === "reversi"
+                ? ["Black", "White"]
+                : ["White", "Black"];
           const name = document.createElement("strong"); name.textContent = `${seatNames[index] || `Player ${index + 1}`} — ${entry.name}`;
           const type = document.createElement("span"); type.textContent = entry.type + (entry.computer ? ` • ${formatSetupLabel(entry.difficulty)}` : "");
           info.append(name, type);
@@ -1574,7 +1580,7 @@ No diagnostics run yet.</pre
         if (!gameDefinition) return;
 
         // Only games with a connected player page can be launched.
-        if (!(selectedSetupGame === "chess" || selectedSetupGame === "draughts")) return;
+        if (!(selectedSetupGame === "chess" || selectedSetupGame === "draughts" || selectedSetupGame === "reversi")) return;
 
         const config = setupConfigFromState();
         const range = selectedPlayerRange();
@@ -1606,6 +1612,7 @@ No diagnostics run yet.</pre
         const playablePages = {
           chess: "chess/chess.html",
           draughts: "draughts/draughts.html",
+          reversi: "reversi/reversi.html",
         };
         const gamePage = playablePages[selectedSetupGame] || gameDefinition.page;
         if (!gamePage) return;
@@ -1664,7 +1671,7 @@ No diagnostics run yet.</pre
             ? (min === max ? `${min} player${min === 1 ? "" : "s"}` : `${min}–${max} players`)
             : "Players vary";
           const variantsLabel = (game.variants || []).map((v) => v.name).join(" / ");
-          const playable = game.id === "chess" || game.id === "draughts";
+          const playable = game.id === "chess" || game.id === "draughts" || game.id === "reversi";
 
           content.innerHTML = `
             <h2>${escapeHtml(game.name || "Untitled Game")}</h2>
@@ -1672,7 +1679,7 @@ No diagnostics run yet.</pre
             <div class="game-meta">
               <span class="meta-tag">${escapeHtml(rangeLabel)}</span>
               ${variantsLabel ? `<span class="meta-tag">${escapeHtml(variantsLabel)}</span>` : ""}
-              <span class="meta-tag">${playable ? "Local / Computer / Online" : "Coming soon"}</span>
+              <span class="meta-tag">${playable ? (game.capabilities?.online ? "Local / Computer / Online" : "Local / Computer") : "Coming soon"}</span>
             </div>`;
 
           const button = document.createElement("button");
