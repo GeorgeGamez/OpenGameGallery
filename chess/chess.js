@@ -1652,6 +1652,7 @@ let onlineParticipants = [];
 let onlineConnected = false;
 let onlineMatchId = "";
 let onlineResultSent = false;
+let localScoreRecorded = false;
 let profiles = [];
 try {
   const saved = JSON.parse(localStorage.getItem("gameLibraryProfiles") || "[]");
@@ -1891,9 +1892,39 @@ function onlineWsUrl() {
   return `${base}/ws/${encodeURIComponent(ONLINE_CODE)}?${query.toString()}`;
 }
 
+function localPartyProfiles() {
+  try {
+    const ids = JSON.parse(sessionStorage.getItem("gameLibraryParty") || "[]");
+    if (Array.isArray(ids)) {
+      const party = ids.map((id) => profiles.find((p) => p.id === id)).filter(Boolean);
+      if (party.length) return party;
+    }
+  } catch {}
+  return profiles;
+}
+
 function localProfileForOnlineIdentity() {
-  const activeId = localStorage.getItem("gameLibraryActiveProfileId") || "";
-  return profiles.find((p) => p.id === activeId) || profiles[0] || { id: "", name: "Player 1", avatar: "♟" };
+  return localPartyProfiles()[0] || { id: "", name: "Player 1", avatar: "♟" };
+}
+
+function recordLocalWinIfOver() {
+  if (ONLINE_MODE || localScoreRecorded || !gameHasStarted) return;
+  const status = manager.game.gameStatus();
+  if (!status.over) return;
+  const winnerColor = status.winner || (status.check ? opposite(manager.game.turn) : null);
+  if (!winnerColor) return;
+  const winner = gamePlayers.find((player) =>
+    (player.seat === "white" && winnerColor === "w") ||
+    (player.seat === "black" && winnerColor === "b") ||
+    (player.seat === winnerColor)
+  );
+  const profileId = winner?.profileId || "";
+  if (!profileId) return;
+  let scores = {};
+  try { scores = JSON.parse(localStorage.getItem("gameLibraryLocalScores") || "{}"); } catch {}
+  scores[profileId] = Math.max(0, Number(scores[profileId]) || 0) + 1;
+  localStorage.setItem("gameLibraryLocalScores", JSON.stringify(scores));
+  localScoreRecorded = true;
 }
 
 function setOnlineStatus(text, isError = false) {
@@ -2079,6 +2110,7 @@ function connectOnlineGame() {
       profileId: profile.id || "",
       name: profile.name || "Player 1",
       avatar: profile.avatar || "♟",
+      party: localPartyProfiles().map((p) => ({ id: p.id, name: p.name || "Player", avatar: p.avatar || "♟" })),
       spectator: Boolean((onlineConfig?.spectators || []).includes(ONLINE_CLIENT_ID))
     }));
 
@@ -2159,6 +2191,7 @@ function connectOnlineGame() {
     if (message.type === "game:start") {
       onlineMatchId = message.matchId || onlineMatchId || "";
       onlineResultSent = false;
+      localScoreRecorded = false;
       onlineConfig = message.config || onlineConfig;
       gameHasStarted = true;
       clearLocalHandoff();
@@ -2204,6 +2237,10 @@ function connectOnlineGame() {
     }
 
     if (message.type === "game:result") {
+      return;
+    }
+
+    if (message.type === "scores:reset") {
       return;
     }
 
@@ -2361,7 +2398,7 @@ function renderThreeManBoard(game, legal, selectedCell, status) {
       mark.setAttribute("cx", cell.svgCenter.x.toFixed(3));
       mark.setAttribute("cy", cell.svgCenter.y.toFixed(3));
       if (game.board[cell.r][cell.c]) {
-        mark.setAttribute("r", "4.5");
+        mark.setAttribute("r", "2.4");
         mark.classList.add("three-legal-capture");
       } else {
         mark.setAttribute("r", "0.95");
@@ -2394,6 +2431,7 @@ function renderThreeManBoard(game, legal, selectedCell, status) {
 }
 
 function render() {
+  recordLocalWinIfOver();
   const g = manager.game, s = g.gameStatus(), size = g.size;
   renderCoordinates(size, g.variant);
   boardEl.innerHTML = "";
@@ -2508,6 +2546,7 @@ function clickSquare(r, c) {
   }
   selected = null;
   render();
+  recordLocalWinIfOver();
   beginLocalHandoff();
 }
 
@@ -2528,6 +2567,7 @@ function openPromotion(color) {
       promotionModal.classList.remove("open");
       selected = null;
       render();
+      recordLocalWinIfOver();
       beginLocalHandoff();
     };
     promotionOptions.appendChild(b);
@@ -2578,6 +2618,7 @@ document.getElementById("clearBtn").onclick = () => {
   clearTimeout(computerMoveTimer); computerMovePending = false;
   if (ONLINE_MODE && !ONLINE_HOST_TOKEN) return;
   manager.newGame("chess", manager.variantId);
+  localScoreRecorded = false;
   selected = null; pendingPromotion = null; promotionModal.classList.remove("open");
   if (ONLINE_MODE) publishOnlineState();
   render();
@@ -2608,6 +2649,7 @@ if (onlineConfig?.variant && GameRegistry.chess.variants[onlineConfig.variant]) 
   manager.newGame("chess", selectedVariantId);
 }
 gameHasStarted = true;
+localScoreRecorded = false;
 refreshOnlinePlayerNames();
 renderPlayers();
 connectOnlineGame();
