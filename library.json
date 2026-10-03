@@ -7,10 +7,7 @@
       "page": "chess/chess.html",
       "description": "The classic two-player strategy game of kings, queens, and tactical manoeuvring.",
       "image": "images/cover/chess.jpg",
-      "categories": [
-        "board",
-        "strategy"
-      ],
+      "categories": ["board", "strategy"],
       "searchTerms": [],
       "players": {
         "min": 2,
@@ -25,9 +22,9 @@
           "id": "chess960",
           "name": "Chess960"
         },
-{
+        {
           "id": "threeman",
-          "name": "Three Player Chess",
+          "name": "3-Player Chess",
           "players": {
             "min": 3,
             "max": 3
@@ -56,13 +53,8 @@
       "page": "draughts/draughts.html",
       "description": "A tactical jumping game in which players capture opposing pieces and promote them to kings.",
       "image": "images/cover/draughts.jpg",
-      "categories": [
-        "board",
-        "strategy"
-      ],
-      "searchTerms": [
-        "checkers"
-      ],
+      "categories": ["board", "strategy"],
+      "searchTerms": ["checkers"],
       "players": {
         "min": 2,
         "max": 2
@@ -104,15 +96,10 @@
       "name": "Reversi",
       "type": "board",
       "page": "reversi/reversi.html",
-      "description": "A board-control game where players place discs to surround and flip their opponent\u2019s discs.",
+      "description": "A board-control game where players place discs to surround and flip their opponent’s discs.",
       "image": "images/cover/reversi.jpg",
-      "categories": [
-        "board",
-        "strategy"
-      ],
-      "searchTerms": [
-        "othello"
-      ],
+      "categories": ["board", "strategy"],
+      "searchTerms": ["othello"],
       "players": {
         "min": 2,
         "max": 2
@@ -129,6 +116,70 @@
         "computer": true
       },
       "options": {}
+    },
+    {
+      "id": "rummy",
+      "name": "Rummy",
+      "type": "card",
+      "page": "rummy/rummy.html",
+      "description": "A classic draw-and-discard card game of forming sets and runs, with players emptying their hands to win.",
+      "image": "images/cover/rummy.jpg",
+      "categories": ["cards", "strategy"],
+      "searchTerms": ["rummy", "card game", "sets", "runs"],
+      "players": {
+        "min": 2,
+        "max": 6
+      },
+      "variants": [],
+      "capabilities": {
+        "local": true,
+        "online": true,
+        "computer": true
+      },
+      "options": {}
+    },
+    {
+      "id": "eins",
+      "name": "Eins",
+      "type": "card",
+      "page": "eins/eins.html",
+      "description": "A color-and-number matching card game with action cards, wild cards, and an optional flipped-deck variant.",
+      "image": "images/cover/eins.jpg",
+      "categories": ["cards", "party"],
+      "searchTerms": ["uno", "uno flip", "matching cards", "shedding game"],
+      "players": {
+        "min": 2,
+        "max": 10
+      },
+      "variants": [
+        {
+          "id": "eins",
+          "name": "Eins"
+        },
+        {
+          "id": "flip",
+          "name": "Eins Flip"
+        }
+      ],
+      "capabilities": {
+        "local": true,
+        "online": true,
+        "computer": true
+      },
+      "options": {
+        "stacking": {
+          "type": "toggle",
+          "name": "Stacking",
+          "help": "Allow draw penalty cards to be stacked onto another draw penalty instead of taking the accumulated penalty immediately.",
+          "default": false
+        },
+        "drawUntilPlayable": {
+          "type": "toggle",
+          "name": "Draw until playable",
+          "help": "When you cannot play, draw until you find a playable card instead of drawing one card and passing.",
+          "default": false
+        }
+      }
     }
   ]
 }
