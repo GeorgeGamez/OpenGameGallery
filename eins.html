@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eins — Game Library</title>
+<style>
+:root{--bg:#17191f;--panel:#22252d;--panel2:#2b2f39;--text:#f1f3f5;--muted:#aeb4c0;--accent:#78a9ff;--border:#3a3f4a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,-apple-system,"Segoe UI",sans-serif}
+header{height:62px;padding:0 22px;display:flex;align-items:center;gap:12px;background:#1d2027;border-bottom:1px solid var(--border)}header h1{font-size:21px;margin:0}header span{color:var(--muted);font-size:13px}
+button,select{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:8px 11px;cursor:pointer}button:hover{filter:brightness(1.12)}button:disabled{opacity:.4;cursor:not-allowed}
+.app{max-width:1440px;margin:auto;padding:18px;display:grid;grid-template-columns:220px minmax(0,1fr) 240px;gap:16px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px}.panel h2{font-size:14px;margin:0 0 10px}.button-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.button-grid button:first-child{grid-column:1/-1}
+.status,.online{background:var(--panel2);border-radius:7px;padding:10px;line-height:1.4;font-size:13px}.online{font-size:12px;color:var(--muted);overflow-wrap:anywhere}.muted,.note{color:var(--muted);font-size:12px;line-height:1.45}
+.game-info{text-align:center;margin:2px 0 12px}.game-info strong{font-size:17px}.game-info div{font-size:12px;color:var(--muted);margin-top:3px}
+.player-list{display:flex;flex-direction:column;gap:7px}.player-row{display:flex;align-items:center;gap:9px;background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:8px}.player-row.current{border-color:var(--accent)}.avatar{font-size:21px}.player-name{font-weight:700;font-size:13px}.player-sub{color:var(--muted);font-size:11px}
+.table-area{min-width:0}.table-surface{background:#164d3b;border:5px solid #0c3026;border-radius:22px;padding:18px;min-height:240px;box-shadow:0 8px 25px #0003}.zone-label{color:#d1e4dc;font-size:12px;margin-bottom:7px}.piles{display:flex;justify-content:center;align-items:center;gap:22px;flex-wrap:wrap;min-height:120px}.pile{display:flex;flex-direction:column;align-items:center;gap:7px;min-width:85px}.pile button{min-width:78px;min-height:100px}.hand{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;align-items:center;min-height:125px;padding:12px 4px}.card{width:70px;height:104px;border:2px solid #f5f5f5;border-radius:9px;background:#fff;color:#17191f;display:flex;flex-direction:column;justify-content:space-between;align-items:center;padding:7px 4px;box-shadow:0 3px 7px #0004;position:relative;cursor:pointer;user-select:none;font-weight:750}.card .corner{font-size:12px;align-self:flex-start}.card .face{font-size:19px;text-align:center;line-height:1.05;overflow-wrap:anywhere}.card .bottom{align-self:flex-end;transform:rotate(180deg);font-size:12px}.card.selected{transform:translateY(-10px);outline:3px solid #f6e58d}.card.red{background:#d84444;color:white}.card.yellow{background:#f4d34d;color:#202020}.card.green{background:#26965c;color:white}.card.blue{background:#3279d5;color:white}.card.pink{background:#e94b9a;color:white}.card.teal{background:#24a8a5;color:white}.card.orange{background:#f08b35;color:white}.card.purple{background:#8c59c9;color:white}.card.back{background:repeating-linear-gradient(45deg,#28558d,#28558d 8px,#1e3e6a 8px,#1e3e6a 16px);color:white;border:3px solid #e8efff}.card.black{background:#252832;color:white}.card.mini{width:45px;height:66px;font-size:11px}.card.mini .face{font-size:12px}.hand-label{font-size:12px;color:#d1e4dc;text-align:center;margin:8px 0 0}.actions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:12px}.action-primary{background:var(--accent);color:#111318;border-color:transparent;font-weight:700}.action-danger{border-color:#82444b}.history{max-height:420px;overflow:auto;font-size:12px}.history div{padding:7px;border-bottom:1px solid #343943}.melds{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;margin-top:12px}.meld{background:#0e3b2d;border:1px solid #36705c;border-radius:8px;padding:8px;min-width:85px}.meld-title{font-size:10px;color:#c2d9d0;margin-bottom:5px}.meld-cards{display:flex;gap:3px;flex-wrap:wrap}
+.color-choices{display:flex;gap:8px;justify-content:center;margin-top:10px}.color-choices button{min-width:80px}.red-choice{background:#d84444}.yellow-choice{background:#f4d34d;color:#111}.green-choice{background:#26965c}.blue-choice{background:#3279d5}
+@media(max-width:1000px){.app{grid-template-columns:200px minmax(0,1fr)}.right-column{grid-column:1/-1}.history{max-height:220px}}
+@media(max-width:700px){header span{display:none}.app{display:flex;flex-direction:column;padding:10px}.left-column,.table-area,.right-column{width:100%}.left-column{order:2}.table-area{order:1}.right-column{order:3}.table-surface{padding:10px}.card{width:58px;height:88px}.card .face{font-size:16px}}
+</style></head>
+<body><header><h1 id="pageTitle">Eins</h1><span>Game Library · Game Player</span></header>
+<main class="app">
+<section class="left-column">
+<div class="panel"><h2>Controls</h2><div class="button-grid"><button id="newGameBtn">Back to Game Library</button><button id="clearBtn">New Game</button><button id="undoBtn">Undo</button></div></div>
+<div class="panel"><h2>Players</h2><div class="player-list" id="playerList"></div></div>
+<div class="panel"><h2>Online connection</h2><div class="online" id="onlineBar">Offline / local game</div></div>
+<div class="panel"><h2>Status</h2><div class="status" id="status">Loading…</div></div>
+</section>
+<section class="table-area">
+<div class="game-info"><strong id="gameName">Eins</strong><div id="variantName">Classic</div></div>
+<div class="table-surface">
+<div class="zone-label">Shared table</div>
+<div class="piles" id="piles"></div>
+<div id="meldArea"></div>
+<div class="actions" id="mainActions"></div>
+<div class="color-choices" id="colorChoices" hidden></div>
+</div>
+<div class="panel" style="margin-top:12px"><h2 id="handTitle">Your hand</h2><div class="hand" id="hand"></div><div class="hand-label" id="handHint"></div></div>
+</section>
+<section class="right-column">
+<div class="panel"><h2>Round / Move History</h2><div class="history" id="history"></div></div>
+<div class="panel"><h2>Rules</h2><div id="rules" class="note"></div></div>
+</section>
+</main><script src="eins-ai.js?v=20261002-cards1"></script><script src="eins.js?v=20261002-cards1"></script></body></html>
