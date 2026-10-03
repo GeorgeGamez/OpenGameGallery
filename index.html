@@ -796,7 +796,7 @@ No diagnostics run yet.</pre
       let setupSpectatorTokens = new Set();
       let gameSetupOpen = false;
 
-      const LIBRARY_URL = "library.json?v=20261001-library4";
+      const LIBRARY_URL = "library.json?v=20261002-cards1";
 
       function libraryGame(gameId) {
         return games.find((game) => game.id === gameId) || null;
@@ -1212,11 +1212,11 @@ No diagnostics run yet.</pre
 
       function selectedVariantDefinition() {
         const variants = libraryVariants(selectedSetupGame);
-        return variants.find((variant) => variant.id === selectedSetupVariant) || variants[0] || { id: "standard", name: "Standard", players: { min: 2, max: 2 } };
+        return variants.find((variant) => variant.id === selectedSetupVariant) || variants[0] || { id: "standard", name: "", players: libraryGame(selectedSetupGame)?.players || { min: 2, max: 2 } };
       }
 
       function selectedPlayerRange() {
-        const range = selectedVariantDefinition()?.players || { min: 2, max: 2 };
+        const range = selectedVariantDefinition()?.players || libraryGame(selectedSetupGame)?.players || { min: 2, max: 2 };
         const min = Number.isFinite(Number(range.min)) ? Number(range.min) : 2;
         const max = Number.isFinite(Number(range.max)) ? Number(range.max) : min;
         return { min, max: Math.max(min, max) };
@@ -1249,7 +1249,9 @@ No diagnostics run yet.</pre
             ? ["white", "red", "black"]
             : selectedSetupGame === "reversi"
               ? ["black", "white"]
-              : ["white", "black"];
+              : (selectedSetupGame === "rummy" || selectedSetupGame === "eins")
+                ? order.map((_, index) => `seat-${index}`)
+                : ["white", "black"];
         if (order.length < seatOrder.length) return null;
 
         const human = (entry) => {
