@@ -796,7 +796,7 @@ No diagnostics run yet.</pre
       let setupSpectatorTokens = new Set();
       let gameSetupOpen = false;
 
-      const LIBRARY_URL = "library.json?v=20261002-cards1";
+      const LIBRARY_URL = "library.json?v=20261002-cards2";
 
       function libraryGame(gameId) {
         return games.find((game) => game.id === gameId) || null;
@@ -1680,7 +1680,7 @@ No diagnostics run yet.</pre
             ? (min === max ? `${min} player${min === 1 ? "" : "s"}` : `${min}–${max} players`)
             : "Players vary";
           const variantsLabel = (game.variants || []).map((v) => v.name).join(" / ");
-          const playable = game.id === "chess" || game.id === "draughts" || game.id === "reversi";
+          const playable = Boolean(game.page && (game.capabilities?.local || game.capabilities?.computer || game.capabilities?.online));
 
           content.innerHTML = `
             <h2>${escapeHtml(game.name || "Untitled Game")}</h2>
@@ -1688,12 +1688,12 @@ No diagnostics run yet.</pre
             <div class="game-meta">
               <span class="meta-tag">${escapeHtml(rangeLabel)}</span>
               ${variantsLabel ? `<span class="meta-tag">${escapeHtml(variantsLabel)}</span>` : ""}
-              <span class="meta-tag">${playable ? (game.capabilities?.online ? "Local / Computer / Online" : "Local / Computer") : "Coming soon"}</span>
+              <span class="meta-tag">${playable ? [game.capabilities?.local ? "Local" : null, game.capabilities?.computer ? "Computer" : null, game.capabilities?.online ? "Online" : null].filter(Boolean).join(" / ") : "Unavailable"}</span>
             </div>`;
 
           const button = document.createElement("button");
           button.className = "play-button";
-          button.textContent = playable ? (waitingForHost ? "View game setup" : "Set up & Play") : "Coming soon";
+          button.textContent = playable ? (waitingForHost ? "View game setup" : "Set up & Play") : "Unavailable";
           button.disabled = !playable;
           if (playable) button.onclick = () => openGame(game.id, game.variants?.[0]?.id);
           content.appendChild(button);
