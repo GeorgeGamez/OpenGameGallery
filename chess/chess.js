@@ -1791,7 +1791,39 @@ function squareVisibleToColor(r, c, color, game = manager.game) {
   if (!FOG_OF_WAR || !color) return true;
   const piece = game.board[r]?.[c];
   if (piece?.color === color) return true;
-  return game.attacked(r, c, color, game.board);
+
+  // Fog should reveal both attacked squares and squares our pawns can move
+  // into. Pawn attacks alone do not include their forward movement squares.
+  if (game.attacked(r, c, color, game.board)) return true;
+
+  const previousTurn = game.turn;
+  const previousTurnIndex = game.turnIndex;
+  try {
+    game.turn = color;
+    if (Number.isInteger(previousTurnIndex)) {
+      const turnOrder = Array.isArray(game.turnOrder)
+        ? game.turnOrder
+        : (game.size === 14 ? FOUR_COLORS : game.size === 12 ? THREE_COLORS : null);
+      if (turnOrder) {
+        const index = turnOrder.indexOf(color);
+        if (index >= 0) game.turnIndex = index;
+      }
+    }
+
+    for (let pr = 0; pr < game.size; pr++) {
+      for (let pc = 0; pc < game.size; pc++) {
+        const pawn = game.board[pr]?.[pc];
+        if (pawn?.color !== color || pawn.type !== "p") continue;
+        if (game.legalMovesFrom(pr, pc).some(move => move.to.r === r && move.to.c === c)) return true;
+      }
+    }
+  } catch (error) {
+    console.debug("Could not calculate pawn movement visibility:", error);
+  } finally {
+    game.turn = previousTurn;
+    if (Number.isInteger(previousTurnIndex)) game.turnIndex = previousTurnIndex;
+  }
+  return false;
 }
 
 function squareVisibleToViewer(r, c, game = manager.game) {
@@ -2123,8 +2155,15 @@ function connectOnlineGame() {
     try { message = JSON.parse(event.data); }
     catch { return; }
 
+    if (message.type === "player:identified") {
+      const name = message.player?.name || localProfileForOnlineIdentity().name || "Player";
+      setOnlineStatus(`Connected • registered as ${name}`);
+      return;
+    }
+
     if (message.type === "room:hello") {
       onlineParticipants = message.room?.participants || [];
+      setOnlineStatus("Connected • synchronizing game…");
       onlineMatchId = message.room?.matchId || onlineMatchId || "";
       if (!message.room?.matchId || !message.room?.started) onlineResultSent = false;
 
@@ -2168,6 +2207,9 @@ function connectOnlineGame() {
 
     if (message.type === "room:participants") {
       onlineParticipants = Array.isArray(message.participants) ? message.participants : [];
+      if (!document.getElementById("onlineBar")?.classList.contains("error")) {
+        setOnlineStatus(`Connected • ${onlineParticipants.length} participant${onlineParticipants.length === 1 ? "" : "s"}`);
+      }
       refreshOnlinePlayerNames();
       renderPlayers();
       if (gameHasStarted) publishOnlineState();
