@@ -1,17 +1,39 @@
 "use strict";
 
 const SOLID_PIECES = {
-  k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟", m: "●", K: "👑",
+  k: "♚",
+  q: "♛",
+  r: "♜",
+  b: "♝",
+  n: "♞",
+  p: "♟",
+  m: "●",
+  K: "👑",
 };
 const PIECES = { w: SOLID_PIECES, b: SOLID_PIECES };
-const THREE_PIECES = { white: SOLID_PIECES, red: SOLID_PIECES, black: SOLID_PIECES };
-const FOUR_PIECES = { white: SOLID_PIECES, black: SOLID_PIECES, red: SOLID_PIECES, blue: SOLID_PIECES };
+const THREE_PIECES = {
+  white: SOLID_PIECES,
+  red: SOLID_PIECES,
+  black: SOLID_PIECES,
+};
+const FOUR_PIECES = {
+  white: SOLID_PIECES,
+  black: SOLID_PIECES,
+  red: SOLID_PIECES,
+  blue: SOLID_PIECES,
+};
 const THREE_COLORS = ["white", "red", "black"];
 const FOUR_COLORS = ["white", "red", "black", "blue"];
 
-function inside(r, c, size) { return r >= 0 && r < size && c >= 0 && c < size; }
-function cloneBoard(b) { return b.map((row) => row.map((p) => (p ? { ...p } : null))); }
-function opposite(c) { return c === "w" ? "b" : "w"; }
+function inside(r, c, size) {
+  return r >= 0 && r < size && c >= 0 && c < size;
+}
+function cloneBoard(b) {
+  return b.map((row) => row.map((p) => (p ? { ...p } : null)));
+}
+function opposite(c) {
+  return c === "w" ? "b" : "w";
+}
 
 // ---------------------------- CHESS ENGINE ----------------------------
 function generate960Row() {
@@ -25,12 +47,10 @@ function generate960Row() {
   let available = empty();
   row[available[Math.floor(Math.random() * available.length)]] = "q";
   available = empty();
-  row[
-    available.splice(Math.floor(Math.random() * available.length), 1)[0]
-  ] = "n";
-  row[
-    available.splice(Math.floor(Math.random() * available.length), 1)[0]
-  ] = "n";
+  row[available.splice(Math.floor(Math.random() * available.length), 1)[0]] =
+    "n";
+  row[available.splice(Math.floor(Math.random() * available.length), 1)[0]] =
+    "n";
   available = empty();
   row[available[0]] = "r";
   row[available[1]] = "k";
@@ -122,8 +142,7 @@ class ChessGame {
   findKing(color, b = this.board) {
     for (let r = 0; r < 8; r++)
       for (let c = 0; c < 8; c++)
-        if (b[r][c]?.color === color && b[r][c].type === "k")
-          return { r, c };
+        if (b[r][c]?.color === color && b[r][c].type === "k") return { r, c };
     return null;
   }
   attacked(r, c, by, b = this.board) {
@@ -258,8 +277,7 @@ class ChessGame {
     }
     if (p.type === "k") {
       for (let dr = -1; dr <= 1; dr++)
-        for (let dc = -1; dc <= 1; dc++)
-          if (dr || dc) add(r + dr, c + dc);
+        for (let dc = -1; dc <= 1; dc++) if (dr || dc) add(r + dr, c + dc);
 
       const cState = this.castling[p.color];
       if (!cState.kingMoved && !this.attacked(r, c, opposite(p.color))) {
@@ -334,9 +352,7 @@ class ChessGame {
         b[m.to.r][m.to.c] = p;
       }
       const k = this.findKing(this.board[r][c].color, b);
-      return (
-        k && !this.attacked(k.r, k.c, opposite(this.board[r][c].color), b)
-      );
+      return k && !this.attacked(k.r, k.c, opposite(this.board[r][c].color), b);
     });
   }
   makeMove(m, promotion = "q") {
@@ -354,9 +370,7 @@ class ChessGame {
       this.board[legal.from.r][legal.castling.targetKCol] = p;
       this.board[legal.from.r][legal.castling.targetRCol] = rk;
       this.castling[p.color].kingMoved = true;
-      this.sanHistory.push(
-        legal.castling.targetKCol === 6 ? "O-O" : "O-O-O",
-      );
+      this.sanHistory.push(legal.castling.targetKCol === 6 ? "O-O" : "O-O-O");
     } else {
       const cap = this.board[legal.to.r][legal.to.c];
       this.board[legal.from.r][legal.from.c] = null;
@@ -426,7 +440,7 @@ const THREE_MAN_GEOMETRY = (() => {
   const C = { x: 0, y: 0 };
   const A = { x: LONG, y: 0 };
   const B = { x: LONG, y: SHORT };
-  const D = { x: LONG / 2, y: LONG * SQRT3 / 2 };
+  const D = { x: LONG / 2, y: (LONG * SQRT3) / 2 };
 
   const lerp = (p, q, t) => ({
     x: p.x + (q.x - p.x) * t,
@@ -434,7 +448,8 @@ const THREE_MAN_GEOMETRY = (() => {
   });
 
   const rotate = (p, angle) => {
-    const cs = Math.cos(angle), sn = Math.sin(angle);
+    const cs = Math.cos(angle),
+      sn = Math.sin(angle);
     return { x: p.x * cs - p.y * sn, y: p.x * sn + p.y * cs };
   };
 
@@ -451,14 +466,16 @@ const THREE_MAN_GEOMETRY = (() => {
     for (let localRow = 0; localRow < 4; localRow++) {
       const layer = 3 - localRow;
       for (let file = 0; file < 4; file++) {
-        const u0 = layer / 4, u1 = (layer + 1) / 4;
-        const v0 = file / 4, v1 = (file + 1) / 4;
+        const u0 = layer / 4,
+          u1 = (layer + 1) / 4;
+        const v0 = file / 4,
+          v1 = (file + 1) / 4;
         const points = [
           gridPoint(u0, v0),
           gridPoint(u1, v0),
           gridPoint(u1, v1),
           gridPoint(u0, v1),
-        ].map((p) => rotate(p, -wedge * Math.PI / 3 + Math.PI / 6));
+        ].map((p) => rotate(p, (-wedge * Math.PI) / 3 + Math.PI / 6));
 
         const center = points.reduce(
           (a, p) => ({ x: a.x + p.x / 4, y: a.y + p.y / 4 }),
@@ -517,7 +534,7 @@ const THREE_MAN_GEOMETRY = (() => {
   // These IDs are derived directly from the six fused wedges.
   const homeOrders = {
     black: [3, 2, 1, 0, 31, 27, 23, 19],
-    red:   [67, 66, 65, 64, 95, 91, 87, 83],
+    red: [67, 66, 65, 64, 95, 91, 87, 83],
     white: [51, 55, 59, 63, 32, 33, 34, 35],
   };
 
@@ -528,25 +545,45 @@ const THREE_MAN_GEOMETRY = (() => {
   };
 
   const sideVertices = {
-    top: [[-LONG / SQRT3, 4], [LONG / SQRT3, 4]],
-    "upper-right": [[LONG / SQRT3, 4], [2 * LONG / SQRT3, 0]],
-    "lower-right": [[2 * LONG / SQRT3, 0], [LONG / SQRT3, -4]],
-    bottom: [[LONG / SQRT3, -4], [-LONG / SQRT3, -4]],
-    "lower-left": [[-LONG / SQRT3, -4], [-2 * LONG / SQRT3, 0]],
-    "upper-left": [[-2 * LONG / SQRT3, 0], [-LONG / SQRT3, 4]],
+    top: [
+      [-LONG / SQRT3, 4],
+      [LONG / SQRT3, 4],
+    ],
+    "upper-right": [
+      [LONG / SQRT3, 4],
+      [(2 * LONG) / SQRT3, 0],
+    ],
+    "lower-right": [
+      [(2 * LONG) / SQRT3, 0],
+      [LONG / SQRT3, -4],
+    ],
+    bottom: [
+      [LONG / SQRT3, -4],
+      [-LONG / SQRT3, -4],
+    ],
+    "lower-left": [
+      [-LONG / SQRT3, -4],
+      [(-2 * LONG) / SQRT3, 0],
+    ],
+    "upper-left": [
+      [(-2 * LONG) / SQRT3, 0],
+      [-LONG / SQRT3, 4],
+    ],
   };
 
-  const pointLineDistance = (p, a, b) => Math.abs(
-    (b[0] - a[0]) * (a[1] - p.y) -
-    (a[0] - p.x) * (b[1] - a[1])
-  ) / Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const pointLineDistance = (p, a, b) =>
+    Math.abs((b[0] - a[0]) * (a[1] - p.y) - (a[0] - p.x) * (b[1] - a[1])) /
+    Math.hypot(b[0] - a[0], b[1] - a[1]);
 
   const touchesSide = (cell, name) => {
     const [a, b] = sideVertices[name];
     for (let i = 0; i < 4; i++) {
       const p = cell.points[i];
       const q = cell.points[(i + 1) % 4];
-      if (pointLineDistance(p, a, b) < 1e-6 && pointLineDistance(q, a, b) < 1e-6) {
+      if (
+        pointLineDistance(p, a, b) < 1e-6 &&
+        pointLineDistance(q, a, b) < 1e-6
+      ) {
         return true;
       }
     }
@@ -583,7 +620,11 @@ const THREE_MAN_GEOMETRY = (() => {
 
   const colors = ["white", "red", "black"];
   const centerAngle = (cell) => Math.atan2(cell.center.y, cell.center.x);
-  const normalAngles = { white: -Math.PI / 2, red: 5 * Math.PI / 6, black: Math.PI / 6 };
+  const normalAngles = {
+    white: -Math.PI / 2,
+    red: (5 * Math.PI) / 6,
+    black: Math.PI / 6,
+  };
   const angularDifference = (a, b) => {
     let d = Math.abs(a - b) % (2 * Math.PI);
     if (d > Math.PI) d = 2 * Math.PI - d;
@@ -603,9 +644,14 @@ const THREE_MAN_GEOMETRY = (() => {
         candidates.push(color);
       }
     }
-    const region = candidates.length === 1
-      ? candidates[0]
-      : candidates.sort((a, b) => angularDifference(centerAngle(cell), normalAngles[a]) - angularDifference(centerAngle(cell), normalAngles[b]))[0];
+    const region =
+      candidates.length === 1
+        ? candidates[0]
+        : candidates.sort(
+            (a, b) =>
+              angularDifference(centerAngle(cell), normalAngles[a]) -
+              angularDifference(centerAngle(cell), normalAngles[b]),
+          )[0];
     territoryById.set(cell.id, { region, rank: min });
   }
 
@@ -615,7 +661,8 @@ const THREE_MAN_GEOMETRY = (() => {
   for (const color of colors) {
     const start = rawCells[homeOrders[color][0]].center;
     const end = rawCells[homeOrders[color][7]].center;
-    const dx = end.x - start.x, dy = end.y - start.y;
+    const dx = end.x - start.x,
+      dy = end.y - start.y;
     const len = Math.hypot(dx, dy);
     axis[color] = { x: dx / len, y: dy / len };
   }
@@ -656,33 +703,50 @@ const THREE_MAN_GEOMETRY = (() => {
       const other = rawCells[nid];
       if (other.region !== cell.region) targets.push(other);
     }
-    if (targets.length) cross.set(cell.idLogical, targets.map((x) => x.idLogical));
+    if (targets.length)
+      cross.set(
+        cell.idLogical,
+        targets.map((x) => x.idLogical),
+      );
     cell.cross = targets.map((x) => x.idLogical);
   }
 
   const cellByRawId = new Map(rawCells.map((cell) => [cell.id, cell]));
   const homeCells = Object.fromEntries(
-    colors.map((color) => [color, homeOrders[color].map((id) => cellByRawId.get(id).idLogical)])
+    colors.map((color) => [
+      color,
+      homeOrders[color].map((id) => cellByRawId.get(id).idLogical),
+    ]),
   );
 
   // SVG: reverse Y because SVG's y axis grows downward.
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    maxX = -Infinity,
+    minY = Infinity,
+    maxY = -Infinity;
   for (const cell of rawCells) {
     for (const p of cell.points) {
-      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
-      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y);
+      maxY = Math.max(maxY, p.y);
     }
   }
   const pad = 0.12;
-  minX -= pad; maxX += pad; minY -= pad; maxY += pad;
+  minX -= pad;
+  maxX += pad;
+  minY -= pad;
+  maxY += pad;
   const toSvg = (p) => ({
     x: ((p.x - minX) / (maxX - minX)) * 100,
     y: ((maxY - p.y) / (maxY - minY)) * 100,
   });
 
   for (const cell of rawCells) {
-    cell.svgPoints = cell.points.map(toSvg)
-      .map((p) => `${p.x.toFixed(3)},${p.y.toFixed(3)}`).join(" ");
+    cell.svgPoints = cell.points
+      .map(toSvg)
+      .map((p) => `${p.x.toFixed(3)},${p.y.toFixed(3)}`)
+      .join(" ");
     cell.svgCenter = toSvg(cell.center);
   }
 
@@ -713,8 +777,19 @@ class ThreePlayerChessGame {
     for (const color of this.turnOrder) {
       const homeRow = color === "white" ? 8 : color === "red" ? 4 : 0;
       for (let c = 0; c < 8; c++) {
-        this.board[homeRow][c] = { type: back[c], color, home: color, moved: false };
-        this.board[homeRow + 1][c] = { type: "p", color, home: color, moved: false, arrow: false };
+        this.board[homeRow][c] = {
+          type: back[c],
+          color,
+          home: color,
+          moved: false,
+        };
+        this.board[homeRow + 1][c] = {
+          type: "p",
+          color,
+          home: color,
+          moved: false,
+          arrow: false,
+        };
       }
     }
 
@@ -738,7 +813,9 @@ class ThreePlayerChessGame {
       turn: this.turn,
       san: [...this.sanHistory],
       captured: this.captured.map((p) => ({ ...p })),
-      lastMove: this.lastMove ? JSON.parse(JSON.stringify(this.lastMove)) : null,
+      lastMove: this.lastMove
+        ? JSON.parse(JSON.stringify(this.lastMove))
+        : null,
       castling: JSON.parse(JSON.stringify(this.castling)),
     };
   }
@@ -749,7 +826,9 @@ class ThreePlayerChessGame {
     this.turn = snapshot.turn;
     this.sanHistory = [...snapshot.san];
     this.captured = snapshot.captured.map((p) => ({ ...p }));
-    this.lastMove = snapshot.lastMove ? JSON.parse(JSON.stringify(snapshot.lastMove)) : null;
+    this.lastMove = snapshot.lastMove
+      ? JSON.parse(JSON.stringify(snapshot.lastMove))
+      : null;
     this.castling = JSON.parse(JSON.stringify(snapshot.castling));
   }
 
@@ -803,7 +882,9 @@ class ThreePlayerChessGame {
   isInCheck(color, board = this.board) {
     const king = this.findKing(color, board);
     if (!king) return true;
-    return this.ownerColors().some((enemy) => enemy !== color && this.attacked(king.r, king.c, enemy, board));
+    return this.ownerColors().some(
+      (enemy) => enemy !== color && this.attacked(king.r, king.c, enemy, board),
+    );
   }
 
   attacked(r, c, byColor, board = this.board) {
@@ -835,8 +916,10 @@ class ThreePlayerChessGame {
   stepRank(r, c, dir) {
     const cell = this.meta(r, c);
     if (!cell) return null;
-    if (dir < 0 && cell.rank > 0) return this.cellByKey(`${cell.r - 1},${cell.file}`);
-    if (dir > 0 && cell.rank < 3) return this.cellByKey(`${cell.r + 1},${cell.file}`);
+    if (dir < 0 && cell.rank > 0)
+      return this.cellByKey(`${cell.r - 1},${cell.file}`);
+    if (dir > 0 && cell.rank < 3)
+      return this.cellByKey(`${cell.r + 1},${cell.file}`);
     if (dir > 0 && cell.rank === 3) {
       const cross = this.crossTargets(r, c);
       return cross.find((x) => this.rankOf(x.r, x.c) === 3) || null;
@@ -858,11 +941,11 @@ class ThreePlayerChessGame {
     const key = `${r},${c}`;
     const transitions = {
       "3,3": { "-1": ["7,4", -1] },
-      "3,4": { "1": ["11,4", -1] },
+      "3,4": { 1: ["11,4", -1] },
       "11,4": { "-1": ["3,4", 1] },
-      "11,3": { "1": ["7,3", 1] },
+      "11,3": { 1: ["7,3", 1] },
       "7,3": { "-1": ["11,3", -1] },
-      "7,4": { "1": ["3,3", 1] },
+      "7,4": { 1: ["3,3", 1] },
     };
     const entry = transitions[key]?.[String(dc)];
     if (!entry) return null;
@@ -894,7 +977,11 @@ class ThreePlayerChessGame {
       cur = next;
       // Crossing the center sends a rook/queen ray outward through the
       // opponent's territory rather than back across the center.
-      if (direction > 0 && this.rankOf(cur.r, cur.c) === 3 && this.regionOf(cur.r, cur.c) !== p.color) {
+      if (
+        direction > 0 &&
+        this.rankOf(cur.r, cur.c) === 3 &&
+        this.regionOf(cur.r, cur.c) !== p.color
+      ) {
         direction = -1;
       }
     }
@@ -945,7 +1032,12 @@ class ThreePlayerChessGame {
     const state = this.castling[color];
     if (!state || state.kingMoved) return false;
     const king = this.findKing(color);
-    if (!king || this.rankOf(king.r, king.c) !== 0 || this.fileOf(king.r, king.c) !== 4) return false;
+    if (
+      !king ||
+      this.rankOf(king.r, king.c) !== 0 ||
+      this.fileOf(king.r, king.c) !== 4
+    )
+      return false;
 
     const kingside = side === "king";
     const rookFile = kingside ? 7 : 0;
@@ -965,7 +1057,8 @@ class ThreePlayerChessGame {
     for (const enemy of this.ownerColors()) {
       if (enemy === color) continue;
       if (this.attacked(through.r, through.c, enemy, this.board)) return false;
-      if (this.attacked(destination.r, destination.c, enemy, this.board)) return false;
+      if (this.attacked(destination.r, destination.c, enemy, this.board))
+        return false;
     }
     return true;
   }
@@ -1003,7 +1096,14 @@ class ThreePlayerChessGame {
         if (local) {
           const target = this.board[local.r][local.c];
           if (target && target.color !== p.color) {
-            this.addMove(out, r, c, local, { promotion: this.isPromotionSquare(local.r, local.c, p.home) }, forAttack);
+            this.addMove(
+              out,
+              r,
+              c,
+              local,
+              { promotion: this.isPromotionSquare(local.r, local.c, p.home) },
+              forAttack,
+            );
           }
           continue;
         }
@@ -1013,7 +1113,20 @@ class ThreePlayerChessGame {
           if (cross) {
             const target = this.board[cross.target.r][cross.target.c];
             if (target && target.color !== p.color) {
-              this.addMove(out, r, c, cross.target, { promotion: this.isPromotionSquare(cross.target.r, cross.target.c, p.home) }, forAttack);
+              this.addMove(
+                out,
+                r,
+                c,
+                cross.target,
+                {
+                  promotion: this.isPromotionSquare(
+                    cross.target.r,
+                    cross.target.c,
+                    p.home,
+                  ),
+                },
+                forAttack,
+              );
             }
           }
         }
@@ -1035,14 +1148,36 @@ class ThreePlayerChessGame {
         // but it may never return to its home third of the board.
         for (const dir of [-1, 1]) {
           const target = this.stepRank(r, c, dir);
-          if (target && this.regionOf(target.r, target.c) !== p.home && !this.board[target.r][target.c]) {
-            this.addMove(out, r, c, target, { promotion: this.isPromotionSquare(target.r, target.c, p.home) }, forAttack);
+          if (
+            target &&
+            this.regionOf(target.r, target.c) !== p.home &&
+            !this.board[target.r][target.c]
+          ) {
+            this.addMove(
+              out,
+              r,
+              c,
+              target,
+              { promotion: this.isPromotionSquare(target.r, target.c, p.home) },
+              forAttack,
+            );
           }
         }
         for (const dir of [-1, 1]) {
           const target = this.stepFile(r, c, dir);
-          if (target && this.regionOf(target.r, target.c) !== p.home && !this.board[target.r][target.c]) {
-            this.addMove(out, r, c, target, { promotion: this.isPromotionSquare(target.r, target.c, p.home) }, forAttack);
+          if (
+            target &&
+            this.regionOf(target.r, target.c) !== p.home &&
+            !this.board[target.r][target.c]
+          ) {
+            this.addMove(
+              out,
+              r,
+              c,
+              target,
+              { promotion: this.isPromotionSquare(target.r, target.c, p.home) },
+              forAttack,
+            );
           }
         }
         this.arrowDiagonalTargets(r, c, p, out, forAttack);
@@ -1050,14 +1185,31 @@ class ThreePlayerChessGame {
         // Dekle's documented cross-center en-passant example: a pawn that has
         // just made its initial double-step may be taken diagonally backwards
         // by an arrow pawn in the same territory.
-        if (!forAttack && this.lastMove?.pawnDouble && this.lastMove.pieceColor !== p.color) {
+        if (
+          !forAttack &&
+          this.lastMove?.pawnDouble &&
+          this.lastMove.pieceColor !== p.color
+        ) {
           const lm = this.lastMove;
-          if (this.regionOf(lm.to.r, lm.to.c) === this.regionOf(r, c) && this.rankOf(r, c) === 3 && this.rankOf(lm.to.r, lm.to.c) === 3) {
+          if (
+            this.regionOf(lm.to.r, lm.to.c) === this.regionOf(r, c) &&
+            this.rankOf(r, c) === 3 &&
+            this.rankOf(lm.to.r, lm.to.c) === 3
+          ) {
             for (const dc of [-1, 1]) {
               const target = this.stepDiagonalLocal(r, c, -1, dc) || null;
               if (!target || this.board[target.r][target.c]) continue;
-              if (Math.abs(this.fileOf(lm.to.r, lm.to.c) - this.fileOf(r, c)) === 1) {
-                out.push({ from: { r, c }, to: target, enPassant: true, captureSquare: { ...lm.to }, promotion: this.isPromotionSquare(target.r, target.c, p.home) });
+              if (
+                Math.abs(this.fileOf(lm.to.r, lm.to.c) - this.fileOf(r, c)) ===
+                1
+              ) {
+                out.push({
+                  from: { r, c },
+                  to: target,
+                  enPassant: true,
+                  captureSquare: { ...lm.to },
+                  promotion: this.isPromotionSquare(target.r, target.c, p.home),
+                });
               }
             }
           }
@@ -1065,7 +1217,14 @@ class ThreePlayerChessGame {
       } else if (rank < 3) {
         const one = this.stepRank(r, c, 1);
         if (one && !this.board[one.r][one.c]) {
-          this.addMove(out, r, c, one, { promotion: this.isPromotionSquare(one.r, one.c, p.home) }, forAttack);
+          this.addMove(
+            out,
+            r,
+            c,
+            one,
+            { promotion: this.isPromotionSquare(one.r, one.c, p.home) },
+            forAttack,
+          );
           if (!forAttack && rank === 1 && !p.moved) {
             const two = this.stepRank(one.r, one.c, 1);
             if (two && !this.board[two.r][two.c]) {
@@ -1080,17 +1239,42 @@ class ThreePlayerChessGame {
             if (!target) continue;
             const enemy = this.board[target.r][target.c];
             if (enemy && enemy.color !== p.color) {
-              this.addMove(out, r, c, target, { promotion: this.isPromotionSquare(target.r, target.c, p.home) }, forAttack);
+              this.addMove(
+                out,
+                r,
+                c,
+                target,
+                {
+                  promotion: this.isPromotionSquare(target.r, target.c, p.home),
+                },
+                forAttack,
+              );
             }
           }
         }
 
-        if (!forAttack && this.lastMove?.pawnDouble && this.lastMove.pieceColor !== p.color && rank === 2) {
+        if (
+          !forAttack &&
+          this.lastMove?.pawnDouble &&
+          this.lastMove.pieceColor !== p.color &&
+          rank === 2
+        ) {
           const lm = this.lastMove;
-          if (this.regionOf(lm.to.r, lm.to.c) === p.home && this.rankOf(lm.to.r, lm.to.c) === 3 && Math.abs(this.fileOf(lm.to.r, lm.to.c) - file) === 1) {
-            const target = this.cellByKey(`${this.meta(r, c).r + 1},${this.fileOf(lm.to.r, lm.to.c)}`);
+          if (
+            this.regionOf(lm.to.r, lm.to.c) === p.home &&
+            this.rankOf(lm.to.r, lm.to.c) === 3 &&
+            Math.abs(this.fileOf(lm.to.r, lm.to.c) - file) === 1
+          ) {
+            const target = this.cellByKey(
+              `${this.meta(r, c).r + 1},${this.fileOf(lm.to.r, lm.to.c)}`,
+            );
             if (target && !this.board[target.r][target.c]) {
-              out.push({ from: { r, c }, to: target, enPassant: true, captureSquare: { ...lm.to } });
+              out.push({
+                from: { r, c },
+                to: target,
+                enPassant: true,
+                captureSquare: { ...lm.to },
+              });
             }
           }
         }
@@ -1098,7 +1282,14 @@ class ThreePlayerChessGame {
         // The fourth rank has the special three-way forward capture rule.
         const forward = this.stepRank(r, c, 1);
         if (forward && !this.board[forward.r][forward.c]) {
-          this.addMove(out, r, c, forward, { promotion: this.isPromotionSquare(forward.r, forward.c, p.home) }, forAttack);
+          this.addMove(
+            out,
+            r,
+            c,
+            forward,
+            { promotion: this.isPromotionSquare(forward.r, forward.c, p.home) },
+            forAttack,
+          );
         }
         this.fourthRankCaptures(r, c, p, out, forAttack);
       }
@@ -1106,38 +1297,86 @@ class ThreePlayerChessGame {
       // Knight: two orthogonal steps in one direction, then one orthogonal
       // step to the side. The rank/file step helpers carry this through the
       // center correctly.
-      for (const [dr, dc] of [[2, 1], [2, -1], [-2, 1], [-2, -1]]) {
+      for (const [dr, dc] of [
+        [2, 1],
+        [2, -1],
+        [-2, 1],
+        [-2, -1],
+      ]) {
         let x = { r, c };
         let ok = true;
         for (let i = 0; i < 2; i++) {
           x = this.stepRank(x.r, x.c, dr > 0 ? 1 : -1);
-          if (!x) { ok = false; break; }
+          if (!x) {
+            ok = false;
+            break;
+          }
         }
-        if (ok) this.addMove(out, r, c, this.stepFile(x.r, x.c, dc > 0 ? 1 : -1), {}, forAttack);
+        if (ok)
+          this.addMove(
+            out,
+            r,
+            c,
+            this.stepFile(x.r, x.c, dc > 0 ? 1 : -1),
+            {},
+            forAttack,
+          );
       }
-      for (const [dc, dr] of [[2, 1], [2, -1], [-2, 1], [-2, -1]]) {
+      for (const [dc, dr] of [
+        [2, 1],
+        [2, -1],
+        [-2, 1],
+        [-2, -1],
+      ]) {
         let x = { r, c };
         let ok = true;
         for (let i = 0; i < 2; i++) {
           x = this.stepFile(x.r, x.c, dc > 0 ? 1 : -1);
-          if (!x) { ok = false; break; }
+          if (!x) {
+            ok = false;
+            break;
+          }
         }
-        if (ok) this.addMove(out, r, c, this.stepRank(x.r, x.c, dr > 0 ? 1 : -1), {}, forAttack);
+        if (ok)
+          this.addMove(
+            out,
+            r,
+            c,
+            this.stepRank(x.r, x.c, dr > 0 ? 1 : -1),
+            {},
+            forAttack,
+          );
       }
     } else if (p.type === "k") {
       for (const dr of [-1, 0, 1]) {
         for (const dc of [-1, 0, 1]) {
           if (!dr && !dc) continue;
-          const local = dr ? (dc ? this.stepDiagonalLocal(r, c, dr, dc) : this.stepRank(r, c, dr)) : this.stepFile(r, c, dc);
+          const local = dr
+            ? dc
+              ? this.stepDiagonalLocal(r, c, dr, dc)
+              : this.stepRank(r, c, dr)
+            : this.stepFile(r, c, dc);
           this.addMove(out, r, c, local, {}, forAttack);
         }
       }
       if (!forAttack && rank === 0 && file === 4) {
         if (this.canCastle(p.color, "king")) {
-          out.push({ from: { r, c }, to: { r, c: 6 }, castle: "king", rookFrom: { r, c: 7 }, rookTo: { r, c: 5 } });
+          out.push({
+            from: { r, c },
+            to: { r, c: 6 },
+            castle: "king",
+            rookFrom: { r, c: 7 },
+            rookTo: { r, c: 5 },
+          });
         }
         if (this.canCastle(p.color, "queen")) {
-          out.push({ from: { r, c }, to: { r, c: 2 }, castle: "queen", rookFrom: { r, c: 0 }, rookTo: { r, c: 3 } });
+          out.push({
+            from: { r, c },
+            to: { r, c: 2 },
+            castle: "queen",
+            rookFrom: { r, c: 0 },
+            rookTo: { r, c: 3 },
+          });
         }
       }
     } else {
@@ -1215,7 +1454,10 @@ class ThreePlayerChessGame {
 
   makeMove(move, promotion = "q") {
     const legal = this.legalMovesFrom(move.from.r, move.from.c).find(
-      (m) => m.to.r === move.to.r && m.to.c === move.to.c && Boolean(m.castle) === Boolean(move.castle)
+      (m) =>
+        m.to.r === move.to.r &&
+        m.to.c === move.to.c &&
+        Boolean(m.castle) === Boolean(move.castle),
     );
     if (!legal) return false;
 
@@ -1241,7 +1483,11 @@ class ThreePlayerChessGame {
     const moved = this.board[legal.to.r][legal.to.c];
     if (p.type === "p") {
       moved.moved = true;
-      if (!legal.promotion && !moved.arrow && this.regionOf(legal.to.r, legal.to.c) !== p.home) {
+      if (
+        !legal.promotion &&
+        !moved.arrow &&
+        this.regionOf(legal.to.r, legal.to.c) !== p.home
+      ) {
         moved.arrow = true;
       }
       if (legal.promotion) moved.arrow = false;
@@ -1259,7 +1505,9 @@ class ThreePlayerChessGame {
     };
 
     const actor = p.color[0].toUpperCase() + p.color.slice(1);
-    this.sanHistory.push(`${actor}: ${this.simpleLabel(legal.from)}-${this.simpleLabel(legal.to)}${legal.promotion ? `=${promotion.toUpperCase()}` : ""}`);
+    this.sanHistory.push(
+      `${actor}: ${this.simpleLabel(legal.from)}-${this.simpleLabel(legal.to)}${legal.promotion ? `=${promotion.toUpperCase()}` : ""}`,
+    );
 
     this.turnIndex = (this.turnIndex + 1) % this.turnOrder.length;
     this.turn = this.turnOrder[this.turnIndex];
@@ -1281,12 +1529,23 @@ class ThreePlayerChessGame {
     const check = king ? this.isInCheck(this.turn) : true;
     const moves = this.allLegal(this.turn);
 
-    if (!king || !moves.length && check) {
-      const winner = this.turnOrder[(this.turnIndex + this.turnOrder.length - 1) % this.turnOrder.length];
-      return { over: true, check: true, text: `Checkmate — ${winner[0].toUpperCase() + winner.slice(1)} wins` };
+    if (!king || (!moves.length && check)) {
+      const winner =
+        this.turnOrder[
+          (this.turnIndex + this.turnOrder.length - 1) % this.turnOrder.length
+        ];
+      return {
+        over: true,
+        check: true,
+        text: `Checkmate — ${winner[0].toUpperCase() + winner.slice(1)} wins`,
+      };
     }
     if (!moves.length) {
-      return { over: false, check: false, text: `${this.turn[0].toUpperCase() + this.turn.slice(1)} is stalemated` };
+      return {
+        over: false,
+        check: false,
+        text: `${this.turn[0].toUpperCase() + this.turn.slice(1)} is stalemated`,
+      };
     }
     return {
       over: false,
@@ -1301,7 +1560,8 @@ class ThreePlayerChessGame {
     const moves = [];
     for (let r = 0; r < 12; r++) {
       for (let c = 0; c < 8; c++) {
-        if (this.board[r][c]?.color === color) moves.push(...this.legalMovesFrom(r, c));
+        if (this.board[r][c]?.color === color)
+          moves.push(...this.legalMovesFrom(r, c));
       }
     }
     this.turn = oldTurn;
@@ -1400,11 +1660,7 @@ class FourPlayerChessGame {
       const [dR, dC] = this.forward(p.color);
       const nr = r + dR,
         nc = c + dC;
-      if (
-        inside(nr, nc, 14) &&
-        playable4(nr, nc) &&
-        !this.board[nr][nc]
-      ) {
+      if (inside(nr, nc, 14) && playable4(nr, nc) && !this.board[nr][nc]) {
         add(nr, nc, { promotion: this.promotionSquare(p.color, nr, nc) });
         const isStart =
           (p.color === "black" && r === 1) ||
@@ -1424,13 +1680,26 @@ class FourPlayerChessGame {
           });
         }
       }
-      const captureDirs = p.color === "red"
-        ? [[1, 1], [-1, 1]]
-        : p.color === "blue"
-          ? [[1, -1], [-1, -1]]
-          : p.color === "black"
-            ? [[1, -1], [1, 1]]
-            : [[-1, -1], [-1, 1]];
+      const captureDirs =
+        p.color === "red"
+          ? [
+              [1, 1],
+              [-1, 1],
+            ]
+          : p.color === "blue"
+            ? [
+                [1, -1],
+                [-1, -1],
+              ]
+            : p.color === "black"
+              ? [
+                  [1, -1],
+                  [1, 1],
+                ]
+              : [
+                  [-1, -1],
+                  [-1, 1],
+                ];
       for (const [dr, dc] of captureDirs) {
         const tr = r + dr,
           tc = c + dc;
@@ -1459,8 +1728,7 @@ class FourPlayerChessGame {
         add(r + dr, c + dc);
     } else if (p.type === "k") {
       for (let dr = -1; dr <= 1; dr++)
-        for (let dc = -1; dc <= 1; dc++)
-          if (dr || dc) add(r + dr, c + dc);
+        for (let dc = -1; dc <= 1; dc++) if (dr || dc) add(r + dr, c + dc);
     } else {
       const ds = [];
       if (["b", "q"].includes(p.type))
@@ -1494,30 +1762,65 @@ class FourPlayerChessGame {
         if (!p || p.color !== by) continue;
 
         if (p.type === "p") {
-          const captures = by === "red" || by === "blue"
-            ? [[sr + 1, sc + (by === "red" ? 1 : -1)], [sr - 1, sc + (by === "red" ? 1 : -1)]]
-            : [[sr + (by === "black" ? 1 : -1), sc - 1], [sr + (by === "black" ? 1 : -1), sc + 1]];
-          if (captures.some(([tr, tc]) => tr === r && tc === c && inside(tr, tc, 14) && playable4(tr, tc))) return true;
+          const captures =
+            by === "red" || by === "blue"
+              ? [
+                  [sr + 1, sc + (by === "red" ? 1 : -1)],
+                  [sr - 1, sc + (by === "red" ? 1 : -1)],
+                ]
+              : [
+                  [sr + (by === "black" ? 1 : -1), sc - 1],
+                  [sr + (by === "black" ? 1 : -1), sc + 1],
+                ];
+          if (
+            captures.some(
+              ([tr, tc]) =>
+                tr === r && tc === c && inside(tr, tc, 14) && playable4(tr, tc),
+            )
+          )
+            return true;
           continue;
         }
 
         if (p.type === "n") {
-          for (const [dr, dc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) {
-            if (sr + dr === r && sc + dc === c && inside(r, c, 14) && playable4(r, c)) return true;
+          for (const [dr, dc] of [
+            [-2, -1],
+            [-2, 1],
+            [-1, -2],
+            [-1, 2],
+            [1, -2],
+            [1, 2],
+            [2, -1],
+            [2, 1],
+          ]) {
+            if (
+              sr + dr === r &&
+              sc + dc === c &&
+              inside(r, c, 14) &&
+              playable4(r, c)
+            )
+              return true;
           }
           continue;
         }
 
         if (p.type === "k") {
-          if (Math.max(Math.abs(r - sr), Math.abs(c - sc)) === 1 && playable4(r, c)) return true;
+          if (
+            Math.max(Math.abs(r - sr), Math.abs(c - sc)) === 1 &&
+            playable4(r, c)
+          )
+            return true;
           continue;
         }
 
         const dirs = [];
-        if (["b", "q"].includes(p.type)) dirs.push([1,1],[1,-1],[-1,1],[-1,-1]);
-        if (["r", "q"].includes(p.type)) dirs.push([1,0],[-1,0],[0,1],[0,-1]);
+        if (["b", "q"].includes(p.type))
+          dirs.push([1, 1], [1, -1], [-1, 1], [-1, -1]);
+        if (["r", "q"].includes(p.type))
+          dirs.push([1, 0], [-1, 0], [0, 1], [0, -1]);
         for (const [dr, dc] of dirs) {
-          let tr = sr + dr, tc = sc + dc;
+          let tr = sr + dr,
+            tc = sc + dc;
           while (inside(tr, tc, 14) && playable4(tr, tc)) {
             if (tr === r && tc === c) return true;
             if (b[tr][tc]) break;
@@ -1577,16 +1880,26 @@ const GameRegistry = {
   chess: {
     name: "Chess",
     variants: {
-standard: { name: "Standard Chess", create: () => new ChessGame(false) },
-chess960: { name: "Chess960", create: () => new ChessGame(true) },
-threeman: { name: "Three Player Chess", create: () => new ThreePlayerChessGame() },
-fourplayer: { name: "4-Player Chess", create: () => new FourPlayerChessGame() },
+      standard: { name: "Standard Chess", create: () => new ChessGame(false) },
+      chess960: { name: "Chess960", create: () => new ChessGame(true) },
+      threeman: {
+        name: "Three Player Chess",
+        create: () => new ThreePlayerChessGame(),
+      },
+      fourplayer: {
+        name: "4-Player Chess",
+        create: () => new FourPlayerChessGame(),
+      },
     },
   },
 };
 
 class GameManager {
-  constructor() { this.game = null; this.gameId = ""; this.variantId = ""; }
+  constructor() {
+    this.game = null;
+    this.gameId = "";
+    this.variantId = "";
+  }
   newGame(g, v) {
     const d = GameRegistry[g]?.variants[v];
     if (!d) return false;
@@ -1600,23 +1913,20 @@ class GameManager {
 const params = new URLSearchParams(location.search);
 let selectedGameId = "chess";
 let selectedVariantId = params.get("variant") || "standard";
-if (!GameRegistry.chess.variants[selectedVariantId]) selectedVariantId = "standard";
+if (!GameRegistry.chess.variants[selectedVariantId])
+  selectedVariantId = "standard";
 
 const localPlayerCount = 1;
 const computerPlayerCount = 1;
 const ONLINE_SERVER_URL =
-  params.get("onlineServer") ||
-  params.get("server") ||
-  "";
+  params.get("onlineServer") || params.get("server") || "";
 const ONLINE_CODE =
   params.get("onlineCode") ||
   params.get("onlineJoinedCode") ||
   params.get("code") ||
   "";
 const ONLINE_HOST_TOKEN =
-  params.get("onlineHostToken") ||
-  params.get("hostToken") ||
-  "";
+  params.get("onlineHostToken") || params.get("hostToken") || "";
 const ONLINE_CLIENT_ID =
   params.get("onlineClientId") ||
   params.get("clientId") ||
@@ -1641,11 +1951,16 @@ if (!onlineConfig) {
     const storedConfig = sessionStorage.getItem("gameLibraryOnlineConfig");
     if (storedConfig) onlineConfig = JSON.parse(storedConfig);
   } catch (error) {
-    console.warn("Could not read online game configuration from sessionStorage:", error);
+    console.warn(
+      "Could not read online game configuration from sessionStorage:",
+      error,
+    );
   }
 }
 
-const FOG_OF_WAR = Boolean(onlineConfig?.options?.fogOfWar || params.get("fogOfWar") === "true");
+const FOG_OF_WAR = Boolean(
+  onlineConfig?.options?.fogOfWar || params.get("fogOfWar") === "true",
+);
 
 let onlineSocket = null;
 let onlineParticipants = [];
@@ -1657,10 +1972,14 @@ let profiles = [];
 try {
   const saved = JSON.parse(localStorage.getItem("gameLibraryProfiles") || "[]");
   if (Array.isArray(saved)) profiles = saved;
-} catch (error) { console.warn("Could not load player profiles:", error); }
+} catch (error) {
+  console.warn("Could not load player profiles:", error);
+}
 
 function parseOnlinePlayers(config) {
-  return Array.isArray(config?.players) ? config.players.map(player => ({...player})) : [];
+  return Array.isArray(config?.players)
+    ? config.players.map((player) => ({ ...player }))
+    : [];
 }
 
 let gamePlayers = parseOnlinePlayers(onlineConfig);
@@ -1669,17 +1988,20 @@ function refreshOnlinePlayerNames() {
   if (!gamePlayers.length) return;
 
   const byClientId = new Map(
-    onlineParticipants.map(participant => [participant.clientId, participant])
+    onlineParticipants.map((participant) => [
+      participant.clientId,
+      participant,
+    ]),
   );
 
-  gamePlayers = gamePlayers.map(player => {
+  gamePlayers = gamePlayers.map((player) => {
     if (player.type === "computer") return player;
     const participant = byClientId.get(player.controllerClientId);
     if (!participant) return player;
     return {
       ...player,
       name: participant.name || player.name,
-      avatar: participant.avatar || player.avatar
+      avatar: participant.avatar || player.avatar,
     };
   });
 }
@@ -1688,7 +2010,8 @@ function currentPlayerIndex(game) {
   if (Number.isInteger(game.turnIndex)) return game.turnIndex;
   if (game.turn === "w" || game.turn === "white") return 0;
   if (game.turn === "red") return 1;
-  if (game.turn === "b" || game.turn === "black") return game.size === 12 ? 2 : 1;
+  if (game.turn === "b" || game.turn === "black")
+    return game.size === 12 ? 2 : 1;
   if (game.turn === "blue") return 3;
   return 0;
 }
@@ -1700,25 +2023,43 @@ function playerInfo(index) {
       return {
         name: p.name || `Player ${index + 1}`,
         avatar: p.avatar || "♟",
-        type: p.type === "computer" ? "Computer player" : (p.playerType || "Online player"),
+        type:
+          p.type === "computer"
+            ? "Computer player"
+            : p.playerType || "Online player",
         controllerClientId: p.controllerClientId || p.clientId || "",
         seat: p.seat || "",
-        id: p.id || p.seat || ""
+        id: p.id || p.seat || "",
       };
     }
   }
 
   if (index < localPlayerCount) {
     const p = profiles[index];
-    return { name: p?.name || `Player ${index + 1}`, avatar: p?.avatar || "♟", type: "Local player", controllerClientId: "", id: `local:${index}` };
+    return {
+      name: p?.name || `Player ${index + 1}`,
+      avatar: p?.avatar || "♟",
+      type: "Local player",
+      controllerClientId: "",
+      id: `local:${index}`,
+    };
   }
 
-  return { name: `Computer ${index - localPlayerCount + 1}`, avatar: "🤖", type: "Computer player", controllerClientId: "", id: `computer:${index - localPlayerCount}` };
+  return {
+    name: `Computer ${index - localPlayerCount + 1}`,
+    avatar: "🤖",
+    type: "Computer player",
+    controllerClientId: "",
+    id: `computer:${index - localPlayerCount}`,
+  };
 }
 
 function currentPlayerEntry(game) {
   if (!gamePlayers.length) return playerInfo(currentPlayerIndex(game));
-  return gamePlayers[currentPlayerIndex(game)] || playerInfo(currentPlayerIndex(game));
+  return (
+    gamePlayers[currentPlayerIndex(game)] ||
+    playerInfo(currentPlayerIndex(game))
+  );
 }
 
 function isComputerTurn() {
@@ -1731,7 +2072,10 @@ function isComputerTurn() {
 function isOnlineSpectator() {
   if (!ONLINE_MODE) return false;
   const self = onlineParticipants.find((p) => p.clientId === ONLINE_CLIENT_ID);
-  return Boolean(self?.spectator) || Boolean((onlineConfig?.spectators || []).includes(ONLINE_CLIENT_ID));
+  return (
+    Boolean(self?.spectator) ||
+    Boolean((onlineConfig?.spectators || []).includes(ONLINE_CLIENT_ID))
+  );
 }
 
 function canLocalPlayerMove() {
@@ -1746,7 +2090,9 @@ function canLocalPlayerMove() {
 }
 
 function localHumanEntries() {
-  return gamePlayers.filter((p) => p?.type !== "computer" && !p?.spectator && !p?.controllerClientId);
+  return gamePlayers.filter(
+    (p) => p?.type !== "computer" && !p?.spectator && !p?.controllerClientId,
+  );
 }
 
 function isLocalHotseatGame() {
@@ -1775,7 +2121,9 @@ function fogViewerColor() {
   if (!FOG_OF_WAR) return null;
   if (ONLINE_MODE) {
     if (isOnlineSpectator()) return null;
-    const own = gamePlayers.find((p) => p?.controllerClientId === ONLINE_CLIENT_ID);
+    const own = gamePlayers.find(
+      (p) => p?.controllerClientId === ONLINE_CLIENT_ID,
+    );
     return fogColorForSeat(own?.seat);
   }
 
@@ -1803,7 +2151,11 @@ function squareVisibleToColor(r, c, color, game = manager.game) {
     if (Number.isInteger(previousTurnIndex)) {
       const turnOrder = Array.isArray(game.turnOrder)
         ? game.turnOrder
-        : (game.size === 14 ? FOUR_COLORS : game.size === 12 ? THREE_COLORS : null);
+        : game.size === 14
+          ? FOUR_COLORS
+          : game.size === 12
+            ? THREE_COLORS
+            : null;
       if (turnOrder) {
         const index = turnOrder.indexOf(color);
         if (index >= 0) game.turnIndex = index;
@@ -1814,7 +2166,12 @@ function squareVisibleToColor(r, c, color, game = manager.game) {
       for (let pc = 0; pc < game.size; pc++) {
         const pawn = game.board[pr]?.[pc];
         if (pawn?.color !== color || pawn.type !== "p") continue;
-        if (game.legalMovesFrom(pr, pc).some(move => move.to.r === r && move.to.c === c)) return true;
+        if (
+          game
+            .legalMovesFrom(pr, pc)
+            .some((move) => move.to.r === r && move.to.c === c)
+        )
+          return true;
       }
     }
   } catch (error) {
@@ -1849,7 +2206,8 @@ function clearLocalHandoff() {
 function beginLocalHandoff() {
   // The pass-the-device screen only exists when Fog of War is enabled.
   // Without hidden information there is nothing to hide between turns.
-  if (!FOG_OF_WAR || !isLocalHotseatGame() || manager.game.gameStatus().over) return;
+  if (!FOG_OF_WAR || !isLocalHotseatGame() || manager.game.gameStatus().over)
+    return;
   const next = currentPlayerEntry(manager.game);
   if (!next || next.type === "computer") return;
 
@@ -1880,22 +2238,36 @@ function beginLocalHandoff() {
 function renderPlayers() {
   const list = document.getElementById("playerList");
   list.innerHTML = "";
-  const count = gamePlayers.length || Math.max(2, localPlayerCount + computerPlayerCount);
+  const count =
+    gamePlayers.length || Math.max(2, localPlayerCount + computerPlayerCount);
   const current = currentPlayerIndex(manager.game);
 
   for (let i = 0; i < count; i++) {
-    const info = playerInfo(i), row = document.createElement("div");
+    const info = playerInfo(i),
+      row = document.createElement("div");
     row.className = "player-row" + (i === current ? " current" : "");
-    const avatar = document.createElement("div"); avatar.className = "player-avatar"; avatar.textContent = info.avatar;
-    const details = document.createElement("div"); details.className = "player-details";
-    const name = document.createElement("div"); name.className = "player-name"; name.textContent = info.name;
-    const type = document.createElement("div"); type.className = "player-type"; type.textContent = info.type + (i === current ? " • Current turn" : "");
-    details.append(name, type); row.append(avatar, details); list.appendChild(row);
+    const avatar = document.createElement("div");
+    avatar.className = "player-avatar";
+    avatar.textContent = info.avatar;
+    const details = document.createElement("div");
+    details.className = "player-details";
+    const name = document.createElement("div");
+    name.className = "player-name";
+    name.textContent = info.name;
+    const type = document.createElement("div");
+    type.className = "player-type";
+    type.textContent = info.type + (i === current ? " • Current turn" : "");
+    details.append(name, type);
+    row.append(avatar, details);
+    list.appendChild(row);
   }
 }
 
 const manager = new GameManager();
-if (onlineConfig?.variant && GameRegistry.chess.variants[onlineConfig.variant]) {
+if (
+  onlineConfig?.variant &&
+  GameRegistry.chess.variants[onlineConfig.variant]
+) {
   selectedVariantId = onlineConfig.variant;
 }
 manager.newGame("chess", selectedVariantId);
@@ -1919,7 +2291,10 @@ try {
 
 function onlineWsUrl() {
   const base = ONLINE_SERVER_URL.replace(/^http/i, "ws").replace(/\/$/, "");
-  const query = new URLSearchParams({ role: "player", clientId: ONLINE_CLIENT_ID });
+  const query = new URLSearchParams({
+    role: "player",
+    clientId: ONLINE_CLIENT_ID,
+  });
   if (ONLINE_HOST_TOKEN) query.set("token", ONLINE_HOST_TOKEN);
   return `${base}/ws/${encodeURIComponent(ONLINE_CODE)}?${query.toString()}`;
 }
@@ -1928,7 +2303,9 @@ function localPartyProfiles() {
   try {
     const ids = JSON.parse(sessionStorage.getItem("gameLibraryParty") || "[]");
     if (Array.isArray(ids)) {
-      const party = ids.map((id) => profiles.find((p) => p.id === id)).filter(Boolean);
+      const party = ids
+        .map((id) => profiles.find((p) => p.id === id))
+        .filter(Boolean);
       if (party.length) return party;
     }
   } catch {}
@@ -1943,17 +2320,21 @@ function recordLocalWinIfOver() {
   if (ONLINE_MODE || localScoreRecorded || !gameHasStarted) return;
   const status = manager.game.gameStatus();
   if (!status.over) return;
-  const winnerColor = status.winner || (status.check ? opposite(manager.game.turn) : null);
+  const winnerColor =
+    status.winner || (status.check ? opposite(manager.game.turn) : null);
   if (!winnerColor) return;
-  const winner = gamePlayers.find((player) =>
-    (player.seat === "white" && winnerColor === "w") ||
-    (player.seat === "black" && winnerColor === "b") ||
-    (player.seat === winnerColor)
+  const winner = gamePlayers.find(
+    (player) =>
+      (player.seat === "white" && winnerColor === "w") ||
+      (player.seat === "black" && winnerColor === "b") ||
+      player.seat === winnerColor,
   );
   const profileId = winner?.profileId || "";
   if (!profileId) return;
   let scores = {};
-  try { scores = JSON.parse(localStorage.getItem("gameLibraryLocalScores") || "{}"); } catch {}
+  try {
+    scores = JSON.parse(localStorage.getItem("gameLibraryLocalScores") || "{}");
+  } catch {}
   scores[profileId] = Math.max(0, Number(scores[profileId]) || 0) + 1;
   localStorage.setItem("gameLibraryLocalScores", JSON.stringify(scores));
   localScoreRecorded = true;
@@ -1968,47 +2349,65 @@ function setOnlineStatus(text, isError = false) {
 }
 
 function publishOnlineState() {
-  if (!ONLINE_MODE || !gameHasStarted || !onlineSocket || onlineSocket.readyState !== WebSocket.OPEN || !ONLINE_HOST_TOKEN) return;
+  if (
+    !ONLINE_MODE ||
+    !gameHasStarted ||
+    !onlineSocket ||
+    onlineSocket.readyState !== WebSocket.OPEN ||
+    !ONLINE_HOST_TOKEN
+  )
+    return;
 
   try {
-    onlineSocket.send(JSON.stringify({
-      type: "game:state",
-      state: {
-        variant: manager.variantId,
-        game: manager.game.clone()
-      }
-    }));
+    onlineSocket.send(
+      JSON.stringify({
+        type: "game:state",
+        state: {
+          variant: manager.variantId,
+          game: manager.game.clone(),
+        },
+      }),
+    );
   } catch (error) {
     console.warn("Could not publish game state:", error);
   }
 }
 
 function publishOnlineResultIfOver() {
-  if (!ONLINE_MODE || !ONLINE_HOST_TOKEN || !onlineSocket || onlineSocket.readyState !== WebSocket.OPEN) return;
+  if (
+    !ONLINE_MODE ||
+    !ONLINE_HOST_TOKEN ||
+    !onlineSocket ||
+    onlineSocket.readyState !== WebSocket.OPEN
+  )
+    return;
   if (!onlineMatchId || onlineResultSent) return;
 
   const status = manager.game.gameStatus();
   if (!status.over) return;
 
-  const winner = status.winner || (status.check ? opposite(manager.game.turn) : null);
+  const winner =
+    status.winner || (status.check ? opposite(manager.game.turn) : null);
   const winnerClientId = winner
-    ? (gamePlayers.find((player) => {
+    ? gamePlayers.find((player) => {
         if (player.seat === winner) return true;
         if (player.seat === "white" && winner === "w") return true;
         if (player.seat === "black" && winner === "b") return true;
         return false;
-      })?.controllerClientId || "")
+      })?.controllerClientId || ""
     : null;
 
   if (winner && !winnerClientId) return;
 
   try {
-    onlineSocket.send(JSON.stringify({
-      type: "game:result",
-      matchId: onlineMatchId,
-      winnerClientId,
-      draw: !winner,
-    }));
+    onlineSocket.send(
+      JSON.stringify({
+        type: "game:result",
+        matchId: onlineMatchId,
+        winnerClientId,
+        draw: !winner,
+      }),
+    );
     onlineResultSent = true;
   } catch (error) {
     console.warn("Could not publish online game result:", error);
@@ -2016,13 +2415,19 @@ function publishOnlineResultIfOver() {
 }
 
 function goBackToLibrary() {
-  if (ONLINE_MODE && onlineSocket && onlineSocket.readyState === WebSocket.OPEN) {
+  if (
+    ONLINE_MODE &&
+    onlineSocket &&
+    onlineSocket.readyState === WebSocket.OPEN
+  ) {
     try {
       onlineSocket.send(JSON.stringify({ type: "game:back" }));
     } catch (error) {
       console.warn("Could not notify the room before leaving:", error);
     }
-    setTimeout(() => { window.location.href = "../index.html"; }, 350);
+    setTimeout(() => {
+      window.location.href = "../index.html";
+    }, 350);
     return;
   }
   window.location.href = "../index.html";
@@ -2040,14 +2445,16 @@ function publishOnlineMove(move, promotion = "q") {
     to: { ...move.to },
     promotion,
     ply: manager.game.sanHistory.length,
-    moveId: `${ONLINE_CLIENT_ID}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    moveId: `${ONLINE_CLIENT_ID}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   };
 
   try {
-    onlineSocket.send(JSON.stringify({
-      type: "game:move",
-      payload
-    }));
+    onlineSocket.send(
+      JSON.stringify({
+        type: "game:move",
+        payload,
+      }),
+    );
     setOnlineStatus(`Connected • sent move ${payload.ply}`);
     console.debug("Online chess: sent move", payload);
     return true;
@@ -2090,7 +2497,7 @@ function applyRemoteMove(payload) {
     console.warn("Online chess: move is out of sequence", {
       expectedPly,
       receivedPly: payload.ply,
-      payload
+      payload,
     });
     if (ONLINE_HOST_TOKEN) publishOnlineState();
     return false;
@@ -2099,11 +2506,14 @@ function applyRemoteMove(payload) {
   const promotion = payload.promotion || "q";
   const ok = manager.game.makeMove(
     { from: { ...payload.from }, to: { ...payload.to } },
-    promotion
+    promotion,
   );
 
   if (!ok) {
-    console.warn("Online chess: remote move was illegal in local state", payload);
+    console.warn(
+      "Online chess: remote move was illegal in local state",
+      payload,
+    );
     if (ONLINE_HOST_TOKEN) publishOnlineState();
     return false;
   }
@@ -2111,7 +2521,9 @@ function applyRemoteMove(payload) {
   selected = null;
   pendingPromotion = null;
   promotionModal.classList.remove("open");
-  setOnlineStatus(`Connected • received move ${manager.game.sanHistory.length}`);
+  setOnlineStatus(
+    `Connected • received move ${manager.game.sanHistory.length}`,
+  );
   console.debug("Online chess: applied remote move", payload);
 
   // The host is authoritative. After applying a guest move, immediately
@@ -2137,26 +2549,41 @@ function connectOnlineGame() {
     setOnlineStatus("Connected • registering player…");
     const profile = localProfileForOnlineIdentity();
 
-    onlineSocket.send(JSON.stringify({
-      type: "player:identify",
-      profileId: profile.id || "",
-      name: profile.name || "Player 1",
-      avatar: profile.avatar || "♟",
-      party: localPartyProfiles().map((p) => ({ id: p.id, name: p.name || "Player", avatar: p.avatar || "♟" })),
-      spectator: Boolean((onlineConfig?.spectators || []).includes(ONLINE_CLIENT_ID))
-    }));
+    onlineSocket.send(
+      JSON.stringify({
+        type: "player:identify",
+        profileId: profile.id || "",
+        name: profile.name || "Player 1",
+        avatar: profile.avatar || "♟",
+        party: localPartyProfiles().map((p) => ({
+          id: p.id,
+          name: p.name || "Player",
+          avatar: p.avatar || "♟",
+        })),
+        spectator: Boolean(
+          (onlineConfig?.spectators || []).includes(ONLINE_CLIENT_ID),
+        ),
+      }),
+    );
 
     // Do not publish a random local Chess960 position before the host starts.
-    if (ONLINE_HOST_TOKEN && gameHasStarted) setTimeout(() => publishOnlineState(), 100);
+    if (ONLINE_HOST_TOKEN && gameHasStarted)
+      setTimeout(() => publishOnlineState(), 100);
   });
 
-  onlineSocket.addEventListener("message", event => {
+  onlineSocket.addEventListener("message", (event) => {
     let message;
-    try { message = JSON.parse(event.data); }
-    catch { return; }
+    try {
+      message = JSON.parse(event.data);
+    } catch {
+      return;
+    }
 
     if (message.type === "player:identified") {
-      const name = message.player?.name || localProfileForOnlineIdentity().name || "Player";
+      const name =
+        message.player?.name ||
+        localProfileForOnlineIdentity().name ||
+        "Player";
       setOnlineStatus(`Connected • registered as ${name}`);
       return;
     }
@@ -2165,18 +2592,27 @@ function connectOnlineGame() {
       onlineParticipants = message.room?.participants || [];
       setOnlineStatus("Connected • synchronizing game…");
       onlineMatchId = message.room?.matchId || onlineMatchId || "";
-      if (!message.room?.matchId || !message.room?.started) onlineResultSent = false;
+      if (!message.room?.matchId || !message.room?.started)
+        onlineResultSent = false;
 
       // The room is authoritative. Replace stale session configuration with
       // whatever the room currently has, including a pre-game config without players.
       onlineConfig = message.room?.config || null;
-      if (onlineConfig?.players?.length) gamePlayers = parseOnlinePlayers(onlineConfig);
-      if (onlineConfig?.variant && GameRegistry.chess.variants[onlineConfig.variant]) {
+      if (onlineConfig?.players?.length)
+        gamePlayers = parseOnlinePlayers(onlineConfig);
+      if (
+        onlineConfig?.variant &&
+        GameRegistry.chess.variants[onlineConfig.variant]
+      ) {
         selectedVariantId = onlineConfig.variant;
         if (!message.room?.started) manager.newGame("chess", selectedVariantId);
       }
       try {
-        if (onlineConfig) sessionStorage.setItem("gameLibraryOnlineConfig", JSON.stringify(onlineConfig));
+        if (onlineConfig)
+          sessionStorage.setItem(
+            "gameLibraryOnlineConfig",
+            JSON.stringify(onlineConfig),
+          );
         else sessionStorage.removeItem("gameLibraryOnlineConfig");
       } catch {}
 
@@ -2206,9 +2642,13 @@ function connectOnlineGame() {
     }
 
     if (message.type === "room:participants") {
-      onlineParticipants = Array.isArray(message.participants) ? message.participants : [];
+      onlineParticipants = Array.isArray(message.participants)
+        ? message.participants
+        : [];
       if (!document.getElementById("onlineBar")?.classList.contains("error")) {
-        setOnlineStatus(`Connected • ${onlineParticipants.length} participant${onlineParticipants.length === 1 ? "" : "s"}`);
+        setOnlineStatus(
+          `Connected • ${onlineParticipants.length} participant${onlineParticipants.length === 1 ? "" : "s"}`,
+        );
       }
       refreshOnlinePlayerNames();
       renderPlayers();
@@ -2218,8 +2658,13 @@ function connectOnlineGame() {
 
     if (message.type === "room:config") {
       onlineConfig = message.config || onlineConfig;
-      gamePlayers = onlineConfig?.players?.length ? parseOnlinePlayers(onlineConfig) : gamePlayers;
-      if (onlineConfig?.variant && GameRegistry.chess.variants[onlineConfig.variant]) {
+      gamePlayers = onlineConfig?.players?.length
+        ? parseOnlinePlayers(onlineConfig)
+        : gamePlayers;
+      if (
+        onlineConfig?.variant &&
+        GameRegistry.chess.variants[onlineConfig.variant]
+      ) {
         selectedVariantId = onlineConfig.variant;
         if (!gameHasStarted) manager.newGame("chess", selectedVariantId);
       }
@@ -2239,11 +2684,17 @@ function connectOnlineGame() {
       clearLocalHandoff();
       if (onlineConfig?.players?.length) {
         gamePlayers = parseOnlinePlayers(onlineConfig);
-                try {
-          sessionStorage.setItem("gameLibraryOnlineConfig", JSON.stringify(onlineConfig));
+        try {
+          sessionStorage.setItem(
+            "gameLibraryOnlineConfig",
+            JSON.stringify(onlineConfig),
+          );
         } catch {}
       }
-      if (onlineConfig?.variant && GameRegistry.chess.variants[onlineConfig.variant]) {
+      if (
+        onlineConfig?.variant &&
+        GameRegistry.chess.variants[onlineConfig.variant]
+      ) {
         selectedVariantId = onlineConfig.variant;
       }
       refreshOnlinePlayerNames();
@@ -2272,7 +2723,9 @@ function connectOnlineGame() {
     }
 
     if (message.type === "player:spectator") {
-      onlineParticipants = Array.isArray(message.participants) ? message.participants : onlineParticipants;
+      onlineParticipants = Array.isArray(message.participants)
+        ? message.participants
+        : onlineParticipants;
       refreshOnlinePlayerNames();
       renderPlayers();
       return;
@@ -2301,7 +2754,10 @@ function connectOnlineGame() {
     }
 
     if (message.type === "error") {
-      setOnlineStatus(`Server error: ${message.message || message.code || "Unknown error"}`, true);
+      setOnlineStatus(
+        `Server error: ${message.message || message.code || "Unknown error"}`,
+        true,
+      );
       console.warn("Online chess server error:", message);
       return;
     }
@@ -2311,7 +2767,7 @@ function connectOnlineGame() {
     onlineConnected = false;
   });
 
-  onlineSocket.addEventListener("error", error => {
+  onlineSocket.addEventListener("error", (error) => {
     console.warn("Online chess connection error:", error);
     onlineConnected = false;
   });
@@ -2330,13 +2786,14 @@ function makeComputerMove() {
   // When Fog of War is enabled, give the AI only the same information its
   // controlled side would have. Spectators still receive the full board.
   const fogColor = fogColorForSeat(current?.seat, game);
-  const aiFog = FOG_OF_WAR && fogColor
-    ? {
-        enabled: true,
-        color: fogColor,
-        visible: (r, c) => squareVisibleToColor(r, c, fogColor, game),
-      }
-    : null;
+  const aiFog =
+    FOG_OF_WAR && fogColor
+      ? {
+          enabled: true,
+          color: fogColor,
+          visible: (r, c) => squareVisibleToColor(r, c, fogColor, game),
+        }
+      : null;
 
   const move = ChessAI.findBestMove(game, difficulty, aiFog);
   if (!move) return false;
@@ -2351,7 +2808,14 @@ function makeComputerMove() {
   return ok;
 }
 function scheduleComputerMove() {
-  if (!gameHasStarted || localHandoffActive || computerMovePending || !isComputerTurn() || manager.game.gameStatus().over) return;
+  if (
+    !gameHasStarted ||
+    localHandoffActive ||
+    computerMovePending ||
+    !isComputerTurn() ||
+    manager.game.gameStatus().over
+  )
+    return;
   computerMovePending = true;
   clearTimeout(computerMoveTimer);
   computerMoveTimer = setTimeout(() => {
@@ -2387,7 +2851,8 @@ const promotionOptions = document.getElementById("promotionOptions");
 function updateGameHeader() {
   document.getElementById("pageTitle").textContent = "Chess";
   document.getElementById("gameName").textContent = "Chess";
-  document.getElementById("variantName").textContent = GameRegistry.chess.variants[manager.variantId]?.name || manager.variantId;
+  document.getElementById("variantName").textContent =
+    GameRegistry.chess.variants[manager.variantId]?.name || manager.variantId;
 }
 updateGameHeader();
 
@@ -2398,7 +2863,7 @@ function renderThreeManBoard(game, legal, selectedCell, status) {
   svg.setAttribute("class", "three-man-svg");
   svg.setAttribute("aria-label", "Three-Man Chess board");
 
-  const legalMap = new Map(legal.map(m => [`${m.to.r},${m.to.c}`, m]));
+  const legalMap = new Map(legal.map((m) => [`${m.to.r},${m.to.c}`, m]));
   const viewerColor = fogViewerColor();
   const king = status.check ? game.findKing(game.turn) : null;
 
@@ -2408,17 +2873,29 @@ function renderThreeManBoard(game, legal, selectedCell, status) {
     poly.classList.add("three-cell", cell.shade ? "dark" : "light");
 
     const move = legalMap.get(`${cell.r},${cell.c}`);
-    const visible = !FOG_OF_WAR || !viewerColor || squareVisibleToViewer(cell.r, cell.c, game) || Boolean(move);
+    const visible =
+      !FOG_OF_WAR ||
+      !viewerColor ||
+      squareVisibleToViewer(cell.r, cell.c, game) ||
+      Boolean(move);
 
     if (!visible) poly.classList.add("fogged");
-    if (selectedCell?.r === cell.r && selectedCell?.c === cell.c) poly.classList.add("selected");
-    if (game.lastMove && visible &&
-        ((game.lastMove.from?.r === cell.r && game.lastMove.from?.c === cell.c) ||
-         (game.lastMove.to?.r === cell.r && game.lastMove.to?.c === cell.c))) {
+    if (selectedCell?.r === cell.r && selectedCell?.c === cell.c)
+      poly.classList.add("selected");
+    if (
+      game.lastMove &&
+      visible &&
+      ((game.lastMove.from?.r === cell.r && game.lastMove.from?.c === cell.c) ||
+        (game.lastMove.to?.r === cell.r && game.lastMove.to?.c === cell.c))
+    ) {
       poly.classList.add("last-move");
     }
-    if (move) poly.classList.add(game.board[cell.r][cell.c] ? "legal-capture" : "legal");
-    if (king && visible && king.r === cell.r && king.c === cell.c) poly.classList.add("in-check");
+    if (move)
+      poly.classList.add(
+        game.board[cell.r][cell.c] ? "legal-capture" : "legal",
+      );
+    if (king && visible && king.r === cell.r && king.c === cell.c)
+      poly.classList.add("in-check");
 
     svg.appendChild(poly);
 
@@ -2429,7 +2906,10 @@ function renderThreeManBoard(game, legal, selectedCell, status) {
       text.setAttribute("y", cell.svgCenter.y.toFixed(3));
       text.setAttribute("text-anchor", "middle");
       text.setAttribute("dominant-baseline", "middle");
-      text.classList.add("three-man-piece", ...pieceClass(piece, game).split(" "));
+      text.classList.add(
+        "three-man-piece",
+        ...pieceClass(piece, game).split(" "),
+      );
       text.textContent = pieceGlyph(game, piece);
       text.style.pointerEvents = "none";
       svg.appendChild(text);
@@ -2451,10 +2931,12 @@ function renderThreeManBoard(game, legal, selectedCell, status) {
     }
   }
 
-  svg.addEventListener("click", event => {
+  svg.addEventListener("click", (event) => {
     const matrix = svg.getScreenCTM();
     if (!matrix) return;
-    const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse());
+    const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(
+      matrix.inverse(),
+    );
     let best = null;
     let bestDistance = Infinity;
     for (const candidate of THREE_MAN_GEOMETRY.cells.values()) {
@@ -2474,7 +2956,9 @@ function renderThreeManBoard(game, legal, selectedCell, status) {
 
 function render() {
   recordLocalWinIfOver();
-  const g = manager.game, s = g.gameStatus(), size = g.size;
+  const g = manager.game,
+    s = g.gameStatus(),
+    size = g.size;
   renderCoordinates(size, g.variant);
   boardEl.innerHTML = "";
   boardEl.classList.toggle("four-player", size === 14);
@@ -2491,36 +2975,50 @@ function render() {
     boardEl.classList.remove("three-player-layout");
     boardEl.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
     boardEl.style.gridTemplateRows = `repeat(${size}, 1fr)`;
-    const king = s.check && typeof g.findKing === "function" ? g.findKing(g.turn) : null;
-    for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) {
-      const sq = document.createElement("button");
-      sq.className = "square " + ((r + c) % 2 ? "dark" : "light");
-      if (size === 14 && !playable4(r, c)) sq.classList.add("unplayable");
-      if (selected?.r === r && selected?.c === c) sq.classList.add("selected");
-      const legalDestination = !!legal.find(m => m.to.r === r && m.to.c === c);
-      const visible = squareVisibleToViewer(r, c, g) || Boolean(selected && legalDestination);
-      if (g.lastMove && visible && ((g.lastMove.from?.r === r && g.lastMove.from?.c === c) || (g.lastMove.to?.r === r && g.lastMove.to?.c === c))) sq.classList.add("last-move");
-      if (king && visible && king.r === r && king.c === c) sq.classList.add("in-check");
-      if (visible && legalDestination) {
-        const mark = document.createElement("span");
-        mark.className = g.board[r][c] ? "legal-capture" : "legal-dot";
-        sq.appendChild(mark);
+    const king =
+      s.check && typeof g.findKing === "function" ? g.findKing(g.turn) : null;
+    for (let r = 0; r < size; r++)
+      for (let c = 0; c < size; c++) {
+        const sq = document.createElement("button");
+        sq.className = "square " + ((r + c) % 2 ? "dark" : "light");
+        if (size === 14 && !playable4(r, c)) sq.classList.add("unplayable");
+        if (selected?.r === r && selected?.c === c)
+          sq.classList.add("selected");
+        const legalDestination = !!legal.find(
+          (m) => m.to.r === r && m.to.c === c,
+        );
+        const visible =
+          squareVisibleToViewer(r, c, g) ||
+          Boolean(selected && legalDestination);
+        if (
+          g.lastMove &&
+          visible &&
+          ((g.lastMove.from?.r === r && g.lastMove.from?.c === c) ||
+            (g.lastMove.to?.r === r && g.lastMove.to?.c === c))
+        )
+          sq.classList.add("last-move");
+        if (king && visible && king.r === r && king.c === c)
+          sq.classList.add("in-check");
+        if (visible && legalDestination) {
+          const mark = document.createElement("span");
+          mark.className = g.board[r][c] ? "legal-capture" : "legal-dot";
+          sq.appendChild(mark);
+        }
+        const p = g.board[r][c];
+        if (p && visible) {
+          const pe = document.createElement("span");
+          pe.className = "piece " + pieceClass(p, g);
+          pe.textContent = pieceGlyph(g, p);
+          sq.appendChild(pe);
+        }
+        if (!visible) {
+          const fog = document.createElement("span");
+          fog.className = "fog-mask";
+          sq.appendChild(fog);
+        }
+        sq.onclick = () => clickSquare(r, c);
+        boardEl.appendChild(sq);
       }
-      const p = g.board[r][c];
-      if (p && visible) {
-        const pe = document.createElement("span");
-        pe.className = "piece " + pieceClass(p, g);
-        pe.textContent = pieceGlyph(g, p);
-        sq.appendChild(pe);
-      }
-      if (!visible) {
-        const fog = document.createElement("span");
-        fog.className = "fog-mask";
-        sq.appendChild(fog);
-      }
-      sq.onclick = () => clickSquare(r, c);
-      boardEl.appendChild(sq);
-    }
   }
 
   statusEl.textContent = `${playerInfo(currentPlayerIndex(g)).name}: ${s.text}`;
@@ -2529,10 +3027,12 @@ function render() {
   document.getElementById("undoBtn").disabled = !g.history.length;
 }
 
-
 function pieceClass(piece, game = null) {
   const classes = [piece?.color || ""];
-  if (game?.variant === "shako" && (piece?.type === "c" || piece?.type === "e")) {
+  if (
+    game?.variant === "shako" &&
+    (piece?.type === "c" || piece?.type === "e")
+  ) {
     classes.push("shako-inverted");
   }
   return classes.filter(Boolean).join(" ");
@@ -2540,8 +3040,10 @@ function pieceClass(piece, game = null) {
 
 function pieceGlyph(game, piece) {
   if (!piece) return "";
-  if (game?.size === 14) return FOUR_PIECES[piece.color]?.[piece.type] || piece.type.toUpperCase();
-  if (game?.variant === "threeman") return THREE_PIECES[piece.color]?.[piece.type] || piece.type.toUpperCase();
+  if (game?.size === 14)
+    return FOUR_PIECES[piece.color]?.[piece.type] || piece.type.toUpperCase();
+  if (game?.variant === "threeman")
+    return THREE_PIECES[piece.color]?.[piece.type] || piece.type.toUpperCase();
   return PIECES[piece.color]?.[piece.type] || piece.type.toUpperCase();
 }
 
@@ -2560,26 +3062,53 @@ function renderCoordinates(size, variant) {
   const ranks = Array.from({ length: size }, (_, i) => size - i);
   rowLabelsEl.style.gridTemplateRows = `repeat(${size}, 1fr)`;
   colLabelsEl.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
-  rowLabelsEl.innerHTML = ranks.map(rank => `<span>${rank}</span>`).join("");
-  colLabelsEl.innerHTML = files.map(file => `<span>${file}</span>`).join("");
+  rowLabelsEl.innerHTML = ranks.map((rank) => `<span>${rank}</span>`).join("");
+  colLabelsEl.innerHTML = files.map((file) => `<span>${file}</span>`).join("");
 }
 
 function clickSquare(r, c) {
   const g = manager.game;
-  if (!gameHasStarted || g.gameStatus().over || isComputerTurn() || !canLocalPlayerMove()) return;
+  if (
+    !gameHasStarted ||
+    g.gameStatus().over ||
+    isComputerTurn() ||
+    !canLocalPlayerMove()
+  )
+    return;
   const p = g.board[r]?.[c];
   if (!selected) {
-    if (p && p.color === g.turn) { selected = { r, c }; render(); }
+    if (p && p.color === g.turn) {
+      selected = { r, c };
+      render();
+    }
     return;
   }
-  if (p && p.color === g.turn && !(g.is960 && g.board[selected.r][selected.c]?.type === "k" && p.type === "r")) {
+  if (
+    p &&
+    p.color === g.turn &&
+    !(
+      g.is960 &&
+      g.board[selected.r][selected.c]?.type === "k" &&
+      p.type === "r"
+    )
+  ) {
     selected = { r, c };
     render();
     return;
   }
-  const m = g.legalMovesFrom(selected.r, selected.c).find((x) => x.to.r === r && x.to.c === c);
-  if (!m) { selected = null; render(); return; }
-  if (m.promotion) { pendingPromotion = m; openPromotion(g.board[selected.r][selected.c].color); return; }
+  const m = g
+    .legalMovesFrom(selected.r, selected.c)
+    .find((x) => x.to.r === r && x.to.c === c);
+  if (!m) {
+    selected = null;
+    render();
+    return;
+  }
+  if (m.promotion) {
+    pendingPromotion = m;
+    openPromotion(g.board[selected.r][selected.c].color);
+    return;
+  }
   const ok = g.makeMove(m);
   if (ok && ONLINE_MODE) {
     publishOnlineMove(m, "q");
@@ -2596,7 +3125,13 @@ function openPromotion(color) {
   promotionOptions.innerHTML = "";
   for (const t of ["q", "r", "b", "n"]) {
     const b = document.createElement("button");
-    b.textContent = (manager.game.size === 14 ? FOUR_PIECES[color] : manager.game.size === 12 ? THREE_PIECES[color] : PIECES[color])[t];
+    b.textContent = (
+      manager.game.size === 14
+        ? FOUR_PIECES[color]
+        : manager.game.size === 12
+          ? THREE_PIECES[color]
+          : PIECES[color]
+    )[t];
     b.onclick = () => {
       const move = pendingPromotion;
       const ok = manager.game.makeMove(move, t);
@@ -2634,7 +3169,10 @@ function renderMoves() {
 function renderCaptured() {
   capturedPanel.innerHTML = "";
   const g = manager.game;
-  if (!g.captured || !g.captured.length) { capturedPanel.textContent = "None"; return; }
+  if (!g.captured || !g.captured.length) {
+    capturedPanel.textContent = "None";
+    return;
+  }
   const groups = {};
   for (const p of g.captured) (groups[p.color] ??= []).push(p);
   for (const [color, pieces] of Object.entries(groups)) {
@@ -2644,12 +3182,18 @@ function renderCaptured() {
     const list = document.createElement("div");
     list.className = "captured";
     for (const p of pieces) {
-const x = document.createElement("span");
-x.className = "piece " + p.color;
-x.textContent = g.size === 14 ? FOUR_PIECES[p.color][p.type] : g.size === 12 ? THREE_PIECES[p.color][p.type] : PIECES[p.color][p.type];
-list.appendChild(x);
+      const x = document.createElement("span");
+      x.className = "piece " + p.color;
+      x.textContent =
+        g.size === 14
+          ? FOUR_PIECES[p.color][p.type]
+          : g.size === 12
+            ? THREE_PIECES[p.color][p.type]
+            : PIECES[p.color][p.type];
+      list.appendChild(x);
     }
-    box.appendChild(list); capturedPanel.appendChild(box);
+    box.appendChild(list);
+    capturedPanel.appendChild(box);
   }
 }
 
@@ -2657,18 +3201,22 @@ document.getElementById("newGameBtn").onclick = goBackToLibrary;
 document.getElementById("clearBtn").onclick = () => {
   if (!gameHasStarted) return;
   clearLocalHandoff();
-  clearTimeout(computerMoveTimer); computerMovePending = false;
+  clearTimeout(computerMoveTimer);
+  computerMovePending = false;
   if (ONLINE_MODE && !ONLINE_HOST_TOKEN) return;
   manager.newGame("chess", manager.variantId);
   localScoreRecorded = false;
-  selected = null; pendingPromotion = null; promotionModal.classList.remove("open");
+  selected = null;
+  pendingPromotion = null;
+  promotionModal.classList.remove("open");
   if (ONLINE_MODE) publishOnlineState();
   render();
 };
 document.getElementById("undoBtn").onclick = () => {
   if (!gameHasStarted) return;
   clearLocalHandoff();
-  clearTimeout(computerMoveTimer); computerMovePending = false;
+  clearTimeout(computerMoveTimer);
+  computerMovePending = false;
   if (ONLINE_MODE && !ONLINE_HOST_TOKEN) return;
   if (manager.game.undo()) {
     if (ONLINE_MODE) publishOnlineState();
@@ -2682,11 +3230,33 @@ if (onlineConfig?.players?.length) {
 } else {
   const active = localProfileForOnlineIdentity();
   gamePlayers = [
-    { seat: "white", type: "human", controllerClientId: ONLINE_MODE ? ONLINE_CLIENT_ID : "", profileId: active.id || "", name: active.name || "Player 1", avatar: active.avatar || "♟", playerType: ONLINE_MODE ? "Online player" : "Local player", id: ONLINE_MODE ? `online:${ONLINE_CLIENT_ID}` : `local:${active.id || "0"}` },
-    { seat: "black", type: "computer", controllerClientId: ONLINE_MODE ? (onlineConfig?.hostClientId || "") : "", name: "Computer", avatar: "🤖", difficulty: computerDifficulty, id: "computer:0" }
+    {
+      seat: "white",
+      type: "human",
+      controllerClientId: ONLINE_MODE ? ONLINE_CLIENT_ID : "",
+      profileId: active.id || "",
+      name: active.name || "Player 1",
+      avatar: active.avatar || "♟",
+      playerType: ONLINE_MODE ? "Online player" : "Local player",
+      id: ONLINE_MODE
+        ? `online:${ONLINE_CLIENT_ID}`
+        : `local:${active.id || "0"}`,
+    },
+    {
+      seat: "black",
+      type: "computer",
+      controllerClientId: ONLINE_MODE ? onlineConfig?.hostClientId || "" : "",
+      name: "Computer",
+      avatar: "🤖",
+      difficulty: computerDifficulty,
+      id: "computer:0",
+    },
   ];
 }
-if (onlineConfig?.variant && GameRegistry.chess.variants[onlineConfig.variant]) {
+if (
+  onlineConfig?.variant &&
+  GameRegistry.chess.variants[onlineConfig.variant]
+) {
   selectedVariantId = onlineConfig.variant;
   manager.newGame("chess", selectedVariantId);
 }
