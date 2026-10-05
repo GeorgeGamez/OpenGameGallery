@@ -1276,7 +1276,10 @@ No diagnostics run yet.</pre
           return {
             seat: "",
             type: "human",
-            controllerClientId: "",
+            // Local profiles on the host's computer are controlled by this
+            // browser in online games. Preserve the controller ID so Fog of
+            // War can identify the host's seat and the host can make moves.
+            controllerClientId: onlineState.connected ? (entry.controllerClientId || onlineState.clientId || "") : "",
             profileId: p.id || entry.id,
             name: p.name || entry.name,
             avatar: p.avatar || entry.avatar,
