@@ -1588,12 +1588,13 @@ No diagnostics run yet.</pre
         const gameDefinition = selectedGameDefinition();
         if (!gameDefinition) return;
 
-        // Only games with a connected player page can be launched.
-        if (!(selectedSetupGame === "chess" || selectedSetupGame === "draughts" || selectedSetupGame === "reversi")) return;
+        // Launch any game with a configured page and a supported play mode.
+        // The actual configured seat count may vary within the game's limits.
+        if (!gameDefinition.page || !(gameDefinition.capabilities?.local || gameDefinition.capabilities?.computer || gameDefinition.capabilities?.online)) return;
 
         const config = setupConfigFromState();
         const range = selectedPlayerRange();
-        if (!config || config.players?.length !== range.min || range.min !== range.max) return;
+        if (!config || config.players.length < range.min || config.players.length > range.max) return;
 
         onlineState.config = config;
         try { sessionStorage.setItem("gameLibraryOnlineConfig", JSON.stringify(config)); } catch {}
