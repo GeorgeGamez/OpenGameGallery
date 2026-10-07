@@ -5,140 +5,453 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Hex</title>
   <style>
-    :root{
-      --bg:#17191f;
-      --panel:#22252d;
-      --panel2:#2b2f39;
-      --border:#3b414d;
-      --text:#edf1f7;
-      --muted:#aab2c0;
-      --accent:#78a9ff;
-      --blue:#4d8cff;
-      --red:#e35b65;
-      --cell:#9ca3af;
-      --cell-empty:#6f7784;
+    :root {
+      --bg: #17191f;
+      --panel: #22252d;
+      --panel2: #2b2f39;
+      --border: #3b414d;
+      --text: #edf1f7;
+      --muted: #aab2c0;
+      --accent: #78a9ff;
+      --blue: #4d8cff;
+      --red: #e35b65;
+      --empty: #59616f;
+      --empty-hover: #687282;
     }
-    *{box-sizing:border-box}
-    html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-    body{min-height:100vh;display:flex;flex-direction:column}
-    header{padding:18px 22px;border-bottom:1px solid var(--border);background:#1c1f26;display:flex;align-items:center;justify-content:space-between;gap:16px}
-    header h1{margin:0;font-size:22px}
-    header p{margin:3px 0 0;color:var(--muted);font-size:12px}
-    .header-actions{display:flex;gap:8px;flex-wrap:wrap}
-    button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;cursor:pointer}
-    button:hover:not(:disabled){border-color:var(--accent)}
-    button:disabled{opacity:.45;cursor:not-allowed}
-    main{width:min(1350px,100%);margin:0 auto;padding:22px;display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;flex:1}
-    .game-panel,.side-panel{background:var(--panel);border:1px solid var(--border);border-radius:12px}
-    .game-panel{padding:18px;display:flex;flex-direction:column;min-width:0}
-    .status-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-    .status{padding:9px 11px;border-radius:8px;background:var(--panel2);border:1px solid var(--border);font-size:13px}
-    .status.blue{border-color:var(--blue)}
-    .status.red{border-color:var(--red)}
-    .board-shell{overflow:auto;padding:22px 10px 30px}
-    .board-wrap{position:relative;width:max-content;margin:0 auto;padding:26px 34px 26px 34px}
-    .edge-label{position:absolute;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.72;pointer-events:none}
-    .edge-label.top{top:0;left:50%;transform:translateX(-50%);color:var(--blue)}
-    .edge-label.bottom{bottom:0;left:50%;transform:translateX(-50%);color:var(--blue)}
-    .edge-label.left{left:0;top:50%;transform:translateY(-50%) rotate(-30deg);color:var(--red)}
-    .edge-label.right{right:0;top:50%;transform:translateY(-50%) rotate(-30deg);color:var(--red)}
-    .board{--cell-size:clamp(34px,7.2vw,64px);display:flex;flex-direction:column;gap:4px}
-    .hex-row{display:flex;gap:4px;height:calc(var(--cell-size) * .866)}
-    .hex-row.offset{margin-left:calc((var(--cell-size) + 4px) * .5)}
-    .hex-cell{position:relative;width:var(--cell-size);height:var(--cell-size);margin-top:calc(var(--cell-size) * -.067);clip-path:polygon(25% 6.7%,75% 6.7%,100% 50%,75% 93.3%,25% 93.3%,0 50%);display:grid;place-items:center;border:0;background:var(--cell-empty);padding:0;transition:transform .08s ease,filter .08s ease}
-    .hex-cell:hover:not(:disabled){transform:scale(1.04);filter:brightness(1.12)}
-    .hex-cell.blue{background:var(--blue)}
-    .hex-cell.red{background:var(--red)}
-    .hex-cell.last::after{content:"";width:27%;height:27%;border-radius:50%;background:#f7f9fc;opacity:.9}
-    .legend{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:10px;color:var(--muted);font-size:12px}
-    .legend-item{display:flex;align-items:center;gap:7px}
-    .dot{width:13px;height:13px;clip-path:polygon(25% 6.7%,75% 6.7%,100% 50%,75% 93.3%,25% 93.3%,0 50%)}
-    .dot.blue{background:var(--blue)}.dot.red{background:var(--red)}.dot.empty{background:var(--cell-empty)}
-    .side-panel{padding:15px;display:flex;flex-direction:column;gap:14px;min-width:0}
-    .section{padding-bottom:14px;border-bottom:1px solid var(--border)}
-    .section:last-child{border-bottom:0;padding-bottom:0}
-    h2{font-size:15px;margin:0 0 8px}
-    .meta{color:var(--muted);font-size:12px;line-height:1.45}
-    .players{display:flex;flex-direction:column;gap:8px}
-    .player{display:flex;align-items:center;gap:9px;padding:9px 10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px}
-    .player.active{border-color:var(--accent)}
-    .swatch{width:18px;height:18px;clip-path:polygon(25% 6.7%,75% 6.7%,100% 50%,75% 93.3%,25% 93.3%,0 50%);flex:0 0 18px}
-    .swatch.blue{background:var(--blue)}.swatch.red{background:var(--red)}
-    .player-main{min-width:0}.player-name{font-weight:700;font-size:12px}.player-role{color:var(--muted);font-size:11px;margin-top:1px}
-    .move-list{max-height:300px;overflow:auto;display:flex;flex-direction:column;gap:4px}
-    .move{display:grid;grid-template-columns:35px 1fr;gap:8px;padding:5px 6px;border-radius:5px;font-size:12px}
-    .move:nth-child(odd){background:var(--panel2)}
-    .move-num{color:var(--muted)}
-    .message{font-size:12px;color:var(--muted);line-height:1.45}
-    .winner{font-size:15px;font-weight:800}
-    .winner.blue{color:var(--blue)}.winner.red{color:var(--red)}
-    @media(max-width:850px){
-      main{grid-template-columns:1fr;padding:12px}
-      .side-panel{order:2}
-      header{padding:15px}
-      .board-shell{padding-left:0;padding-right:0}
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body { min-height: 100vh; }
+
+    header {
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--border);
+      background: #1c1f26;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    main.app {
+      width: min(1320px, 100%);
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr) 260px;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .left-column,
+    .right-column,
+    .board-column {
+      min-width: 0;
+    }
+
+    .panel {
+      margin-bottom: 14px;
+      padding: 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .panel:last-child { margin-bottom: 0; }
+
+    .panel h2 {
+      margin: 0 0 9px;
+      font-size: 14px;
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 7px;
+    }
+
+    button {
+      font: inherit;
+      color: var(--text);
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+
+    button:hover:not(:disabled) {
+      border-color: var(--accent);
+    }
+
+    button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .status {
+      padding: 9px 10px;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .status.blue { border-color: var(--blue); }
+    .status.red { border-color: var(--red); }
+
+    .game-info {
+      text-align: center;
+      margin: 0 0 12px;
+    }
+
+    .game-name {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .variant-name {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .board-panel {
+      padding: 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: auto;
+    }
+
+    .board-wrap {
+      --hex-width: clamp(34px, min(5.8vw, 7.2vh), 62px);
+      --hex-height: calc(var(--hex-width) * .8660254);
+      --col-step: calc(var(--hex-width) * .75);
+      --row-step: var(--hex-height);
+      --col-offset: calc(var(--hex-height) * .5);
+      position: relative;
+      width: calc(var(--hex-width) + (var(--board-size) - 1) * var(--col-step));
+      height: calc(var(--hex-height) + (var(--board-size) - 1) * var(--row-step) + var(--col-offset));
+      margin: 18px auto 10px;
+      min-width: 460px;
+    }
+
+    .edge-guide {
+      position: absolute;
+      pointer-events: none;
+      opacity: .4;
+      z-index: 0;
+    }
+
+    .edge-guide.blue {
+      top: -4px;
+      left: -4px;
+      width: calc(100% + 8px);
+      height: calc(var(--hex-height) + (var(--board-size) - 1) * var(--col-offset) + 8px);
+      border-top: 2px solid var(--blue);
+      transform: skewY(calc(0deg));
+    }
+
+    .edge-guide.blue.bottom {
+      top: auto;
+      bottom: -4px;
+      border-top: 0;
+      border-bottom: 2px solid var(--blue);
+    }
+
+    .edge-guide.red {
+      left: -4px;
+      top: -4px;
+      width: calc(var(--hex-width) + 8px);
+      height: calc(100% + 8px);
+      border-left: 2px solid var(--red);
+    }
+
+    .edge-guide.red.right {
+      left: auto;
+      right: -4px;
+      border-left: 0;
+      border-right: 2px solid var(--red);
+    }
+
+    .edge-label {
+      position: absolute;
+      z-index: 2;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .edge-label.blue-top {
+      top: calc(-1 * var(--col-offset) - 16px);
+      left: 3px;
+      color: var(--blue);
+    }
+
+    .edge-label.blue-bottom {
+      right: 2px;
+      bottom: calc(-1 * var(--col-offset) - 16px);
+      color: var(--blue);
+    }
+
+    .edge-label.red-left {
+      left: calc(-1 * var(--hex-width) - 10px);
+      top: 50%;
+      transform: translateY(-50%) rotate(-90deg);
+      color: var(--red);
+    }
+
+    .edge-label.red-right {
+      right: calc(-1 * var(--hex-width) - 10px);
+      top: 50%;
+      transform: translateY(-50%) rotate(90deg);
+      color: var(--red);
+    }
+
+    .board {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+
+    .hex-cell {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: var(--hex-width);
+      height: var(--hex-height);
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: var(--empty);
+      clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+      transition: filter .08s ease, transform .08s ease;
+      display: grid;
+      place-items: center;
+    }
+
+    .hex-cell:hover:not(:disabled) {
+      filter: brightness(1.13);
+      transform: scale(1.035);
+      z-index: 3;
+    }
+
+    .hex-cell.blue { background: var(--blue); }
+    .hex-cell.red { background: var(--red); }
+
+    .hex-cell.last::after {
+      content: "";
+      width: 26%;
+      height: 26%;
+      border-radius: 50%;
+      background: #f7f9fc;
+      opacity: .92;
+    }
+
+    .players {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .player {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 9px;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .player.active { border-color: var(--accent); }
+
+    .swatch {
+      width: 18px;
+      height: 15.6px;
+      flex: 0 0 18px;
+      clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+    }
+
+    .swatch.blue { background: var(--blue); }
+    .swatch.red { background: var(--red); }
+
+    .player-main { min-width: 0; }
+
+    .player-name {
+      font-size: 12px;
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .player-role {
+      margin-top: 1px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .move-list {
+      max-height: 380px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .move {
+      display: grid;
+      grid-template-columns: 31px 1fr;
+      gap: 6px;
+      padding: 5px 6px;
+      border-radius: 5px;
+      font-size: 11px;
+    }
+
+    .move:nth-child(odd) { background: var(--panel2); }
+    .move-num { color: var(--muted); }
+
+    .note {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .winner {
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .winner.blue { color: var(--blue); }
+    .winner.red { color: var(--red); }
+
+    .meta-line {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    @media (max-width: 1080px) {
+      main.app {
+        grid-template-columns: 210px minmax(0, 1fr);
+      }
+      .right-column {
+        grid-column: 1 / -1;
+      }
+      .move-list {
+        max-height: 230px;
+      }
+    }
+
+    @media (max-width: 760px) {
+      header { padding: 15px; }
+      main.app {
+        display: block;
+        padding: 10px;
+      }
+      .left-column,
+      .right-column {
+        margin-top: 12px;
+      }
+      .board-panel { padding: 8px; }
+      .board-wrap { min-width: 430px; }
     }
   </style>
 </head>
 <body>
   <header>
-    <div>
-      <h1 id="gameTitle">Hex</h1>
-      <p id="variantTitle">Loading variant…</p>
-    </div>
-    <div class="header-actions">
-      <button id="newGameButton" type="button">New Game</button>
-      <button id="undoButton" type="button">Undo</button>
-      <button id="backButton" type="button">Back to Game Library</button>
-    </div>
+    <h1 id="pageTitle">Hex</h1>
+    <span class="subtitle">Game Player</span>
   </header>
 
-  <main>
-    <section class="game-panel">
-      <div class="status-row">
-        <div id="status" class="status">Loading…</div>
-        <div id="moveCount" class="meta"></div>
-      </div>
-      <div class="board-shell">
-        <div class="board-wrap">
-          <div class="edge-label top">Blue</div>
-          <div class="edge-label bottom">Blue</div>
-          <div class="edge-label left">Red</div>
-          <div class="edge-label right">Red</div>
-          <div id="board" class="board" aria-label="Hex board"></div>
+  <main class="app">
+    <section class="left-column">
+      <div class="panel">
+        <h2>Controls</h2>
+        <div class="button-grid">
+          <button id="newGameBtn" type="button">Back to Game Library</button>
+          <button id="undoBtn" type="button">Undo</button>
+          <button id="clearBtn" type="button">Reset Game</button>
         </div>
       </div>
-      <div class="legend">
-        <div class="legend-item"><span class="dot blue"></span> Blue: top ↕ bottom</div>
-        <div class="legend-item"><span class="dot red"></span> Red: left ↔ right</div>
-        <div class="legend-item"><span class="dot empty"></span> Empty</div>
+
+      <div class="panel">
+        <h2>Players</h2>
+        <div id="players" class="players"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Status</h2>
+        <div class="status" id="status">Loading…</div>
+        <div class="meta-line" id="moveCount"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Rules Hint</h2>
+        <div class="note">
+          Blue connects the top and bottom edges. Red connects the left and right edges. Place one stone per turn. There are no draws.
+        </div>
       </div>
     </section>
 
-    <aside class="side-panel">
-      <section class="section">
-        <h2>Players</h2>
-        <div id="players" class="players"></div>
-      </section>
-      <section class="section">
-        <h2>Rules</h2>
-        <div class="message">
-          Place one stone per turn. Blue wins by connecting the top edge to the bottom edge; Red wins by connecting the left edge to the right edge. There are no draws in Hex.
+    <section class="board-column">
+      <div class="game-info">
+        <div class="game-name" id="gameName">Hex</div>
+        <div class="variant-name" id="variantName">Loading variant…</div>
+      </div>
+
+      <div class="board-panel">
+        <div class="board-wrap" id="boardWrap">
+          <div class="edge-guide blue"></div>
+          <div class="edge-guide blue bottom"></div>
+          <div class="edge-guide red"></div>
+          <div class="edge-guide red right"></div>
+          <div class="edge-label blue-top">Blue</div>
+          <div class="edge-label blue-bottom">Blue</div>
+          <div class="edge-label red-left">Red</div>
+          <div class="edge-label red-right">Red</div>
+          <div id="board" class="board" aria-label="Hex board"></div>
         </div>
-      </section>
-      <section class="section">
+      </div>
+    </section>
+
+    <section class="right-column">
+      <div class="panel">
         <h2>Move History</h2>
-        <div id="moveList" class="move-list"></div>
-      </section>
-      <section class="section">
+        <div class="move-list" id="moveList"></div>
+      </div>
+
+      <div class="panel">
         <h2>Game Status</h2>
-        <div id="result" class="message">Game in progress.</div>
-      </section>
-    </aside>
+        <div id="result" class="note">Game in progress.</div>
+      </div>
+    </section>
   </main>
 
-  <script src="hex.js?v=20261007-alpha1"></script>
-  <script src="hex-ai.js?v=20261007-alpha1"></script>
+  <script src="hex.js?v=20261007-alpha2"></script>
+  <script src="hex-ai.js?v=20261007-alpha2"></script>
   <script>
     "use strict";
 
@@ -176,6 +489,7 @@
       }
     })();
 
+    const boardWrapEl = document.getElementById("boardWrap");
     const game = new HexGame(size);
     const boardEl = document.getElementById("board");
     const statusEl = document.getElementById("status");
@@ -183,7 +497,7 @@
     const resultEl = document.getElementById("result");
     const playersEl = document.getElementById("players");
     const moveCountEl = document.getElementById("moveCount");
-    const undoButton = document.getElementById("undoButton");
+    const undoButton = document.getElementById("undoBtn");
 
     let profiles = [];
     try {
@@ -206,8 +520,11 @@
       { player: 2, name: localPlayers >= 2 ? profileName(1) : "Computer", computer: computerPlayers > 0 }
     ];
 
-    document.getElementById("gameTitle").textContent = "Hex";
-    document.getElementById("variantTitle").textContent = `${variantName} • ${size}×${size}`;
+    boardWrapEl.style.setProperty("--board-size", String(size));
+    document.getElementById("pageTitle").textContent = "Hex";
+    document.getElementById("gameName").textContent = "Hex";
+    document.getElementById("variantTitle")?.remove();
+    document.getElementById("variantName").textContent = `${variantName} • ${size}×${size}`;
 
     function playerColor(player) {
       return player === 1 ? "blue" : "red";
@@ -243,25 +560,35 @@
 
     function renderBoard() {
       boardEl.innerHTML = "";
-      for (let r = 0; r < game.size; r++) {
-        const row = document.createElement("div");
-        row.className = `hex-row${r ? " offset" : ""}`;
 
+      const lastMove = game.moves.at(-1);
+      const hexHeight = parseFloat(getComputedStyle(boardWrapEl).getPropertyValue("--hex-height"));
+      const colStep = parseFloat(getComputedStyle(boardWrapEl).getPropertyValue("--col-step"));
+      const colOffset = parseFloat(getComputedStyle(boardWrapEl).getPropertyValue("--col-offset"));
+
+      for (let r = 0; r < game.size; r++) {
         for (let c = 0; c < game.size; c++) {
           const button = document.createElement("button");
           const value = game.board[r][c];
           button.type = "button";
           button.className = "hex-cell";
+
           if (value === 1) button.classList.add("blue");
           else if (value === 2) button.classList.add("red");
-          if (game.moves.at(-1)?.r === r && game.moves.at(-1)?.c === c) button.classList.add("last");
+
+          if (lastMove?.r === r && lastMove?.c === c) button.classList.add("last");
+
+          // Flat-topped hex geometry: horizontal spacing is 3/4 width,
+          // and each column is shifted vertically by half a hex height.
+          button.style.left = `${c * colStep}px`;
+          button.style.top = `${r * hexHeight + c * colOffset}px`;
+
           button.title = `${coordName(r, c)}${value ? ` — ${playerName(value)}` : ""}`;
           button.setAttribute("aria-label", button.title);
           button.disabled = Boolean(value || game.winner || isComputerTurn());
           button.addEventListener("click", () => playHumanMove(r, c));
-          row.appendChild(button);
+          boardEl.appendChild(button);
         }
-        boardEl.appendChild(row);
       }
     }
 
@@ -326,7 +653,11 @@
         .replaceAll("'", "&#039;");
     }
 
-    document.getElementById("newGameButton").addEventListener("click", () => {
+    document.getElementById("newGameBtn").addEventListener("click", () => {
+      window.location.href = "../index.html";
+    });
+
+    document.getElementById("clearBtn").addEventListener("click", () => {
       game.reset();
       render();
       scheduleComputerTurn();
@@ -347,9 +678,7 @@
       render();
     });
 
-    document.getElementById("backButton").addEventListener("click", () => {
-      window.location.href = "../index.html";
-    });
+    window.addEventListener("resize", () => renderBoard());
 
     render();
     scheduleComputerTurn();
