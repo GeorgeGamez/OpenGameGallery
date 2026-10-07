@@ -72,11 +72,9 @@
         color: var(--text);
         font-size: 12px;
         font-weight: 700;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.18);
       }
-      .online-wins-corner[hidden] {
-        display: none;
-      }
+      .online-wins-corner[hidden] { display: none; }
       .header-row {
         display: flex;
         align-items: center;
@@ -145,14 +143,8 @@
         color: var(--muted);
         background: var(--panel2);
       }
-      .release-badge.beta {
-        color: var(--accent);
-        border-color: var(--accent);
-      }
-      .release-badge.alpha {
-        color: #f0b6ff;
-        border-color: #9f6bb0;
-      }
+      .release-badge.beta { color: var(--accent); border-color: var(--accent); }
+      .release-badge.alpha { color: #f0b6ff; border-color: #9f6bb0; }
       main {
         padding: 24px;
       }
@@ -290,17 +282,12 @@
         flex-direction: column;
         background: var(--panel);
         border-left: 1px solid var(--border);
-        box-shadow: -12px 0 35px rgba(0, 0, 0, 0.3);
+        box-shadow: -12px 0 35px rgba(0,0,0,.3);
         transform: translateX(100%);
-        transition: transform 0.2s ease;
+        transition: transform .2s ease;
       }
-      .game-setup-drawer.open {
-        transform: translateX(0);
-        pointer-events: auto;
-      }
-      .game-setup-drawer:not(.open) {
-        pointer-events: none;
-      }
+      .game-setup-drawer.open { transform: translateX(0); pointer-events: auto; }
+      .game-setup-drawer:not(.open) { pointer-events: none; }
       .game-setup-drawer .drawer-header {
         background: #1d2027;
       }
@@ -309,20 +296,14 @@
         flex: 1;
         padding: 18px;
       }
-      .setup-section {
-        margin-bottom: 20px;
-      }
+      .setup-section { margin-bottom: 20px; }
       .setup-section h3 {
         margin: 0 0 9px;
         color: var(--muted);
         font-size: 13px;
         font-weight: 600;
       }
-      .variant-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 7px;
-      }
+      .variant-list { display: flex; flex-wrap: wrap; gap: 7px; }
       .variant-button {
         color: var(--text);
         background: var(--panel2);
@@ -332,9 +313,7 @@
         font-size: 12px;
         cursor: pointer;
       }
-      .variant-button:hover {
-        background: #353a45;
-      }
+      .variant-button:hover { background: #353a45; }
       .variant-button.selected {
         border-color: var(--accent);
         outline: 1px solid var(--accent);
@@ -357,22 +336,14 @@
         margin-bottom: 7px;
         font-size: 13px;
       }
-      .range-value {
-        color: var(--accent);
-        font-weight: 700;
-        white-space: nowrap;
-      }
+      .range-value { color: var(--accent); font-weight: 700; white-space: nowrap; }
       .range-help {
         margin-top: 6px;
         color: var(--muted);
         font-size: 11px;
         line-height: 1.35;
       }
-      .setup-option-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
+      .setup-option-list { display: flex; flex-direction: column; gap: 8px; }
       .setup-select-row {
         display: flex;
         flex-direction: column;
@@ -405,193 +376,66 @@
         border: 1px solid var(--border);
         border-radius: 8px;
       }
-      .toggle-label {
-        color: var(--text);
-        font-size: 12px;
-        line-height: 1.3;
-        cursor: pointer;
-      }
-      .toggle-switch {
-        position: relative;
-        flex: 0 0 auto;
-        width: 38px;
-        height: 21px;
-      }
-      .toggle-switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-      }
+      .toggle-label { color: var(--text); font-size: 12px; line-height: 1.3; cursor: pointer; }
+      .toggle-switch { position: relative; flex: 0 0 auto; width: 38px; height: 21px; }
+      .toggle-switch input { opacity: 0; width: 0; height: 0; }
       .toggle-slider {
-        position: absolute;
-        inset: 0;
-        background: #454b57;
-        border: 1px solid var(--border);
-        border-radius: 999px;
-        cursor: pointer;
-        transition: 0.15s;
+        position: absolute; inset: 0; background: #454b57; border: 1px solid var(--border);
+        border-radius: 999px; cursor: pointer; transition: .15s;
       }
       .toggle-slider::before {
-        content: "";
-        position: absolute;
-        width: 15px;
-        height: 15px;
-        left: 2px;
-        top: 2px;
-        background: var(--text);
-        border-radius: 50%;
-        transition: 0.15s;
+        content: ''; position: absolute; width: 15px; height: 15px; left: 2px; top: 2px;
+        background: var(--text); border-radius: 50%; transition: .15s;
       }
-      .toggle-switch input:checked + .toggle-slider {
-        background: var(--accent);
-        border-color: var(--accent);
-      }
-      .toggle-switch input:checked + .toggle-slider::before {
-        transform: translateX(17px);
-        background: #111318;
-      }
+      .toggle-switch input:checked + .toggle-slider { background: var(--accent); border-color: var(--accent); }
+      .toggle-switch input:checked + .toggle-slider::before { transform: translateX(17px); background: #111318; }
       .setup-player-summary {
-        padding: 12px;
-        background: var(--panel2);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        color: var(--muted);
-        font-size: 12px;
-        line-height: 1.45;
+        padding: 12px; background: var(--panel2); border: 1px solid var(--border);
+        border-radius: 8px; color: var(--muted); font-size: 12px; line-height: 1.45;
       }
-      .setup-player-summary strong {
-        color: var(--text);
+      .setup-player-summary strong { color: var(--text); }
+      .setup-player-list, .setup-order-list { display:flex; flex-direction:column; gap:7px; margin-top:9px; }
+      .setup-player-row, .setup-order-row {
+        display:grid; grid-template-columns:auto 1fr auto auto; align-items:center; gap:9px;
+        padding:8px 9px; background:var(--panel2); border:1px solid var(--border); border-radius:7px;
       }
-      .setup-player-list,
-      .setup-order-list {
-        display: flex;
-        flex-direction: column;
-        gap: 7px;
-        margin-top: 9px;
-      }
-      .setup-player-row,
-      .setup-order-row {
-        display: grid;
-        grid-template-columns: auto 1fr auto auto;
-        align-items: center;
-        gap: 9px;
-        padding: 8px 9px;
-        background: var(--panel2);
-        border: 1px solid var(--border);
-        border-radius: 7px;
-      }
-      .setup-player-row {
-        grid-template-columns: auto 1fr auto;
-      }
+      .setup-player-row { grid-template-columns:auto 1fr auto; }
       .setup-player-avatar {
-        width: 30px;
-        height: 30px;
-        display: grid;
-        place-items: center;
-        border-radius: 50%;
-        background: var(--bg);
-        font-size: 17px;
+        width:30px; height:30px; display:grid; place-items:center; border-radius:50%;
+        background:var(--bg); font-size:17px;
       }
-      .setup-player-name {
-        min-width: 0;
-        font-size: 12px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .setup-player-name strong {
-        display: block;
-      }
-      .setup-player-name span {
-        display: block;
-        margin-top: 2px;
-        color: var(--muted);
-        font-size: 10px;
-      }
-      .setup-order-position {
-        width: 24px;
-        color: var(--muted);
-        font-size: 11px;
-        text-align: center;
-      }
-      .setup-order-buttons {
-        display: flex;
-        gap: 4px;
-      }
+      .setup-player-name { min-width:0; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .setup-player-name strong { display:block; }
+      .setup-player-name span { display:block; margin-top:2px; color:var(--muted); font-size:10px; }
+      .setup-order-position { width:24px; color:var(--muted); font-size:11px; text-align:center; }
+      .setup-order-buttons { display:flex; gap:4px; }
       .order-button {
-        width: 28px;
-        height: 28px;
-        color: var(--text);
-        background: #353a45;
-        border: 1px solid var(--border);
-        border-radius: 5px;
-        cursor: pointer;
+        width:28px; height:28px; color:var(--text); background:#353a45; border:1px solid var(--border);
+        border-radius:5px; cursor:pointer;
       }
-      .order-button:disabled {
-        opacity: 0.35;
-        cursor: not-allowed;
-      }
+      .order-button:disabled { opacity:.35; cursor:not-allowed; }
       .computer-difficulty-select {
-        min-width: 92px;
-        color: var(--text);
-        background: #1d2027;
-        border: 1px solid var(--border);
-        border-radius: 5px;
-        padding: 5px 6px;
-        font: inherit;
-        font-size: 11px;
+        min-width:92px; color:var(--text); background:#1d2027; border:1px solid var(--border);
+        border-radius:5px; padding:5px 6px; font:inherit; font-size:11px;
       }
       .spectator-row {
-        display: grid;
-        grid-template-columns: auto 1fr auto;
-        align-items: center;
-        gap: 9px;
-        padding: 8px 9px;
-        background: var(--panel2);
-        border: 1px solid var(--border);
-        border-radius: 7px;
+        display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:9px;
+        padding:8px 9px; background:var(--panel2); border:1px solid var(--border); border-radius:7px;
       }
-      .spectator-row.is-spectator {
-        opacity: 0.55;
-      }
+      .spectator-row.is-spectator { opacity:.55; }
       .spectator-toggle {
-        width: 27px;
-        height: 27px;
-        color: var(--text);
-        background: #353a45;
-        border: 1px solid var(--border);
-        border-radius: 5px;
-        cursor: pointer;
-        font-size: 16px;
-        line-height: 1;
+        width:27px; height:27px; color:var(--text); background:#353a45; border:1px solid var(--border);
+        border-radius:5px; cursor:pointer; font-size:16px; line-height:1;
       }
       .setup-message {
-        margin-top: 12px;
-        padding: 10px;
-        border-radius: 7px;
-        background: #1d2027;
-        border: 1px solid var(--border);
-        color: var(--muted);
-        font-size: 12px;
-        line-height: 1.4;
+        margin-top: 12px; padding: 10px; border-radius: 7px; background: #1d2027;
+        border: 1px solid var(--border); color: var(--muted); font-size: 12px; line-height: 1.4;
       }
-      .setup-message.error {
-        color: #ffb4b4;
-        background: #321f24;
-        border-color: #63353d;
-      }
-      .setup-footer {
-        padding: 16px 18px;
-        border-top: 1px solid var(--border);
-        background: #1d2027;
-      }
-      .setup-footer button {
-        width: 100%;
-      }
+      .setup-message.error { color: #ffb4b4; background:#321f24; border-color:#63353d; }
+      .setup-footer { padding:16px 18px; border-top:1px solid var(--border); background:#1d2027; }
+      .setup-footer button { width:100%; }
       @media (max-width: 650px) {
-        .game-setup-drawer {
-          width: 100%;
-        }
+        .game-setup-drawer { width:100%; }
       }
       .drawer-header {
         display: flex;
@@ -656,74 +500,33 @@
         flex-direction: column;
         gap: 7px;
       }
-      .party-list {
-        display: flex;
-        flex-direction: column;
-        gap: 7px;
-      }
+      .party-list { display:flex; flex-direction:column; gap:7px; }
       .party-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 9px 10px;
-        background: var(--panel2);
-        border: 1px solid var(--border);
-        border-radius: 8px;
+        display:flex; align-items:center; gap:10px; padding:9px 10px;
+        background:var(--panel2); border:1px solid var(--border); border-radius:8px;
       }
       .party-score {
-        margin-left: auto;
-        min-width: 58px;
-        text-align: right;
-        color: var(--accent);
-        font-size: 12px;
-        font-weight: 700;
+        margin-left:auto; min-width:58px; text-align:right; color:var(--accent);
+        font-size:12px; font-weight:700;
       }
       .party-remove {
-        width: 30px;
-        height: 30px;
-        flex: 0 0 30px;
-        color: var(--muted);
-        background: transparent;
-        border: 1px solid transparent;
-        border-radius: 6px;
-        font-size: 20px;
-        line-height: 1;
-        cursor: pointer;
+        width:30px; height:30px; flex:0 0 30px; color:var(--muted);
+        background:transparent; border:1px solid transparent; border-radius:6px;
+        font-size:20px; line-height:1; cursor:pointer;
       }
       .party-remove:hover:not(:disabled) {
-        color: var(--text);
-        background: #353a45;
-        border-color: var(--border);
+        color:var(--text); background:#353a45; border-color:var(--border);
       }
       .party-empty {
-        padding: 10px;
-        border: 1px dashed var(--border);
-        border-radius: 8px;
-        color: var(--muted);
-        font-size: 12px;
-        text-align: center;
+        padding:10px; border:1px dashed var(--border); border-radius:8px;
+        color:var(--muted); font-size:12px; text-align:center;
       }
-      .profile-party-button {
-        flex: 0 0 auto;
-      }
-      .management-actions {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        margin-top: 9px;
-      }
-      .management-actions button {
-        width: 100%;
-      }
-      .danger-button {
-        color: #ffbcbc;
-        border-color: #6b3d45;
-        background: #2b2024;
-      }
-      .danger-button:hover {
-        background: #3a262b;
-      }
-      .profile-row,
+      .profile-party-button { flex:0 0 auto; }
+      .management-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:9px; }
+      .management-actions button { width:100%; }
+      .danger-button { color:#ffbcbc; border-color:#6b3d45; background:#2b2024; }
+      .danger-button:hover { background:#3a262b; }
+.profile-row,
       .player-row,
       .setup-slot {
         display: flex;
@@ -735,40 +538,19 @@
         border-radius: 8px;
       }
       .profile-edit-area {
-        flex: 1;
-        min-width: 0;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 0;
-        color: var(--text);
-        background: transparent;
-        border: 0;
-        text-align: left;
-        cursor: pointer;
+        flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
+        padding: 0; color: var(--text); background: transparent; border: 0;
+        text-align: left; cursor: pointer;
       }
-      .profile-edit-area:hover {
-        background: transparent;
-      }
-      .profile-use {
-        flex: 0 0 auto;
-      }
+      .profile-edit-area:hover { background: transparent; }
+      .profile-use { flex: 0 0 auto; }
       .profile-remove {
-        width: 30px;
-        height: 30px;
-        flex: 0 0 30px;
-        color: var(--muted);
-        background: transparent;
-        border: 1px solid transparent;
-        border-radius: 6px;
-        font-size: 20px;
-        line-height: 1;
-        cursor: pointer;
+        width: 30px; height: 30px; flex: 0 0 30px; color: var(--muted);
+        background: transparent; border: 1px solid transparent; border-radius: 6px;
+        font-size: 20px; line-height: 1; cursor: pointer;
       }
       .profile-remove:hover:not(:disabled) {
-        color: var(--text);
-        background: #353a45;
-        border-color: var(--border);
+        color: var(--text); background: #353a45; border-color: var(--border);
       }
       .avatar {
         width: 34px;
@@ -934,20 +716,14 @@
             <p>Chess — local, computer, and online play</p>
           </div>
           <div class="top-tabs">
-            <button id="libraryButton" class="top-tab selected" type="button">
-              Library
-            </button>
+            <button id="libraryButton" class="top-tab selected" type="button">Library</button>
             <button id="betaButton" class="top-tab" type="button">Beta</button>
-            <button id="playersButton" class="top-tab" type="button">
-              Players &amp; Online
-            </button>
+            <button id="playersButton" class="top-tab" type="button">Players &amp; Online</button>
           </div>
         </div>
       </div>
     </header>
-    <div id="onlineWinsCorner" class="online-wins-corner" hidden>
-      Online wins: 0
-    </div>
+    <div id="onlineWinsCorner" class="online-wins-corner" hidden>Online wins: 0</div>
     <main>
       <div id="releasePanel" class="release-panel" hidden></div>
       <div id="gamesGrid" class="games-grid"></div>
@@ -957,10 +733,7 @@
       <div class="drawer-header">
         <div>
           <h2>Players &amp; Online</h2>
-          <p>
-            Set up player profiles and your online room here. Games are selected
-            from the library.
-          </p>
+          <p>Set up player profiles and your online room here. Games are selected from the library.</p>
         </div>
         <button id="closeSetup" class="small" aria-label="Close">×</button>
       </div>
@@ -1008,32 +781,23 @@ No diagnostics run yet.</pre
         <section class="section">
           <h3>Current party</h3>
           <div class="muted" style="margin-bottom: 9px">
-            Your party is the group of local players participating in this
-            browser session. The party can contain multiple people at this
-            computer.
+            Your party is the group of local players participating in this browser session. The party can contain multiple people at this computer.
           </div>
           <div id="partyList" class="party-list"></div>
         </section>
         <section class="section">
           <h3>Player profiles</h3>
           <div class="muted" style="margin-bottom: 9px">
-            Profiles save player names and avatars on this device. Add any
-            profiles you want to the current party.
+            Profiles save player names and avatars on this device. Add any profiles you want to the current party.
           </div>
           <div id="profileList" class="profile-list"></div>
-          <button
-            id="addProfile"
-            class="small"
-            style="margin-top: 9px; width: 100%"
-          >
+          <button id="addProfile" class="small" style="margin-top: 9px; width: 100%">
             + Add profile
           </button>
           <div id="profileEditor"></div>
           <div class="management-actions">
             <button id="resetScores" class="small">Reset all scores</button>
-            <button id="resetPlayerInfo" class="small danger-button">
-              Reset player info
-            </button>
+            <button id="resetPlayerInfo" class="small danger-button">Reset player info</button>
           </div>
         </section>
       </div>
@@ -1042,9 +806,7 @@ No diagnostics run yet.</pre
       <div class="drawer-header">
         <div>
           <h2 id="gameSetupTitle">Chess Setup</h2>
-          <p id="gameSetupSubtitle">
-            Choose the variant and configure this match.
-          </p>
+          <p id="gameSetupSubtitle">Choose the variant and configure this match.</p>
         </div>
         <button id="closeGameSetup" class="small" aria-label="Close">×</button>
       </div>
@@ -1119,12 +881,12 @@ No diagnostics run yet.</pre
       // Release channels: normal is the public library, Beta is the separate
       // beta menu, and Alpha is shown inside Beta only after the access code.
       let libraryMode = "normal";
-      let alphaUnlocked = sessionStorage.getItem("ALPHA_ACCESS_CODE") === "true";
+      let alphaUnlocked = sessionStorage.getItem("gameLibraryAlphaAccess") === "true";
       // This is a client-side access gate, not a security mechanism. Change it
       // here to whatever code you want to use for your private alpha builds.
-      const ALPHA_ACCESS_CODE = "1972";
+      const ALPHA_ACCESS_CODE = "OPEN-GAME-GALLERY-ALPHA";
 
-      const LIBRARY_URL = "library.json?v=20261007-release1";
+      const LIBRARY_URL = "library.json?v=20261007-release2";
 
       function libraryGame(gameId) {
         return games.find((game) => game.id === gameId) || null;
@@ -1143,11 +905,7 @@ No diagnostics run yet.</pre
       }
 
       function releaseRank(value) {
-        return releaseStatus(value) === "alpha"
-          ? 2
-          : releaseStatus(value) === "beta"
-            ? 1
-            : 0;
+        return releaseStatus(value) === "alpha" ? 2 : releaseStatus(value) === "beta" ? 1 : 0;
       }
 
       function releaseVisible(value) {
@@ -1161,12 +919,9 @@ No diagnostics run yet.</pre
         const targetRank = channel === "normal" ? 0 : 1;
         if (channel === "normal") return releaseRank(game.release) === 0;
         if (releaseRank(game.release) === 1) return true;
-        if (releaseRank(game.release) === 2)
-          return channel === "alpha" && alphaUnlocked;
-        for (const v of game.variants || [])
-          if (releaseRank(v.release) === targetRank) return true;
-        for (const option of Object.values(game.options || {}))
-          if (releaseRank(option.release) === targetRank) return true;
+        if (releaseRank(game.release) === 2) return channel === "alpha" && alphaUnlocked;
+        for (const v of game.variants || []) if (releaseRank(v.release) === targetRank) return true;
+        for (const option of Object.values(game.options || {})) if (releaseRank(option.release) === targetRank) return true;
         return false;
       }
 
@@ -1175,30 +930,25 @@ No diagnostics run yet.</pre
         if (libraryMode === "normal") {
           return gameRank === 0;
         }
-        if (gameRank === 2 && !alphaUnlocked) return false;
+        if (gameRank === 2) return alphaUnlocked;
         if (gameRank === 1) return true;
         // Normal games only appear in Beta when they contain beta/alpha content.
-        return (
-          (game.variants || []).some((v) => {
-            const r = releaseRank(v.release);
-            return r === 1 || (r === 2 && alphaUnlocked);
-          }) ||
-          Object.values(game.options || {}).some((option) => {
-            const r = releaseRank(option.release);
-            return r === 1 || (r === 2 && alphaUnlocked);
-          })
-        );
+        return (game.variants || []).some(v => {
+          const r = releaseRank(v.release);
+          return r === 1 || (r === 2 && alphaUnlocked);
+        }) || Object.values(game.options || {}).some(option => {
+          const r = releaseRank(option.release);
+          return r === 1 || (r === 2 && alphaUnlocked);
+        });
       }
 
       function visibleVariants(gameId) {
         const game = libraryGame(gameId);
-        return (game?.variants || []).filter((v) => releaseVisible(v.release));
+        return (game?.variants || []).filter(v => releaseVisible(v.release));
       }
 
       function visibleOptions(game) {
-        return Object.entries(game?.options || {}).filter(([, option]) =>
-          releaseVisible(option.release),
-        );
+        return Object.entries(game?.options || {}).filter(([, option]) => releaseVisible(option.release));
       }
 
       function renderReleasePanel() {
@@ -1214,11 +964,9 @@ No diagnostics run yet.</pre
         releasePanel.innerHTML = `
           <div class="release-panel-title">Beta &amp; experimental content</div>
           <div class="release-panel-text">Beta games and beta settings are shown here separately from the main library. ${escapeHtml(alphaText)}</div>
-          ${
-            alphaUnlocked
-              ? `<button id="lockAlpha" class="small" style="margin-top:10px" type="button">Lock alpha access</button>`
-              : `<div class="alpha-access-row"><input id="alphaAccessInput" type="password" autocomplete="off" placeholder="Alpha access code" aria-label="Alpha access code"><button id="alphaAccessButton" class="small primary" type="button">Unlock Alpha</button></div>`
-          }
+          ${alphaUnlocked
+            ? `<button id="lockAlpha" class="small" style="margin-top:10px" type="button">Lock alpha access</button>`
+            : `<div class="alpha-access-row"><input id="alphaAccessInput" type="password" autocomplete="off" placeholder="Alpha access code" aria-label="Alpha access code"><button id="alphaAccessButton" class="small primary" type="button">Unlock Alpha</button></div>`}
           <div id="alphaAccessStatus" class="release-panel-text" style="margin-top:7px"></div>`;
 
         if (alphaUnlocked) {
@@ -1227,10 +975,7 @@ No diagnostics run yet.</pre
             sessionStorage.removeItem("gameLibraryAlphaAccess");
             renderReleasePanel();
             renderGames();
-            if (gameSetupOpen) {
-              initializeSetupState();
-              renderGameSetup();
-            }
+            if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
           };
         } else {
           const input = $("alphaAccessInput");
@@ -1247,9 +992,7 @@ No diagnostics run yet.</pre
             status.textContent = "Incorrect alpha access code.";
           };
           button.onclick = attempt;
-          input.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") attempt();
-          });
+          input.addEventListener("keydown", e => { if (e.key === "Enter") attempt(); });
         }
       }
 
@@ -1274,13 +1017,10 @@ No diagnostics run yet.</pre
           libraryLoaded = true;
 
           if (!gameVisibleInLibrary(libraryGame(selectedSetupGame) || {})) {
-            selectedSetupGame =
-              games.find(gameVisibleInLibrary)?.id || games[0].id;
+            selectedSetupGame = games.find(gameVisibleInLibrary)?.id || games[0].id;
           }
           const initialVisibleVariants = visibleVariants(selectedSetupGame);
-          if (
-            !initialVisibleVariants.some((v) => v.id === selectedSetupVariant)
-          ) {
+          if (!initialVisibleVariants.some((v) => v.id === selectedSetupVariant)) {
             selectedSetupVariant = initialVisibleVariants[0]?.id || "standard";
           }
 
@@ -1325,56 +1065,37 @@ No diagnostics run yet.</pre
       }
       function loadProfiles() {
         try {
-          const p = JSON.parse(
-            localStorage.getItem("gameLibraryProfiles") || "null",
-          );
+          const p = JSON.parse(localStorage.getItem("gameLibraryProfiles") || "null");
           if (Array.isArray(p) && p.length) return p;
         } catch {}
-        return [
-          {
-            id: "p_" + Math.random().toString(36).slice(2, 10),
-            name: "Player 1",
-            avatar: "♟",
-          },
-        ];
+        return [{
+          id: "p_" + Math.random().toString(36).slice(2, 10),
+          name: "Player 1",
+          avatar: "♟",
+        }];
       }
 
       function loadPartyProfileIds() {
         try {
-          const p = JSON.parse(
-            sessionStorage.getItem("gameLibraryParty") || "null",
-          );
+          const p = JSON.parse(sessionStorage.getItem("gameLibraryParty") || "null");
           if (Array.isArray(p)) return p.filter((id) => typeof id === "string");
         } catch {}
         return profiles[0]?.id ? [profiles[0].id] : [];
       }
 
       function savePartyProfileIds() {
-        try {
-          sessionStorage.setItem(
-            "gameLibraryParty",
-            JSON.stringify(partyProfileIds),
-          );
-        } catch {}
+        try { sessionStorage.setItem("gameLibraryParty", JSON.stringify(partyProfileIds)); } catch {}
       }
 
       function partyProfiles() {
-        return partyProfileIds
-          .map((id) => profiles.find((p) => p.id === id))
-          .filter(Boolean);
+        return partyProfileIds.map((id) => profiles.find((p) => p.id === id)).filter(Boolean);
       }
 
       function loadLocalScores() {
         try {
-          const scores = JSON.parse(
-            localStorage.getItem("gameLibraryLocalScores") || "{}",
-          );
-          return scores && typeof scores === "object" && !Array.isArray(scores)
-            ? scores
-            : {};
-        } catch {
-          return {};
-        }
+          const scores = JSON.parse(localStorage.getItem("gameLibraryLocalScores") || "{}");
+          return scores && typeof scores === "object" && !Array.isArray(scores) ? scores : {};
+        } catch { return {}; }
       }
 
       function saveLocalScores(scores) {
@@ -1396,44 +1117,25 @@ No diagnostics run yet.</pre
       function resetLocalScores() {
         localStorage.removeItem("gameLibraryLocalScores");
         renderParty();
-        if (
-          onlineState.connected &&
-          onlineState.socket?.readyState === WebSocket.OPEN
-        ) {
-          try {
-            onlineState.socket.send(JSON.stringify({ type: "scores:reset" }));
-          } catch {}
+        if (onlineState.connected && onlineState.socket?.readyState === WebSocket.OPEN) {
+          try { onlineState.socket.send(JSON.stringify({ type: "scores:reset" })); } catch {}
         }
       }
 
       function addProfileToParty(profileId) {
-        if (
-          !profiles.some((p) => p.id === profileId) ||
-          partyProfileIds.includes(profileId)
-        )
-          return;
+        if (!profiles.some((p) => p.id === profileId) || partyProfileIds.includes(profileId)) return;
         partyProfileIds.push(profileId);
         savePartyProfileIds();
-        renderParty();
-        renderProfiles();
-        sendIdentify();
-        if (gameSetupOpen) {
-          initializeSetupState();
-          renderGameSetup();
-        }
+        renderParty(); renderProfiles(); sendIdentify();
+        if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
       }
 
       function removeProfileFromParty(profileId) {
         if (!partyProfileIds.includes(profileId)) return;
         partyProfileIds = partyProfileIds.filter((id) => id !== profileId);
         savePartyProfileIds();
-        renderParty();
-        renderProfiles();
-        sendIdentify();
-        if (gameSetupOpen) {
-          initializeSetupState();
-          renderGameSetup();
-        }
+        renderParty(); renderProfiles(); sendIdentify();
+        if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
       }
 
       function resetPlayerInfo() {
@@ -1444,13 +1146,8 @@ No diagnostics run yet.</pre
         savePartyProfileIds();
         editingProfileId = null;
         profileEditor.innerHTML = "";
-        renderParty();
-        renderProfiles();
-        sendIdentify();
-        if (gameSetupOpen) {
-          initializeSetupState();
-          renderGameSetup();
-        }
+        renderParty(); renderProfiles(); sendIdentify();
+        if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
       }
 
       function saveProfiles() {
@@ -1471,10 +1168,7 @@ No diagnostics run yet.</pre
         return onlineState.code || onlineState.joinedCode || "";
       }
       function persistOnline() {
-        sessionStorage.setItem(
-          "gameLibraryOnlineClientId",
-          onlineState.clientId,
-        );
+        sessionStorage.setItem("gameLibraryOnlineClientId", onlineState.clientId);
         if (onlineState.code)
           sessionStorage.setItem("gameLibraryOnlineCode", onlineState.code);
         else sessionStorage.removeItem("gameLibraryOnlineCode");
@@ -1510,38 +1204,20 @@ No diagnostics run yet.</pre
         partyList.innerHTML = "";
         const party = partyProfiles();
         if (!party.length) {
-          partyList.innerHTML =
-            '<div class="party-empty">No players in the current party. Add a profile below.</div>';
+          partyList.innerHTML = '<div class="party-empty">No players in the current party. Add a profile below.</div>';
           return;
         }
         party.forEach((p, index) => {
-          const row = document.createElement("div");
-          row.className = "party-row";
-          const avatar = document.createElement("div");
-          avatar.className = "avatar";
-          avatar.textContent = p.avatar || "♟";
-          const info = document.createElement("div");
-          info.className = "grow";
-          const name = document.createElement("div");
-          name.className = "player-name";
-          name.textContent = p.name || `Player ${index + 1}`;
-          const type = document.createElement("div");
-          type.className = "player-type";
-          type.textContent = `Local player${onlineState.connected ? " • This computer" : ""}`;
+          const row = document.createElement("div"); row.className = "party-row";
+          const avatar = document.createElement("div"); avatar.className = "avatar"; avatar.textContent = p.avatar || "♟";
+          const info = document.createElement("div"); info.className = "grow";
+          const name = document.createElement("div"); name.className = "player-name"; name.textContent = p.name || `Player ${index + 1}`;
+          const type = document.createElement("div"); type.className = "player-type"; type.textContent = `Local player${onlineState.connected ? " • This computer" : ""}`;
           info.append(name, type);
           const wins = localWins(p.id);
-          const score = document.createElement("div");
-          score.className = "party-score";
-          score.textContent = `${wins} win${wins === 1 ? "" : "s"}`;
-          const remove = document.createElement("button");
-          remove.type = "button";
-          remove.className = "party-remove";
-          remove.textContent = "×";
-          remove.title = "Remove from party";
-          remove.dataset.partyAction = "remove";
-          remove.dataset.profileId = p.id;
-          row.append(avatar, info, score, remove);
-          partyList.appendChild(row);
+          const score = document.createElement("div"); score.className = "party-score"; score.textContent = `${wins} win${wins === 1 ? "" : "s"}`;
+          const remove = document.createElement("button"); remove.type = "button"; remove.className = "party-remove"; remove.textContent = "×"; remove.title = "Remove from party"; remove.dataset.partyAction = "remove"; remove.dataset.profileId = p.id;
+          row.append(avatar, info, score, remove); partyList.appendChild(row);
         });
       }
 
@@ -1549,34 +1225,15 @@ No diagnostics run yet.</pre
         profileList.innerHTML = "";
         for (const p of profiles) {
           const inParty = partyProfileIds.includes(p.id);
-          const row = document.createElement("div");
-          row.className = "profile-row";
-          const editButton = document.createElement("button");
-          editButton.type = "button";
-          editButton.className = "profile-edit-area";
+          const row = document.createElement("div"); row.className = "profile-row";
+          const editButton = document.createElement("button"); editButton.type = "button"; editButton.className = "profile-edit-area";
           editButton.innerHTML = `<div class="avatar">${escapeHtml(p.avatar || "♟")}</div><div class="grow"><div class="player-name">${escapeHtml(p.name)}</div><div class="player-type">${inParty ? "In current party • Click to edit" : "Not in current party • Click to edit"}</div></div>`;
-          editButton.dataset.profileAction = "edit";
-          editButton.dataset.profileId = p.id;
-          const partyButton = document.createElement("button");
-          partyButton.type = "button";
-          partyButton.className = "profile-party-button small";
-          partyButton.textContent = inParty ? "In party" : "Add";
-          partyButton.disabled = inParty;
-          partyButton.dataset.profileAction = "party";
-          partyButton.dataset.profileId = p.id;
-          const removeButton = document.createElement("button");
-          removeButton.type = "button";
-          removeButton.className = "profile-remove";
-          removeButton.textContent = "×";
-          removeButton.title = `Remove ${p.name}`;
-          removeButton.dataset.profileAction = "remove";
-          removeButton.dataset.profileId = p.id;
-          row.append(editButton, partyButton, removeButton);
-          profileList.appendChild(row);
+          editButton.dataset.profileAction = "edit"; editButton.dataset.profileId = p.id;
+          const partyButton = document.createElement("button"); partyButton.type="button"; partyButton.className="profile-party-button small"; partyButton.textContent=inParty?"In party":"Add"; partyButton.disabled=inParty; partyButton.dataset.profileAction="party"; partyButton.dataset.profileId=p.id;
+          const removeButton = document.createElement("button"); removeButton.type="button"; removeButton.className="profile-remove"; removeButton.textContent="×"; removeButton.title=`Remove ${p.name}`; removeButton.dataset.profileAction="remove"; removeButton.dataset.profileId=p.id;
+          row.append(editButton, partyButton, removeButton); profileList.appendChild(row);
         }
-        if (!profiles.length)
-          profileList.innerHTML =
-            '<div class="party-empty">No saved player profiles.</div>';
+        if (!profiles.length) profileList.innerHTML = '<div class="party-empty">No saved player profiles.</div>';
       }
 
       function removeProfile(profileId) {
@@ -1584,17 +1241,9 @@ No diagnostics run yet.</pre
         if (index < 0) return;
         profiles.splice(index, 1);
         partyProfileIds = partyProfileIds.filter((id) => id !== profileId);
-        savePartyProfileIds();
-        saveProfiles();
-        profileEditor.innerHTML = "";
-        renderParty();
-        renderProfiles();
-        sendIdentify();
-        renderOnline();
-        if (gameSetupOpen) {
-          initializeSetupState();
-          renderGameSetup();
-        }
+        savePartyProfileIds(); saveProfiles(); profileEditor.innerHTML = "";
+        renderParty(); renderProfiles(); sendIdentify(); renderOnline();
+        if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
       }
       function openProfileEditor(profileId = null) {
         editingProfileId = profileId;
@@ -1618,31 +1267,15 @@ No diagnostics run yet.</pre
           const avatar = $("profileNameInput").dataset.avatar || "♟";
           if (editingProfileId) {
             const x = profiles.find((y) => y.id === editingProfileId);
-            if (x) {
-              x.name = name;
-              x.avatar = avatar;
-            }
+            if (x) { x.name = name; x.avatar = avatar; }
           } else {
-            const created = {
-              id: "p_" + Math.random().toString(36).slice(2, 10),
-              name,
-              avatar,
-            };
+            const created = { id: "p_" + Math.random().toString(36).slice(2, 10), name, avatar };
             profiles.push(created);
-            if (!partyProfileIds.includes(created.id))
-              partyProfileIds.push(created.id);
+            if (!partyProfileIds.includes(created.id)) partyProfileIds.push(created.id);
             savePartyProfileIds();
           }
-          saveProfiles();
-          profileEditor.innerHTML = "";
-          renderParty();
-          renderProfiles();
-          sendIdentify();
-          renderOnline();
-          if (gameSetupOpen) {
-            initializeSetupState();
-            renderGameSetup();
-          }
+          saveProfiles(); profileEditor.innerHTML = ""; renderParty(); renderProfiles(); sendIdentify(); renderOnline();
+          if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
         };
         $("cancelProfile").onclick = () => (profileEditor.innerHTML = "");
       }
@@ -1654,54 +1287,26 @@ No diagnostics run yet.</pre
         renderOnline();
       }
       function selectedProfile() {
-        return (
-          partyProfiles()[0] ||
-          profiles[0] || { name: "Player 1", avatar: "♟", id: "" }
-        );
+        return partyProfiles()[0] || profiles[0] || { name: "Player 1", avatar: "♟", id: "" };
       }
 
       function setupEntries() {
         const localEntries = partyProfiles().map((p) => ({
-          token: `local:${p.id}`,
-          id: p.id,
-          profileId: p.id,
-          name: p.name || "Player",
-          avatar: p.avatar || "♟",
-          type: onlineState.connected
-            ? "Local player • This computer"
-            : "Local player",
-          online: false,
-          spectator: setupSpectatorTokens.has(`local:${p.id}`),
-          controllerClientId: onlineState.connected ? onlineState.clientId : "",
+          token: `local:${p.id}`, id: p.id, profileId: p.id, name: p.name || "Player", avatar: p.avatar || "♟",
+          type: onlineState.connected ? "Local player • This computer" : "Local player", online: false,
+          spectator: setupSpectatorTokens.has(`local:${p.id}`), controllerClientId: onlineState.connected ? onlineState.clientId : "",
         }));
         if (!onlineState.connected) return localEntries;
         const remoteEntries = [];
-        for (const participant of onlineState.participants.filter(
-          (p) => p.connected && p.clientId !== onlineState.clientId,
-        )) {
-          const remoteParty =
-            Array.isArray(participant.party) && participant.party.length
-              ? participant.party
-              : [
-                  {
-                    id: participant.profileId || participant.clientId,
-                    name: participant.name,
-                    avatar: participant.avatar,
-                  },
-                ];
+        for (const participant of onlineState.participants.filter((p) => p.connected && p.clientId !== onlineState.clientId)) {
+          const remoteParty = Array.isArray(participant.party) && participant.party.length ? participant.party : [{ id: participant.profileId || participant.clientId, name: participant.name, avatar: participant.avatar }];
           for (const member of remoteParty) {
             const memberId = String(member.id || participant.clientId);
             remoteEntries.push({
-              token: `online:${participant.clientId}:${memberId}`,
-              id: memberId,
-              profileId: memberId,
-              name: member.name || participant.name || "Online player",
-              avatar: member.avatar || participant.avatar || "♟",
-              type: "Online player • Remote computer",
-              online: true,
-              participantClientId: participant.clientId,
-              controllerClientId: participant.clientId,
-              spectator: Boolean(participant.spectator),
+              token: `online:${participant.clientId}:${memberId}`, id: memberId, profileId: memberId,
+              name: member.name || participant.name || "Online player", avatar: member.avatar || participant.avatar || "♟",
+              type: "Online player • Remote computer", online: true, participantClientId: participant.clientId,
+              controllerClientId: participant.clientId, spectator: Boolean(participant.spectator),
             });
           }
         }
@@ -1716,23 +1321,17 @@ No diagnostics run yet.</pre
           avatar: "🤖",
           type: "Computer player",
           computer: true,
-          difficulty:
-            setupComputerDifficulties[`computer:${index}`] || "normal",
+          difficulty: setupComputerDifficulties[`computer:${index}`] || "normal",
         };
       }
 
       function activeSetupEntries() {
-        const humans = setupEntries().filter(
-          (entry) => !setupSpectatorTokens.has(entry.token),
-        );
-        const computers = Array.from({ length: setupComputerCount }, (_, i) =>
-          setupComputerEntry(i),
-        );
+        const humans = setupEntries().filter((entry) => !setupSpectatorTokens.has(entry.token));
+        const computers = Array.from({ length: setupComputerCount }, (_, i) => setupComputerEntry(i));
         const all = [...humans, ...computers];
         const valid = new Set(all.map((entry) => entry.token));
         const normalized = setupPlayerOrder.filter((token) => valid.has(token));
-        for (const entry of all)
-          if (!normalized.includes(entry.token)) normalized.push(entry.token);
+        for (const entry of all) if (!normalized.includes(entry.token)) normalized.push(entry.token);
         setupPlayerOrder = normalized;
         return all;
       }
@@ -1745,74 +1344,48 @@ No diagnostics run yet.</pre
         // setup menu. Previously the room game always overrode the clicked
         // game, which caused every setup button to open (for example) Reversi.
         const nonHostOnline = onlineState.connected && !onlineState.isHost;
-        const roomGame =
-          nonHostOnline && configuredGame && libraryGame(configuredGame)
-            ? configuredGame
-            : null;
-        selectedSetupGame =
-          roomGame || (libraryGame(requestedGame) ? requestedGame : "chess");
+        const roomGame = nonHostOnline && configuredGame && libraryGame(configuredGame)
+          ? configuredGame
+          : null;
+        selectedSetupGame = roomGame || (libraryGame(requestedGame) ? requestedGame : "chess");
 
         const variants = visibleVariants(selectedSetupGame);
-        const roomVariant =
-          nonHostOnline && roomGame ? onlineState.config?.variant : null;
+        const roomVariant = nonHostOnline && roomGame ? onlineState.config?.variant : null;
         selectedSetupVariant = variants.some((v) => v.id === roomVariant)
           ? roomVariant
-          : variants[0]?.id || "standard";
+          : (variants[0]?.id || "standard");
 
         const gameDefinition = libraryGame(selectedSetupGame);
-        const variantDefinition =
-          (gameDefinition?.variants || []).find(
-            (v) => v.id === selectedSetupVariant,
-          ) || gameDefinition?.variants?.[0];
+        const variantDefinition = (gameDefinition?.variants || []).find((v) => v.id === selectedSetupVariant) || gameDefinition?.variants?.[0];
         selectedSetupOptions = {};
         for (const [key, option] of visibleOptions(gameDefinition)) {
-          const fallback =
-            option.default ??
-            (option.type === "select" &&
-            Array.isArray(option.choices) &&
-            option.choices.length
-              ? typeof option.choices[0] === "object"
-                ? option.choices[0].value
-                : option.choices[0]
-              : false);
-          selectedSetupOptions[key] =
-            onlineState.config?.options?.[key] ?? fallback;
+          const fallback = option.default ?? (
+            option.type === "select" && Array.isArray(option.choices) && option.choices.length
+              ? (typeof option.choices[0] === "object" ? option.choices[0].value : option.choices[0])
+              : false
+          );
+          selectedSetupOptions[key] = onlineState.config?.options?.[key] ?? fallback;
         }
         if (selectedSetupGame === "chess") {
-          selectedSetupOptions.fogOfWar = Boolean(
-            onlineState.config?.options?.fogOfWar,
-          );
+          selectedSetupOptions.fogOfWar = Boolean(onlineState.config?.options?.fogOfWar);
         }
         setupComputerDifficulties = {};
 
         if (onlineState.connected) {
           setupSpectatorTokens = new Set(
-            onlineState.participants
-              .filter((p) => p.connected && p.spectator)
-              .flatMap((p) => {
-                const members =
-                  Array.isArray(p.party) && p.party.length
-                    ? p.party
-                    : [{ id: p.profileId || p.clientId }];
-                return members.map(
-                  (member) =>
-                    `online:${p.clientId}:${String(member.id || p.clientId)}`,
-                );
-              }),
+            onlineState.participants.filter((p) => p.connected && p.spectator).flatMap((p) => {
+              const members = Array.isArray(p.party) && p.party.length ? p.party : [{ id: p.profileId || p.clientId }];
+              return members.map((member) => `online:${p.clientId}:${String(member.id || p.clientId)}`);
+            }),
           );
         } else {
           setupSpectatorTokens = new Set();
         }
 
-        const activeHumans = setupEntries().filter(
-          (entry) => !setupSpectatorTokens.has(entry.token),
-        ).length;
+        const activeHumans = setupEntries().filter((entry) => !setupSpectatorTokens.has(entry.token)).length;
         const initialRange = selectedPlayerRange();
         setupComputerCount = Math.max(0, initialRange.min - activeHumans);
-        setupComputerCount = Math.min(
-          Math.max(0, initialRange.max - activeHumans),
-          setupComputerCount,
-        );
+        setupComputerCount = Math.min(Math.max(0, initialRange.max - activeHumans), setupComputerCount);
 
         if (onlineState.config?.players?.length) {
           const ordered = [];
@@ -1822,76 +1395,45 @@ No diagnostics run yet.</pre
               const id = p.id || p.seat || "";
               const m = String(id).match(/computer:(\d+)/);
               if (m) ordered.push(`computer:${m[1]}`);
-            } else if (p.controllerClientId && p.profileId)
-              ordered.push(`online:${p.controllerClientId}:${p.profileId}`);
+            } else if (p.controllerClientId && p.profileId) ordered.push(`online:${p.controllerClientId}:${p.profileId}`);
             else if (p.profileId) ordered.push(`local:${p.profileId}`);
           }
-          setupComputerCount = onlineState.config.players.filter(
-            (p) => p.type === "computer",
-          ).length;
+          setupComputerCount = onlineState.config.players.filter((p) => p.type === "computer").length;
           const configuredBounds = computerBounds();
-          setupComputerCount = Math.max(
-            configuredBounds.min,
-            Math.min(configuredBounds.max, setupComputerCount),
-          );
+          setupComputerCount = Math.max(configuredBounds.min, Math.min(configuredBounds.max, setupComputerCount));
           for (let i = 0; i < setupComputerCount; i++) {
-            const configured = onlineState.config.players.find((p) =>
-              String(p.id || "").includes(`computer:${i}`),
-            );
-            setupComputerDifficulties[`computer:${i}`] =
-              configured?.difficulty || "normal";
+            const configured = onlineState.config.players.find((p) => String(p.id || "").includes(`computer:${i}`));
+            setupComputerDifficulties[`computer:${i}`] = configured?.difficulty || "normal";
           }
           setupPlayerOrder = ordered;
         }
 
         ensureSetupCounts();
         const active = activeSetupEntries();
-        if (!setupPlayerOrder.length)
-          setupPlayerOrder = active.map((entry) => entry.token);
+        if (!setupPlayerOrder.length) setupPlayerOrder = active.map((entry) => entry.token);
       }
 
       function selectedVariantDefinition() {
         const variants = visibleVariants(selectedSetupGame);
-        return (
-          variants.find((variant) => variant.id === selectedSetupVariant) ||
-          variants[0] || {
-            id: "standard",
-            name: "",
-            players: libraryGame(selectedSetupGame)?.players || {
-              min: 2,
-              max: 2,
-            },
-          }
-        );
+        return variants.find((variant) => variant.id === selectedSetupVariant) || variants[0] || { id: "standard", name: "", players: libraryGame(selectedSetupGame)?.players || { min: 2, max: 2 } };
       }
 
       function selectedPlayerRange() {
-        const range = selectedVariantDefinition()?.players ||
-          libraryGame(selectedSetupGame)?.players || { min: 2, max: 2 };
+        const range = selectedVariantDefinition()?.players || libraryGame(selectedSetupGame)?.players || { min: 2, max: 2 };
         const min = Number.isFinite(Number(range.min)) ? Number(range.min) : 2;
-        const max = Number.isFinite(Number(range.max))
-          ? Number(range.max)
-          : min;
+        const max = Number.isFinite(Number(range.max)) ? Number(range.max) : min;
         return { min, max: Math.max(min, max) };
       }
 
       function computerBounds() {
         const { min, max } = selectedPlayerRange();
-        const humans = setupEntries().filter(
-          (entry) => !setupSpectatorTokens.has(entry.token),
-        ).length;
-        return {
-          min: Math.max(0, min - humans),
-          max: Math.max(0, max - humans),
-        };
+        const humans = setupEntries().filter((entry) => !setupSpectatorTokens.has(entry.token)).length;
+        return { min: Math.max(0, min - humans), max: Math.max(0, max - humans) };
       }
 
       function ensureSetupCounts() {
         const bounds = computerBounds();
-        setupComputerCount = Math.max(
-          bounds.min,
-          Math.min(setupComputerCount, bounds.max),
-        );
+        setupComputerCount = Math.max(bounds.min, Math.min(setupComputerCount, bounds.max));
       }
 
       function setupConfigFromState() {
@@ -1904,16 +1446,15 @@ No diagnostics run yet.</pre
         const order = setupPlayerOrder
           .map((token) => entries.get(token))
           .filter(Boolean);
-        const seatOrder =
-          selectedSetupVariant === "fourplayer"
-            ? ["white", "red", "black", "blue"]
-            : selectedSetupVariant === "threeman"
-              ? ["white", "red", "black"]
-              : selectedSetupGame === "reversi"
-                ? ["black", "white"]
-                : selectedSetupGame === "rummy" || selectedSetupGame === "eins"
-                  ? order.map((_, index) => `seat-${index}`)
-                  : ["white", "black"];
+        const seatOrder = selectedSetupVariant === "fourplayer"
+          ? ["white", "red", "black", "blue"]
+          : selectedSetupVariant === "threeman"
+            ? ["white", "red", "black"]
+            : selectedSetupGame === "reversi"
+              ? ["black", "white"]
+              : (selectedSetupGame === "rummy" || selectedSetupGame === "eins")
+                ? order.map((_, index) => `seat-${index}`)
+                : ["white", "black"];
         if (order.length < seatOrder.length) return null;
 
         const human = (entry) => {
@@ -1923,25 +1464,15 @@ No diagnostics run yet.</pre
               type: "computer",
               name: entry.name,
               avatar: entry.avatar,
-              controllerClientId: onlineState.connected
-                ? onlineState.participants.find((p) => p.role === "host")
-                    ?.clientId || onlineState.clientId
-                : "",
+              controllerClientId: onlineState.connected ? (onlineState.participants.find((p) => p.role === "host")?.clientId || onlineState.clientId) : "",
               difficulty: setupComputerDifficulties[entry.token] || "normal",
               id: entry.token,
             };
           }
           if (entry.online) {
             return {
-              seat: "",
-              type: "human",
-              controllerClientId:
-                entry.controllerClientId || entry.participantClientId || "",
-              profileId: entry.profileId || "",
-              name: entry.name,
-              avatar: entry.avatar,
-              playerType: "Online player",
-              id: entry.token,
+              seat: "", type: "human", controllerClientId: entry.controllerClientId || entry.participantClientId || "",
+              profileId: entry.profileId || "", name: entry.name, avatar: entry.avatar, playerType: "Online player", id: entry.token,
             };
           }
           const p = profiles.find((x) => x.id === entry.id) || {};
@@ -1961,42 +1492,26 @@ No diagnostics run yet.</pre
           game: selectedSetupGame,
           variant: selectedSetupVariant,
           hostClientId: onlineState.connected
-            ? onlineState.participants.find((p) => p.role === "host")
-                ?.clientId || ""
+            ? (onlineState.participants.find((p) => p.role === "host")?.clientId || "")
             : "",
           players: order.slice(0, seatOrder.length).map((entry, index) => ({
             ...human(entry),
             seat: seatOrder[index],
           })),
           spectators: onlineState.connected
-            ? onlineState.participants
-                .filter((p) => p.spectator)
-                .map((p) => p.clientId)
+            ? onlineState.participants.filter((p) => p.spectator).map((p) => p.clientId)
             : [...setupSpectatorTokens],
           options: { ...selectedSetupOptions },
         };
       }
 
       function sendPreGameConfig() {
-        if (
-          !onlineState.connected ||
-          !onlineState.isHost ||
-          !onlineState.socket ||
-          onlineState.socket.readyState !== WebSocket.OPEN
-        )
-          return;
+        if (!onlineState.connected || !onlineState.isHost || !onlineState.socket || onlineState.socket.readyState !== WebSocket.OPEN) return;
         const config = setupConfigFromState();
         if (!config) return;
         onlineState.config = config;
-        try {
-          sessionStorage.setItem(
-            "gameLibraryOnlineConfig",
-            JSON.stringify(config),
-          );
-        } catch {}
-        onlineState.socket.send(
-          JSON.stringify({ type: "room:config", config }),
-        );
+        try { sessionStorage.setItem("gameLibraryOnlineConfig", JSON.stringify(config)); } catch {}
+        onlineState.socket.send(JSON.stringify({ type: "room:config", config }));
       }
 
       function renderGameSetup() {
@@ -2009,48 +1524,36 @@ No diagnostics run yet.</pre
         const host = onlineState.connected && !onlineState.isHost;
         ensureSetupCounts();
         const active = activeSetupEntries();
-        const humans = setupEntries().filter(
-          (entry) => !setupSpectatorTokens.has(entry.token),
-        ).length;
+        const humans = setupEntries().filter((entry) => !setupSpectatorTokens.has(entry.token)).length;
         const playerRange = selectedPlayerRange();
         const bounds = computerBounds();
-        const valid =
-          active.length >= playerRange.min && active.length <= playerRange.max;
+        const valid = active.length >= playerRange.min && active.length <= playerRange.max;
 
         const gameDefinition = selectedGameDefinition();
         const isChess = selectedSetupGame === "chess";
-        $("gameSetupTitle").textContent =
-          `${gameDefinition?.name || "Game"} Setup`;
+        $("gameSetupTitle").textContent = `${gameDefinition?.name || "Game"} Setup`;
         subtitle.textContent = onlineState.connected
-          ? host
-            ? "The host controls the match configuration."
-            : `Room ${roomCode()} • Host setup`
+          ? (host ? "The host controls the match configuration." : `Room ${roomCode()} • Host setup`)
           : "Choose the variant and configure this match.";
 
         const variants = libraryVariants(selectedSetupGame);
         if (variants.length) {
           const variantSection = document.createElement("section");
           variantSection.className = "setup-section";
-          const vh = document.createElement("h3");
-          vh.textContent = "Variant";
-          const variantList = document.createElement("div");
-          variantList.className = "variant-list";
+          const vh = document.createElement("h3"); vh.textContent = "Variant";
+          const variantList = document.createElement("div"); variantList.className = "variant-list";
           for (const variant of variants) {
-            const b = document.createElement("button");
-            b.type = "button";
-            b.className = "variant-button";
-            b.textContent = variant.name;
-            b.disabled = host;
-            if (variant.id === selectedSetupVariant)
-              b.classList.add("selected");
-            b.onclick = () => {
-              selectedSetupVariant = variant.id;
-              ensureSetupCounts();
-              normalizeSetupOrder();
-              if (onlineState.connected && onlineState.isHost)
-                sendPreGameConfig();
-              renderGameSetup();
-            };
+          const b = document.createElement("button");
+          b.type = "button"; b.className = "variant-button"; b.textContent = variant.name;
+          b.disabled = host;
+          if (variant.id === selectedSetupVariant) b.classList.add("selected");
+          b.onclick = () => {
+            selectedSetupVariant = variant.id;
+            ensureSetupCounts();
+            normalizeSetupOrder();
+            if (onlineState.connected && onlineState.isHost) sendPreGameConfig();
+            renderGameSetup();
+          };
             variantList.appendChild(b);
           }
           variantSection.append(vh, variantList);
@@ -2058,43 +1561,40 @@ No diagnostics run yet.</pre
         }
 
         if (isChess) {
-          const optionSection = document.createElement("section");
-          optionSection.className = "setup-section";
-          const optionsHeading = document.createElement("h3");
-          optionsHeading.textContent = "Game options";
-          const optionList = document.createElement("div");
-          optionList.className = "setup-option-list";
+        const optionSection = document.createElement("section");
+        optionSection.className = "setup-section";
+        const optionsHeading = document.createElement("h3");
+        optionsHeading.textContent = "Game options";
+        const optionList = document.createElement("div");
+        optionList.className = "setup-option-list";
 
-          const fogRow = document.createElement("label");
-          fogRow.className = "toggle-option";
-          const fogLabel = document.createElement("span");
-          fogLabel.className = "toggle-label";
-          fogLabel.innerHTML =
-            '<strong>Fog of War</strong><br><span class="range-help">Players see their own pieces and the squares those pieces attack. Spectators see the entire board.</span>';
-          const fogSwitch = document.createElement("span");
-          fogSwitch.className = "toggle-switch";
-          const fogCheckbox = document.createElement("input");
-          fogCheckbox.type = "checkbox";
-          fogCheckbox.checked = Boolean(selectedSetupOptions.fogOfWar);
-          fogCheckbox.disabled = host;
-          const fogSlider = document.createElement("span");
-          fogSlider.className = "toggle-slider";
-          fogCheckbox.addEventListener("change", () => {
-            selectedSetupOptions.fogOfWar = fogCheckbox.checked;
-            if (onlineState.connected && onlineState.isHost)
-              sendPreGameConfig();
-          });
-          fogSwitch.append(fogCheckbox, fogSlider);
-          fogRow.append(fogLabel, fogSwitch);
-          optionList.appendChild(fogRow);
+        const fogRow = document.createElement("label");
+        fogRow.className = "toggle-option";
+        const fogLabel = document.createElement("span");
+        fogLabel.className = "toggle-label";
+        fogLabel.innerHTML = '<strong>Fog of War</strong><br><span class="range-help">Players see their own pieces and the squares those pieces attack. Spectators see the entire board.</span>';
+        const fogSwitch = document.createElement("span");
+        fogSwitch.className = "toggle-switch";
+        const fogCheckbox = document.createElement("input");
+        fogCheckbox.type = "checkbox";
+        fogCheckbox.checked = Boolean(selectedSetupOptions.fogOfWar);
+        fogCheckbox.disabled = host;
+        const fogSlider = document.createElement("span");
+        fogSlider.className = "toggle-slider";
+        fogCheckbox.addEventListener("change", () => {
+          selectedSetupOptions.fogOfWar = fogCheckbox.checked;
+          if (onlineState.connected && onlineState.isHost) sendPreGameConfig();
+        });
+        fogSwitch.append(fogCheckbox, fogSlider);
+        fogRow.append(fogLabel, fogSwitch);
+        optionList.appendChild(fogRow);
 
-          const note = document.createElement("div");
-          note.className = "setup-player-summary";
-          note.textContent =
-            "Fog of War works with Standard Chess, Chess960, Three Player Chess, and 4-Player Chess. In local games with multiple human players, a 2-second pass-the-device timer hides the board between turns.";
-          optionList.appendChild(note);
-          optionSection.append(optionsHeading, optionList);
-          body.appendChild(optionSection);
+        const note = document.createElement("div");
+        note.className = "setup-player-summary";
+        note.textContent = "Fog of War works with Standard Chess, Chess960, Three Player Chess, and 4-Player Chess. In local games with multiple human players, a 2-second pass-the-device timer hides the board between turns.";
+        optionList.appendChild(note);
+        optionSection.append(optionsHeading, optionList);
+        body.appendChild(optionSection);
         }
 
         const libraryOptionEntries = visibleOptions(gameDefinition);
@@ -2113,8 +1613,7 @@ No diagnostics run yet.</pre
               const label = document.createElement("span");
               label.className = "toggle-label";
               label.innerHTML = `<strong>${escapeHtml(option.name || formatSetupLabel(key))}</strong>`;
-              if (option.help)
-                label.innerHTML += `<br><span class="range-help">${escapeHtml(option.help)}</span>`;
+              if (option.help) label.innerHTML += `<br><span class="range-help">${escapeHtml(option.help)}</span>`;
               const sw = document.createElement("span");
               sw.className = "toggle-switch";
               const cb = document.createElement("input");
@@ -2125,8 +1624,7 @@ No diagnostics run yet.</pre
               slider.className = "toggle-slider";
               cb.addEventListener("change", () => {
                 selectedSetupOptions[key] = cb.checked;
-                if (onlineState.connected && onlineState.isHost)
-                  sendPreGameConfig();
+                if (onlineState.connected && onlineState.isHost) sendPreGameConfig();
               });
               sw.append(cb, slider);
               row.append(label, sw);
@@ -2139,53 +1637,35 @@ No diagnostics run yet.</pre
               label.className = "toggle-label";
               label.setAttribute("for", `setup-option-${key}`);
               label.innerHTML = `<strong>${escapeHtml(option.name || formatSetupLabel(key))}</strong>`;
-              if (option.help)
-                label.innerHTML += `<br><span class="range-help">${escapeHtml(option.help)}</span>`;
+              if (option.help) label.innerHTML += `<br><span class="range-help">${escapeHtml(option.help)}</span>`;
 
               const select = document.createElement("select");
               select.id = `setup-option-${key}`;
               select.disabled = host;
 
-              const choices = (
-                Array.isArray(option.choices) ? option.choices : []
-              ).filter((choice) => {
-                return releaseVisible(
-                  typeof choice === "object" ? choice.release : undefined,
-                );
+              const choices = (Array.isArray(option.choices) ? option.choices : []).filter(choice => {
+                return releaseVisible(typeof choice === "object" ? choice.release : undefined);
               });
               for (const choice of choices) {
-                const value =
-                  typeof choice === "object" ? choice.value : choice;
-                const name =
-                  typeof choice === "object"
-                    ? (choice.name ?? choice.value)
-                    : choice;
+                const value = typeof choice === "object" ? choice.value : choice;
+                const name = typeof choice === "object" ? (choice.name ?? choice.value) : choice;
                 const opt = document.createElement("option");
                 opt.value = String(value);
                 opt.textContent = String(name);
                 select.appendChild(opt);
               }
 
-              const fallback =
-                option.default ??
-                (choices.length
-                  ? typeof choices[0] === "object"
-                    ? choices[0].value
-                    : choices[0]
-                  : "");
+              const fallback = option.default ?? (choices.length
+                ? (typeof choices[0] === "object" ? choices[0].value : choices[0])
+                : "");
               const currentValue = selectedSetupOptions[key] ?? fallback;
-              if (
-                [...select.options].some(
-                  (opt) => opt.value === String(currentValue),
-                )
-              ) {
+              if ([...select.options].some((opt) => opt.value === String(currentValue))) {
                 select.value = String(currentValue);
               }
 
               select.addEventListener("change", () => {
                 selectedSetupOptions[key] = select.value;
-                if (onlineState.connected && onlineState.isHost)
-                  sendPreGameConfig();
+                if (onlineState.connected && onlineState.isHost) sendPreGameConfig();
               });
 
               row.append(label, select);
@@ -2201,51 +1681,31 @@ No diagnostics run yet.</pre
 
         const playerSection = document.createElement("section");
         playerSection.className = "setup-section";
-        const ph = document.createElement("h3");
-        ph.textContent = "Players & spectators";
-        const summary = document.createElement("div");
-        summary.className = "setup-player-summary";
+        const ph = document.createElement("h3"); ph.textContent = "Players & spectators";
+        const summary = document.createElement("div"); summary.className = "setup-player-summary";
         summary.innerHTML = `<strong>${humans} active human${humans === 1 ? "" : "s"}</strong> in the room, plus ${setupComputerCount} computer${setupComputerCount === 1 ? "" : "s"}.`;
         playerSection.append(ph, summary);
 
-        const spectatorList = document.createElement("div");
-        spectatorList.className = "setup-player-list";
+        const spectatorList = document.createElement("div"); spectatorList.className = "setup-player-list";
         for (const entry of setupEntries()) {
           const isSpectator = setupSpectatorTokens.has(entry.token);
           const row = document.createElement("div");
-          row.className =
-            "spectator-row" + (isSpectator ? " is-spectator" : "");
-          const avatar = document.createElement("div");
-          avatar.className = "setup-player-avatar";
-          avatar.textContent = entry.avatar;
-          const info = document.createElement("div");
-          info.className = "setup-player-name";
-          const name = document.createElement("strong");
-          name.textContent = entry.name;
-          const type = document.createElement("span");
-          type.textContent = isSpectator ? "Spectator" : entry.type;
+          row.className = "spectator-row" + (isSpectator ? " is-spectator" : "");
+          const avatar = document.createElement("div"); avatar.className = "setup-player-avatar"; avatar.textContent = entry.avatar;
+          const info = document.createElement("div"); info.className = "setup-player-name";
+          const name = document.createElement("strong"); name.textContent = entry.name;
+          const type = document.createElement("span"); type.textContent = isSpectator ? "Spectator" : entry.type;
           info.append(name, type);
-          const toggle = document.createElement("button");
-          toggle.type = "button";
-          toggle.className = "spectator-toggle";
+          const toggle = document.createElement("button"); toggle.type = "button"; toggle.className = "spectator-toggle";
           toggle.textContent = isSpectator ? "↩" : "×";
-          toggle.title = isSpectator
-            ? "Return player to the game"
-            : "Make spectator for this match";
+          toggle.title = isSpectator ? "Return player to the game" : "Make spectator for this match";
           toggle.disabled = host;
           toggle.onclick = () => {
             const next = !isSpectator;
             if (onlineState.connected && entry.online) {
-              onlineState.socket?.send(
-                JSON.stringify({
-                  type: "player:spectator",
-                  clientId: entry.id,
-                  spectator: next,
-                }),
-              );
+              onlineState.socket?.send(JSON.stringify({ type: "player:spectator", clientId: entry.id, spectator: next }));
             } else {
-              if (next) setupSpectatorTokens.add(entry.token);
-              else setupSpectatorTokens.delete(entry.token);
+              if (next) setupSpectatorTokens.add(entry.token); else setupSpectatorTokens.delete(entry.token);
               ensureSetupCounts();
               normalizeSetupOrder();
               renderGameSetup();
@@ -2255,36 +1715,20 @@ No diagnostics run yet.</pre
           spectatorList.appendChild(row);
         }
         playerSection.appendChild(spectatorList);
-        const help = document.createElement("div");
-        help.className = "range-help";
-        help.textContent = host
-          ? "Only the host can change spectator assignments for an online room."
-          : "Spectators watch the match without occupying a chess side.";
+        const help = document.createElement("div"); help.className = "range-help";
+        help.textContent = host ? "Only the host can change spectator assignments for an online room." : "Spectators watch the match without occupying a chess side.";
         playerSection.appendChild(help);
         body.appendChild(playerSection);
 
-        const compSection = document.createElement("section");
-        compSection.className = "setup-section";
-        const ch = document.createElement("h3");
-        ch.textContent = "Computer players";
-        const rangeRow = document.createElement("div");
-        rangeRow.className = "range-row";
+        const compSection = document.createElement("section"); compSection.className = "setup-section";
+        const ch = document.createElement("h3"); ch.textContent = "Computer players";
+        const rangeRow = document.createElement("div"); rangeRow.className = "range-row";
         const main = document.createElement("div");
-        const rl = document.createElement("div");
-        rl.className = "range-label";
-        const lab = document.createElement("span");
-        lab.textContent = "Number of computers";
-        const val = document.createElement("span");
-        val.className = "range-value";
-        val.textContent = String(setupComputerCount);
+        const rl = document.createElement("div"); rl.className = "range-label";
+        const lab = document.createElement("span"); lab.textContent = "Number of computers";
+        const val = document.createElement("span"); val.className = "range-value"; val.textContent = String(setupComputerCount);
         rl.append(lab, val);
-        const slider = document.createElement("input");
-        slider.type = "range";
-        slider.min = String(bounds.min);
-        slider.max = String(bounds.max);
-        slider.step = "1";
-        slider.value = String(setupComputerCount);
-        slider.disabled = host || bounds.min === bounds.max;
+        const slider = document.createElement("input"); slider.type = "range"; slider.min = String(bounds.min); slider.max = String(bounds.max); slider.step = "1"; slider.value = String(setupComputerCount); slider.disabled = host || bounds.min === bounds.max;
         slider.oninput = () => {
           setupComputerCount = Number(slider.value);
           ensureSetupCounts();
@@ -2292,149 +1736,72 @@ No diagnostics run yet.</pre
           renderGameSetup();
           if (onlineState.connected && onlineState.isHost) sendPreGameConfig();
         };
-        const rh = document.createElement("div");
-        rh.className = "range-help";
+        const rh = document.createElement("div"); rh.className = "range-help";
         rh.textContent = `Allowed computer players: ${bounds.min}–${bounds.max} (game limit ${playerRange.min}–${playerRange.max}, minus ${humans} active human${humans === 1 ? "" : "s"}).`;
-        main.append(rl, slider, rh);
-        rangeRow.appendChild(main);
-        compSection.append(ch, rangeRow);
-        body.appendChild(compSection);
+        main.append(rl, slider, rh); rangeRow.appendChild(main); compSection.append(ch, rangeRow); body.appendChild(compSection);
 
-        const orderSection = document.createElement("section");
-        orderSection.className = "setup-section";
-        const oh = document.createElement("h3");
-        oh.textContent = "Player order";
-        const ohd = document.createElement("div");
-        ohd.className = "range-help";
-        ohd.textContent =
-          selectedSetupVariant === "fourplayer"
-            ? "Order determines the four sides: White, Red, Black, Blue."
-            : selectedSetupVariant === "threeman"
-              ? "Order determines the three sides: White, Red, Black."
-              : selectedSetupGame === "reversi"
-                ? "Order determines the two sides: Black, then White."
-                : "The first active player becomes White; the second becomes Black.";
-        const orderList = document.createElement("div");
-        orderList.className = "setup-order-list";
+        const orderSection = document.createElement("section"); orderSection.className = "setup-section";
+        const oh = document.createElement("h3"); oh.textContent = "Player order";
+        const ohd = document.createElement("div"); ohd.className = "range-help";
+        ohd.textContent = selectedSetupVariant === "fourplayer"
+          ? "Order determines the four sides: White, Red, Black, Blue."
+          : selectedSetupVariant === "threeman"
+            ? "Order determines the three sides: White, Red, Black."
+            : selectedSetupGame === "reversi"
+              ? "Order determines the two sides: Black, then White."
+              : "The first active player becomes White; the second becomes Black.";
+        const orderList = document.createElement("div"); orderList.className = "setup-order-list";
         normalizeSetupOrder();
-        const entries = new Map(
-          activeSetupEntries().map((entry) => [entry.token, entry]),
-        );
+        const entries = new Map(activeSetupEntries().map((entry) => [entry.token, entry]));
         setupPlayerOrder.forEach((token, index) => {
-          const entry = entries.get(token);
-          if (!entry) return;
-          const row = document.createElement("div");
-          row.className = "setup-order-row";
-          const pos = document.createElement("div");
-          pos.className = "setup-order-position";
-          pos.textContent = String(index + 1);
-          const info = document.createElement("div");
-          info.className = "setup-player-name";
-          const seatNames =
-            selectedSetupVariant === "fourplayer"
-              ? ["White", "Red", "Black", "Blue"]
-              : selectedSetupVariant === "threeman"
-                ? ["White", "Red", "Black"]
-                : selectedSetupGame === "reversi"
-                  ? ["Black", "White"]
-                  : ["White", "Black"];
-          const name = document.createElement("strong");
-          name.textContent = `${seatNames[index] || `Player ${index + 1}`} — ${entry.name}`;
-          const type = document.createElement("span");
-          type.textContent =
-            entry.type +
-            (entry.computer ? ` • ${formatSetupLabel(entry.difficulty)}` : "");
+          const entry = entries.get(token); if (!entry) return;
+          const row = document.createElement("div"); row.className = "setup-order-row";
+          const pos = document.createElement("div"); pos.className = "setup-order-position"; pos.textContent = String(index + 1);
+          const info = document.createElement("div"); info.className = "setup-player-name";
+          const seatNames = selectedSetupVariant === "fourplayer"
+            ? ["White", "Red", "Black", "Blue"]
+            : selectedSetupVariant === "threeman"
+              ? ["White", "Red", "Black"]
+              : selectedSetupGame === "reversi"
+                ? ["Black", "White"]
+                : ["White", "Black"];
+          const name = document.createElement("strong"); name.textContent = `${seatNames[index] || `Player ${index + 1}`} — ${entry.name}`;
+          const type = document.createElement("span"); type.textContent = entry.type + (entry.computer ? ` • ${formatSetupLabel(entry.difficulty)}` : "");
           info.append(name, type);
           if (entry.computer) {
-            const select = document.createElement("select");
-            select.className = "computer-difficulty-select";
-            select.disabled = host;
-            select.innerHTML =
-              '<option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option><option value="expert">Expert</option>';
+            const select = document.createElement("select"); select.className = "computer-difficulty-select"; select.disabled = host;
+            select.innerHTML = '<option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option><option value="expert">Expert</option>';
             select.value = setupComputerDifficulties[entry.token] || "normal";
-            select.onchange = () => {
-              setupComputerDifficulties[entry.token] = select.value;
-              renderGameSetup();
-              if (onlineState.connected && onlineState.isHost)
-                sendPreGameConfig();
-            };
+            select.onchange = () => { setupComputerDifficulties[entry.token] = select.value; renderGameSetup(); if (onlineState.connected && onlineState.isHost) sendPreGameConfig(); };
             row.append(pos, info, select);
           } else row.append(pos, info, document.createElement("span"));
-          const buttons = document.createElement("div");
-          buttons.className = "setup-order-buttons";
-          const up = document.createElement("button");
-          up.className = "order-button";
-          up.type = "button";
-          up.textContent = "↑";
-          up.disabled = host || index === 0;
-          up.onclick = () => {
-            [setupPlayerOrder[index - 1], setupPlayerOrder[index]] = [
-              setupPlayerOrder[index],
-              setupPlayerOrder[index - 1],
-            ];
-            renderGameSetup();
-            if (onlineState.connected && onlineState.isHost)
-              sendPreGameConfig();
-          };
-          const down = document.createElement("button");
-          down.className = "order-button";
-          down.type = "button";
-          down.textContent = "↓";
-          down.disabled = host || index === setupPlayerOrder.length - 1;
-          down.onclick = () => {
-            [setupPlayerOrder[index + 1], setupPlayerOrder[index]] = [
-              setupPlayerOrder[index],
-              setupPlayerOrder[index + 1],
-            ];
-            renderGameSetup();
-            if (onlineState.connected && onlineState.isHost)
-              sendPreGameConfig();
-          };
-          buttons.append(up, down);
-          row.appendChild(buttons);
-          orderList.appendChild(row);
+          const buttons = document.createElement("div"); buttons.className = "setup-order-buttons";
+          const up = document.createElement("button"); up.className = "order-button"; up.type="button"; up.textContent="↑"; up.disabled=host || index===0; up.onclick=()=>{ [setupPlayerOrder[index-1],setupPlayerOrder[index]]=[setupPlayerOrder[index],setupPlayerOrder[index-1]]; renderGameSetup(); if (onlineState.connected && onlineState.isHost) sendPreGameConfig(); };
+          const down = document.createElement("button"); down.className = "order-button"; down.type="button"; down.textContent="↓"; down.disabled=host || index===setupPlayerOrder.length-1; down.onclick=()=>{ [setupPlayerOrder[index+1],setupPlayerOrder[index]]=[setupPlayerOrder[index],setupPlayerOrder[index+1]]; renderGameSetup(); if (onlineState.connected && onlineState.isHost) sendPreGameConfig(); };
+          buttons.append(up, down); row.appendChild(buttons); orderList.appendChild(row);
         });
-        orderSection.append(oh, ohd, orderList);
-        body.appendChild(orderSection);
+        orderSection.append(oh, ohd, orderList); body.appendChild(orderSection);
 
-        const message = document.createElement("div");
-        message.className = "setup-message";
-        if (host)
-          message.textContent =
-            "Waiting for the host to finish configuring the match.";
-        else if (
-          activeSetupEntries().length < playerRange.min ||
-          activeSetupEntries().length > playerRange.max
-        ) {
-          message.classList.add("error");
-          message.textContent = `This variant requires ${playerRange.min}–${playerRange.max} active players.`;
-        } else
-          message.textContent = onlineState.connected
-            ? "Both sides are configured. Start the match when ready."
-            : "Start the match when ready.";
+
+        const message = document.createElement("div"); message.className = "setup-message";
+        if (host) message.textContent = "Waiting for the host to finish configuring the match.";
+        else if (activeSetupEntries().length < playerRange.min || activeSetupEntries().length > playerRange.max) { message.classList.add("error"); message.textContent = `This variant requires ${playerRange.min}–${playerRange.max} active players.`; }
+        else message.textContent = onlineState.connected ? "Both sides are configured. Start the match when ready." : "Start the match when ready.";
         body.appendChild(message);
 
-        play.disabled =
-          host || !valid || (onlineState.connected && !onlineState.isHost);
-        play.textContent =
-          onlineState.connected && !onlineState.isHost
-            ? "Waiting for host"
-            : "Play";
+        play.disabled = host || !valid || (onlineState.connected && !onlineState.isHost);
+        play.textContent = onlineState.connected && !onlineState.isHost ? "Waiting for host" : "Play";
       }
 
       function formatSetupLabel(value) {
-        return String(value || "")
-          .replace(/[-_]+/g, " ")
-          .replace(/\b\w/g, (c) => c.toUpperCase());
+        return String(value || "").replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
       }
 
       function normalizeSetupOrder() {
         const active = activeSetupEntries();
         const valid = new Set(active.map((entry) => entry.token));
         setupPlayerOrder = setupPlayerOrder.filter((token) => valid.has(token));
-        for (const entry of active)
-          if (!setupPlayerOrder.includes(entry.token))
-            setupPlayerOrder.push(entry.token);
+        for (const entry of active) if (!setupPlayerOrder.includes(entry.token)) setupPlayerOrder.push(entry.token);
         const maxPlayers = selectedPlayerRange().max;
         setupPlayerOrder = setupPlayerOrder.slice(0, maxPlayers);
       }
@@ -2457,51 +1824,27 @@ No diagnostics run yet.</pre
         gameSetupOpen = false;
         gameSetupDrawer.classList.remove("open");
         gameSetupDrawer.setAttribute("aria-hidden", "true");
-        if (!setupDrawer.classList.contains("open"))
-          backdrop.classList.remove("open");
+        if (!setupDrawer.classList.contains("open")) backdrop.classList.remove("open");
       }
 
       function startSelectedGame() {
         if (onlineState.connected && !onlineState.isHost) return;
         const gameDefinition = selectedGameDefinition();
         if (!gameDefinition || !gameVisibleInLibrary(gameDefinition)) return;
-        if (
-          !visibleVariants(selectedSetupGame).some(
-            (v) => v.id === selectedSetupVariant,
-          ) &&
-          visibleVariants(selectedSetupGame).length
-        ) {
+        if (!visibleVariants(selectedSetupGame).some(v => v.id === selectedSetupVariant) && visibleVariants(selectedSetupGame).length) {
           selectedSetupVariant = visibleVariants(selectedSetupGame)[0].id;
         }
 
         // Launch any game with a configured page and a supported play mode.
         // The actual configured seat count may vary within the game's limits.
-        if (
-          !gameDefinition.page ||
-          !(
-            gameDefinition.capabilities?.local ||
-            gameDefinition.capabilities?.computer ||
-            gameDefinition.capabilities?.online
-          )
-        )
-          return;
+        if (!gameDefinition.page || !(gameDefinition.capabilities?.local || gameDefinition.capabilities?.computer || gameDefinition.capabilities?.online)) return;
 
         const config = setupConfigFromState();
         const range = selectedPlayerRange();
-        if (
-          !config ||
-          config.players.length < range.min ||
-          config.players.length > range.max
-        )
-          return;
+        if (!config || config.players.length < range.min || config.players.length > range.max) return;
 
         onlineState.config = config;
-        try {
-          sessionStorage.setItem(
-            "gameLibraryOnlineConfig",
-            JSON.stringify(config),
-          );
-        } catch {}
+        try { sessionStorage.setItem("gameLibraryOnlineConfig", JSON.stringify(config)); } catch {}
 
         const params = new URLSearchParams({
           game: selectedSetupGame,
@@ -2512,25 +1855,12 @@ No diagnostics run yet.</pre
           onlineClientId: onlineState.connected ? onlineState.clientId : "",
           onlineConfig: JSON.stringify(config),
         });
-        if (
-          onlineState.connected &&
-          onlineState.isHost &&
-          onlineState.hostToken
-        )
-          params.set("hostToken", onlineState.hostToken);
+        if (onlineState.connected && onlineState.isHost && onlineState.hostToken) params.set("hostToken", onlineState.hostToken);
 
         if (onlineState.connected) {
-          if (
-            !onlineState.socket ||
-            onlineState.socket.readyState !== WebSocket.OPEN
-          )
-            return;
-          onlineState.socket.send(
-            JSON.stringify({ type: "room:config", config }),
-          );
-          onlineState.socket.send(
-            JSON.stringify({ type: "game:start", config, resetState: true }),
-          );
+          if (!onlineState.socket || onlineState.socket.readyState !== WebSocket.OPEN) return;
+          onlineState.socket.send(JSON.stringify({ type: "room:config", config }));
+          onlineState.socket.send(JSON.stringify({ type: "game:start", config, resetState: true }));
         }
 
         // Keep the library data-driven while making the two currently playable
@@ -2541,8 +1871,7 @@ No diagnostics run yet.</pre
           draughts: "draughts/draughts.html",
           reversi: "reversi/reversi.html",
         };
-        const gamePage =
-          playablePages[selectedSetupGame] || gameDefinition.page;
+        const gamePage = playablePages[selectedSetupGame] || gameDefinition.page;
         if (!gamePage) return;
 
         closeGameSetup();
@@ -2552,8 +1881,7 @@ No diagnostics run yet.</pre
       function openGame(gameId, variantId) {
         openGameSetup(gameId);
         const variants = visibleVariants(gameId);
-        if (variantId && variants.some((v) => v.id === variantId))
-          selectedSetupVariant = variantId;
+        if (variantId && variants.some((v) => v.id === variantId)) selectedSetupVariant = variantId;
         else selectedSetupVariant = variants[0]?.id || "standard";
         renderGameSetup();
       }
@@ -2573,10 +1901,9 @@ No diagnostics run yet.</pre
         if (!visibleGames.length) {
           const empty = document.createElement("div");
           empty.className = "setup-message";
-          empty.textContent =
-            libraryMode === "beta"
-              ? "No beta games or beta settings are currently available. Unlock Alpha to see alpha content."
-              : "No released games are currently available.";
+          empty.textContent = libraryMode === "beta"
+            ? "No beta games or beta settings are currently available. Unlock Alpha to see alpha content."
+            : "No released games are currently available.";
           gamesGrid.appendChild(empty);
           return;
         }
@@ -2609,28 +1936,13 @@ No diagnostics run yet.</pre
           content.className = "game-content";
           const min = Number(game.players?.min);
           const max = Number(game.players?.max);
-          const rangeLabel =
-            Number.isFinite(min) && Number.isFinite(max)
-              ? min === max
-                ? `${min} player${min === 1 ? "" : "s"}`
-                : `${min}–${max} players`
-              : "Players vary";
-          const variantsLabel = visibleVariants(game.id)
-            .map((v) => v.name)
-            .join(" / ");
-          const playable = Boolean(
-            game.page &&
-            (game.capabilities?.local ||
-              game.capabilities?.computer ||
-              game.capabilities?.online),
-          );
+          const rangeLabel = Number.isFinite(min) && Number.isFinite(max)
+            ? (min === max ? `${min} player${min === 1 ? "" : "s"}` : `${min}–${max} players`)
+            : "Players vary";
+          const variantsLabel = visibleVariants(game.id).map((v) => v.name).join(" / ");
+          const playable = Boolean(game.page && (game.capabilities?.local || game.capabilities?.computer || game.capabilities?.online));
           const status = releaseStatus(game.release);
-          const statusLabel =
-            status === "beta"
-              ? "Beta"
-              : status === "alpha"
-                ? "Alpha"
-                : "Released";
+          const statusLabel = status === "beta" ? "Beta" : status === "alpha" ? "Alpha" : "Released";
 
           content.innerHTML = `
             <h2>${escapeHtml(game.name || "Untitled Game")}</h2>
@@ -2644,14 +1956,9 @@ No diagnostics run yet.</pre
 
           const button = document.createElement("button");
           button.className = "play-button";
-          button.textContent = playable
-            ? waitingForHost
-              ? "View game setup"
-              : "Set up & Play"
-            : "Unavailable";
+          button.textContent = playable ? (waitingForHost ? "View game setup" : "Set up & Play") : "Unavailable";
           button.disabled = !playable;
-          if (playable)
-            button.onclick = () => openGame(game.id, game.variants?.[0]?.id);
+          if (playable) button.onclick = () => openGame(game.id, game.variants?.[0]?.id);
           content.appendChild(button);
           card.append(image, content);
           gamesGrid.appendChild(card);
@@ -2668,12 +1975,8 @@ No diagnostics run yet.</pre
             '<div class="muted">No connected players yet.</div>';
         else
           for (const p of ps) {
-            const row = document.createElement("div");
-            row.className = "player-row";
-            const partyNames =
-              Array.isArray(p.party) && p.party.length
-                ? p.party.map((member) => member.name || "Player").join(", ")
-                : p.name || "Player";
+            const row = document.createElement("div"); row.className = "player-row";
+            const partyNames = Array.isArray(p.party) && p.party.length ? p.party.map((member) => member.name || "Player").join(", ") : (p.name || "Player");
             row.innerHTML = `<div class="avatar">${escapeHtml(p.avatar || "🎮")}</div><div class="grow"><div class="player-name">${escapeHtml(partyNames)}</div><div class="player-type">${p.clientId === onlineState.clientId ? "You • " : ""}${p.role === "host" ? "Host" : "Online computer"}</div></div>`;
             onlineParticipants.appendChild(row);
           }
@@ -2800,27 +2103,10 @@ No diagnostics run yet.</pre
         return base.replace(/^https:/i, "wss:").replace(/^http:/i, "ws:");
       }
       function sendIdentify() {
-        if (
-          !onlineState.socket ||
-          onlineState.socket.readyState !== WebSocket.OPEN
-        )
-          return;
-        const party = partyProfiles().map((p) => ({
-          id: p.id,
-          name: p.name || "Player",
-          avatar: p.avatar || "♟",
-        }));
+        if (!onlineState.socket || onlineState.socket.readyState !== WebSocket.OPEN) return;
+        const party = partyProfiles().map((p) => ({ id: p.id, name: p.name || "Player", avatar: p.avatar || "♟" }));
         const primary = party[0] || { id: "", name: "Player 1", avatar: "♟" };
-        onlineState.socket.send(
-          JSON.stringify({
-            type: "player:identify",
-            profileId: primary.id,
-            name: primary.name,
-            avatar: primary.avatar,
-            party,
-            spectator: false,
-          }),
-        );
+        onlineState.socket.send(JSON.stringify({ type:"player:identify", profileId:primary.id, name:primary.name, avatar:primary.avatar, party, spectator:false }));
       }
       function wsUrl(code) {
         const base = serverBase().replace(
@@ -2867,10 +2153,7 @@ No diagnostics run yet.</pre
               onlineState.participants = m.room?.participants || [];
               onlineState.config = m.room?.config || null;
               renderOnline();
-              if (gameSetupOpen) {
-                initializeSetupState();
-                renderGameSetup();
-              }
+              if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
               // Returning to the Game Library reconnects to the existing room,
               // but does not reopen the previous match automatically. A fresh
               // game:start message starts the next match.
@@ -2880,29 +2163,16 @@ No diagnostics run yet.</pre
                 ? m.participants
                 : [];
               renderOnline();
-              if (gameSetupOpen) {
-                initializeSetupState();
-                renderGameSetup();
-              }
+              if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
               break;
             case "room:config":
               onlineState.config = m.config || null;
               renderOnline();
-              if (gameSetupOpen) {
-                initializeSetupState();
-                renderGameSetup();
-              }
+              if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
               break;
             case "game:select":
-              onlineState.config = {
-                ...(onlineState.config || {}),
-                game: m.game || "chess",
-                variant: m.variant || "standard",
-              };
-              if (gameSetupOpen) {
-                initializeSetupState();
-                renderGameSetup();
-              }
+              onlineState.config = { ...(onlineState.config || {}), game: m.game || "chess", variant: m.variant || "standard" };
+              if (gameSetupOpen) { initializeSetupState(); renderGameSetup(); }
               renderOnline();
               renderGames();
               break;
@@ -2911,37 +2181,20 @@ No diagnostics run yet.</pre
               break;
             case "game:start": {
               onlineState.config = m.config || onlineState.config;
-              try {
-                sessionStorage.setItem(
-                  "gameLibraryOnlineConfig",
-                  JSON.stringify(onlineState.config || {}),
-                );
-              } catch {}
+              try { sessionStorage.setItem("gameLibraryOnlineConfig", JSON.stringify(onlineState.config || {})); } catch {}
               renderOnline();
               if (onlineState.connected && !onlineState.isHost) {
                 const gameId = onlineState.config?.game || "";
                 if (!libraryLoaded) {
-                  try {
-                    await loadLibrary();
-                  } catch {}
+                  try { await loadLibrary(); } catch {}
                 }
                 const gameDefinition = libraryGame(gameId);
                 const page = gameDefinition?.page || "";
                 if (!page) {
-                  error(
-                    `Could not find the game page for "${gameId || "unknown game"}".`,
-                  );
+                  error(`Could not find the game page for "${gameId || "unknown game"}".`);
                   break;
                 }
-                const params = new URLSearchParams({
-                  game: gameId,
-                  variant: onlineState.config?.variant || "standard",
-                  online: "1",
-                  onlineCode: roomCode(),
-                  onlineServer: serverBase(),
-                  onlineClientId: onlineState.clientId,
-                  onlineConfig: JSON.stringify(onlineState.config || {}),
-                });
+                const params = new URLSearchParams({ game: gameId, variant: onlineState.config?.variant || "standard", online: "1", onlineCode: roomCode(), onlineServer: serverBase(), onlineClientId: onlineState.clientId, onlineConfig: JSON.stringify(onlineState.config || {}) });
                 window.location.href = `${page}?${params}`;
               }
               break;
@@ -3058,12 +2311,8 @@ No diagnostics run yet.</pre
           joinOnlineGroupButton.disabled = false;
         }
       }
-      libraryButton.onclick = () => {
-        setLibraryMode("normal");
-      };
-      betaButton.onclick = () => {
-        setLibraryMode("beta");
-      };
+      libraryButton.onclick = () => { setLibraryMode("normal"); };
+      betaButton.onclick = () => { setLibraryMode("beta"); };
       playersButton.onclick = openSetup;
       closeSetup.onclick = () => {
         setupDrawer.classList.remove("open");
@@ -3083,9 +2332,7 @@ No diagnostics run yet.</pre
         onlineState.joinedCode = "";
         onlineState.hostToken = "";
         onlineState.config = null;
-        try {
-          sessionStorage.removeItem("gameLibrarySelectedGame");
-        } catch {}
+        try { sessionStorage.removeItem("gameLibrarySelectedGame"); } catch {}
         persistOnline();
         renderOnline();
         renderGames();
@@ -3098,8 +2345,7 @@ No diagnostics run yet.</pre
       partyList.addEventListener("click", (event) => {
         const button = event.target.closest("button[data-party-action]");
         if (!button || !partyList.contains(button) || button.disabled) return;
-        if (button.dataset.partyAction === "remove")
-          removeProfileFromParty(button.dataset.profileId);
+        if (button.dataset.partyAction === "remove") removeProfileFromParty(button.dataset.profileId);
       });
 
       // Profile controls are rendered dynamically. Handle them from the
@@ -3127,7 +2373,8 @@ No diagnostics run yet.</pre
       // identity and host credentials remain in sessionStorage so this page
       // can reconnect automatically.
       function reconnectSavedRoom() {
-        const savedCode = onlineState.code || onlineState.joinedCode || "";
+        const savedCode =
+          onlineState.code || onlineState.joinedCode || "";
         if (!savedCode || onlineState.connected) return;
 
         const host = Boolean(onlineState.code && onlineState.hostToken);
