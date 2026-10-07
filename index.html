@@ -1,225 +1,3159 @@
-{
-  "games": [
-    {
-      "id": "chess",
-      "name": "Chess",
-      "type": "board",
-      "page": "boardGame.html",
-      "description": "The classic two-player strategy game of kings, queens, and tactical manoeuvring.",
-      "image": "images/cover/chess.jpg",
-      "categories": ["board", "strategy"],
-      "searchTerms": [],
-      "players": {
-        "min": 2,
-        "max": 2
-      },
-      "variants": [
-        {
-          "id": "standard",
-          "name": "Standard Chess",
-          "release": "normal"
-        },
-        {
-          "id": "chess960",
-          "name": "Chess960",
-          "release": "normal"
-        },
-        {
-          "id": "threeman",
-          "name": "3-Player Chess",
-          "players": {
-            "min": 3,
-            "max": 3
-          },
-          "release": "normal"
-        },
-        {
-          "id": "fourplayer",
-          "name": "4-Player Chess",
-          "players": {
-            "min": 4,
-            "max": 4
-          },
-          "release": "normal"
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game Library</title>
+    <style>
+      :root {
+        --bg: #17191f;
+        --panel: #22252d;
+        --panel2: #2b2f39;
+        --text: #f1f3f5;
+        --muted: #aeb4c0;
+        --accent: #78a9ff;
+        --border: #3a3f4a;
+        --ok: #86d89a;
+        --danger: #e07a7a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        color: var(--text);
+        background: var(--bg);
+      }
+      button,
+      input {
+        font: inherit;
+      }
+      button {
+        color: var(--text);
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 9px 13px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #353a45;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      header {
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--border);
+        background: #1d2027;
+      }
+      header > div,
+      main {
+        max-width: 1100px;
+        margin: auto;
+      }
+      .online-wins-corner {
+        position: fixed;
+        top: 76px;
+        right: 18px;
+        z-index: 10;
+        padding: 7px 11px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--panel);
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 700;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+      }
+      .online-wins-corner[hidden] {
+        display: none;
+      }
+      .header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 30px;
+      }
+      header p {
+        margin: 7px 0 0;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .top-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+      .top-tab {
+        background: var(--panel2);
+      }
+      .top-tab.selected {
+        border-color: var(--accent);
+        outline: 1px solid var(--accent);
+        background: #303b50;
+      }
+      .release-panel {
+        margin-bottom: 18px;
+        padding: 13px 15px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+      }
+      .release-panel-title {
+        margin: 0 0 5px;
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .release-panel-text {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .alpha-access-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .alpha-access-row input {
+        flex: 1;
+        min-width: 0;
+        color: var(--text);
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        padding: 8px 10px;
+      }
+      .release-badge {
+        padding: 4px 7px;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        font-size: 11px;
+        color: var(--muted);
+        background: var(--panel2);
+      }
+      .release-badge.beta {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+      .release-badge.alpha {
+        color: #f0b6ff;
+        border-color: #9f6bb0;
+      }
+      main {
+        padding: 24px;
+      }
+      .games-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+        gap: 18px;
+      }
+      .game-card {
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+      }
+      .game-image {
+        width: 100%;
+        aspect-ratio: 16/9;
+        display: grid;
+        place-items: center;
+        background: #111318;
+        overflow: hidden;
+      }
+      .game-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .placeholder-image {
+        font-size: 72px;
+      }
+      .game-content {
+        padding: 17px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+      }
+      .game-content h2 {
+        margin: 0;
+        font-size: 20px;
+      }
+      .description {
+        margin: 7px 0 15px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .game-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 16px;
+      }
+      .game-variant {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 14px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .game-variant label {
+        flex: 0 0 auto;
+      }
+      .game-variant select {
+        flex: 1;
+        min-width: 0;
+        color: var(--text);
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        padding: 8px 10px;
+      }
+      .meta-tag {
+        padding: 4px 7px;
+        color: var(--muted);
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        font-size: 11px;
+      }
+      .play-button {
+        width: 100%;
+        margin-top: auto;
+        color: #111318;
+        background: var(--accent);
+        border: 0;
+        border-radius: 7px;
+        padding: 10px 14px;
+        font-weight: 700;
+      }
+      .drawer-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        background: rgba(0, 0, 0, 0.45);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.18s;
+      }
+      .drawer-backdrop.open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 21;
+        width: min(500px, 100vw);
+        background: var(--panel);
+        border-left: 1px solid var(--border);
+        transform: translateX(100%);
+        transition: transform 0.2s ease;
+        display: flex;
+        flex-direction: column;
+      }
+      .drawer.open {
+        transform: translateX(0);
+        pointer-events: auto;
+      }
+      .drawer:not(.open) {
+        pointer-events: none;
+      }
+      .game-setup-drawer {
+        position: fixed;
+        z-index: 22;
+        top: 0;
+        right: 0;
+        width: min(430px, 100vw);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: var(--panel);
+        border-left: 1px solid var(--border);
+        box-shadow: -12px 0 35px rgba(0, 0, 0, 0.3);
+        transform: translateX(100%);
+        transition: transform 0.2s ease;
+      }
+      .game-setup-drawer.open {
+        transform: translateX(0);
+        pointer-events: auto;
+      }
+      .game-setup-drawer:not(.open) {
+        pointer-events: none;
+      }
+      .game-setup-drawer .drawer-header {
+        background: #1d2027;
+      }
+      .game-setup-body {
+        overflow: auto;
+        flex: 1;
+        padding: 18px;
+      }
+      .setup-section {
+        margin-bottom: 20px;
+      }
+      .setup-section h3 {
+        margin: 0 0 9px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .variant-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+      .variant-button {
+        color: var(--text);
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .variant-button:hover {
+        background: #353a45;
+      }
+      .variant-button.selected {
+        border-color: var(--accent);
+        outline: 1px solid var(--accent);
+        background: #303b50;
+      }
+      .range-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      .range-label {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 7px;
+        font-size: 13px;
+      }
+      .range-value {
+        color: var(--accent);
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      .range-help {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.35;
+      }
+      .setup-option-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .setup-select-row {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        padding: 10px 12px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      .setup-select-row select {
+        width: 100%;
+        color: var(--text);
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        padding: 8px 10px;
+        font: inherit;
+      }
+      .setup-select-row select:focus {
+        outline: 1px solid var(--accent);
+        border-color: var(--accent);
+      }
+      .toggle-option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      .toggle-label {
+        color: var(--text);
+        font-size: 12px;
+        line-height: 1.3;
+        cursor: pointer;
+      }
+      .toggle-switch {
+        position: relative;
+        flex: 0 0 auto;
+        width: 38px;
+        height: 21px;
+      }
+      .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .toggle-slider {
+        position: absolute;
+        inset: 0;
+        background: #454b57;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        cursor: pointer;
+        transition: 0.15s;
+      }
+      .toggle-slider::before {
+        content: "";
+        position: absolute;
+        width: 15px;
+        height: 15px;
+        left: 2px;
+        top: 2px;
+        background: var(--text);
+        border-radius: 50%;
+        transition: 0.15s;
+      }
+      .toggle-switch input:checked + .toggle-slider {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+      .toggle-switch input:checked + .toggle-slider::before {
+        transform: translateX(17px);
+        background: #111318;
+      }
+      .setup-player-summary {
+        padding: 12px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .setup-player-summary strong {
+        color: var(--text);
+      }
+      .setup-player-list,
+      .setup-order-list {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        margin-top: 9px;
+      }
+      .setup-player-row,
+      .setup-order-row {
+        display: grid;
+        grid-template-columns: auto 1fr auto auto;
+        align-items: center;
+        gap: 9px;
+        padding: 8px 9px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+      }
+      .setup-player-row {
+        grid-template-columns: auto 1fr auto;
+      }
+      .setup-player-avatar {
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--bg);
+        font-size: 17px;
+      }
+      .setup-player-name {
+        min-width: 0;
+        font-size: 12px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .setup-player-name strong {
+        display: block;
+      }
+      .setup-player-name span {
+        display: block;
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .setup-order-position {
+        width: 24px;
+        color: var(--muted);
+        font-size: 11px;
+        text-align: center;
+      }
+      .setup-order-buttons {
+        display: flex;
+        gap: 4px;
+      }
+      .order-button {
+        width: 28px;
+        height: 28px;
+        color: var(--text);
+        background: #353a45;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .order-button:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+      .computer-difficulty-select {
+        min-width: 92px;
+        color: var(--text);
+        background: #1d2027;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        padding: 5px 6px;
+        font: inherit;
+        font-size: 11px;
+      }
+      .spectator-row {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 9px;
+        padding: 8px 9px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+      }
+      .spectator-row.is-spectator {
+        opacity: 0.55;
+      }
+      .spectator-toggle {
+        width: 27px;
+        height: 27px;
+        color: var(--text);
+        background: #353a45;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        line-height: 1;
+      }
+      .setup-message {
+        margin-top: 12px;
+        padding: 10px;
+        border-radius: 7px;
+        background: #1d2027;
+        border: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+      .setup-message.error {
+        color: #ffb4b4;
+        background: #321f24;
+        border-color: #63353d;
+      }
+      .setup-footer {
+        padding: 16px 18px;
+        border-top: 1px solid var(--border);
+        background: #1d2027;
+      }
+      .setup-footer button {
+        width: 100%;
+      }
+      @media (max-width: 650px) {
+        .game-setup-drawer {
+          width: 100%;
         }
-      ],
-      "capabilities": {
-        "local": true,
-        "online": false,
-        "computer": true
-      },
-      "options": {},
-      "release": "normal"
-    },
-    {
-      "id": "draughts",
-      "name": "Draughts",
-      "type": "board",
-      "page": "boardGame.html",
-      "description": "A tactical jumping game in which players capture opposing pieces and promote them to kings.",
-      "image": "images/cover/draughts.jpg",
-      "categories": ["board", "strategy"],
-      "searchTerms": ["checkers", "chequers"],
-      "players": {
-        "min": 2,
-        "max": 2
-      },
-      "variants": [
-        {
-          "id": "international",
-          "name": "International Draughts",
-          "release": "normal"
-        },
-        {
-          "id": "american",
-          "name": "American Checkers",
-          "release": "normal"
+      }
+      .drawer-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px;
+        border-bottom: 1px solid var(--border);
+      }
+      .drawer-header h2 {
+        margin: 0;
+        font-size: 19px;
+      }
+      .drawer-header p {
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .drawer-body {
+        padding: 18px;
+        overflow: auto;
+        flex: 1;
+      }
+      .drawer-footer {
+        padding: 14px 18px;
+        border-top: 1px solid var(--border);
+        display: flex;
+      }
+      .drawer-footer button {
+        width: 100%;
+      }
+      .section {
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .section:first-child {
+        padding-top: 0;
+      }
+      .section:last-child {
+        border-bottom: 0;
+      }
+      .section h3 {
+        margin: 0 0 10px;
+        font-size: 14px;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .grow {
+        flex: 1;
+      }
+      .profile-list,
+      .players-list,
+      .setup-players {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+      .party-list {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+      .party-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 10px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      .party-score {
+        margin-left: auto;
+        min-width: 58px;
+        text-align: right;
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .party-remove {
+        width: 30px;
+        height: 30px;
+        flex: 0 0 30px;
+        color: var(--muted);
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        font-size: 20px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      .party-remove:hover:not(:disabled) {
+        color: var(--text);
+        background: #353a45;
+        border-color: var(--border);
+      }
+      .party-empty {
+        padding: 10px;
+        border: 1px dashed var(--border);
+        border-radius: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        text-align: center;
+      }
+      .profile-party-button {
+        flex: 0 0 auto;
+      }
+      .management-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 9px;
+      }
+      .management-actions button {
+        width: 100%;
+      }
+      .danger-button {
+        color: #ffbcbc;
+        border-color: #6b3d45;
+        background: #2b2024;
+      }
+      .danger-button:hover {
+        background: #3a262b;
+      }
+      .profile-row,
+      .player-row,
+      .setup-slot {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 10px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      .profile-edit-area {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0;
+        color: var(--text);
+        background: transparent;
+        border: 0;
+        text-align: left;
+        cursor: pointer;
+      }
+      .profile-edit-area:hover {
+        background: transparent;
+      }
+      .profile-use {
+        flex: 0 0 auto;
+      }
+      .profile-remove {
+        width: 30px;
+        height: 30px;
+        flex: 0 0 30px;
+        color: var(--muted);
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        font-size: 20px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      .profile-remove:hover:not(:disabled) {
+        color: var(--text);
+        background: #353a45;
+        border-color: var(--border);
+      }
+      .avatar {
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--bg);
+        font-size: 20px;
+        flex: 0 0 34px;
+      }
+      .player-info {
+        min-width: 0;
+      }
+      .player-name {
+        font-weight: 700;
+        font-size: 13px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .player-type {
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .online-box {
+        background: #1b1e24;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        padding: 12px;
+      }
+      .online-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .online-code {
+        margin-top: 10px;
+        text-align: center;
+        padding: 13px;
+        border: 1px dashed var(--accent);
+        border-radius: 8px;
+        background: #1a2030;
+      }
+      .online-code strong {
+        display: block;
+        font-size: 30px;
+        letter-spacing: 6px;
+      }
+      .online-code span {
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .online-code[hidden] {
+        display: none;
+      }
+      .join-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .join-row input {
+        flex: 1;
+        min-width: 0;
+        color: var(--text);
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 9px 10px;
+        text-align: center;
+        letter-spacing: 3px;
+      }
+      .status-line {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .status-line.ok {
+        color: var(--ok);
+      }
+      .error {
+        margin-top: 9px;
+        color: #ffb4b4;
+        background: #321f24;
+        border: 1px solid #63353d;
+        border-radius: 7px;
+        padding: 8px;
+        font-size: 12px;
+      }
+      .error[hidden] {
+        display: none;
+      }
+      .debug-panel {
+        margin-top: 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #16181d;
+        overflow: hidden;
+      }
+      .debug-panel summary {
+        cursor: pointer;
+        padding: 8px 10px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .debug-body {
+        padding: 10px;
+        border-top: 1px solid var(--border);
+      }
+      .debug-output {
+        margin: 0;
+        max-height: 260px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font:
+          11px/1.45 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+        color: #d9dee7;
+      }
+      .debug-button {
+        width: 100%;
+        margin-bottom: 9px;
+      }
+      .seat {
+        font-weight: 700;
+        width: 52px;
+      }
+      .setup-slot .avatar {
+        flex-basis: 34px;
+      }
+      .primary {
+        background: var(--accent);
+        color: #111318;
+        border-color: transparent;
+        font-weight: 700;
+      }
+      .small {
+        padding: 6px 9px;
+        font-size: 12px;
+      }
+      @media (max-width: 650px) {
+        main {
+          padding: 14px;
         }
-      ],
-      "capabilities": {
-        "local": true,
-        "online": false,
-        "computer": true
-      },
-      "options": {
-        "mandatoryCapture": {
-          "type": "toggle",
-          "name": "Capturable piece must be taken",
-          "default": true,
-          "release": "normal"
+        .online-actions {
+          grid-template-columns: 1fr;
         }
-      },
-      "release": "normal"
-    },
-    {
-      "id": "eins",
-      "name": "Eins",
-      "type": "card",
-      "page": "eins/eins.html",
-      "description": "A color-and-number matching card game with action cards, wild cards, and an optional flipped-deck variant.",
-      "image": "images/cover/eins.jpg",
-      "categories": ["cards", "party"],
-      "searchTerms": ["uno", "uno flip", "last card"],
-      "players": {
-        "min": 2,
-        "max": 10
-      },
-      "variants": [
-        {
-          "id": "eins",
-          "name": "Eins",
-          "release": "normal"
-        },
-        {
-          "id": "flip",
-          "name": "Eins Flip",
-          "release": "normal"
+        .drawer {
+          width: 100%;
         }
-      ],
-      "capabilities": {
-        "local": true,
-        "online": true,
-        "computer": true
-      },
-      "options": {
-        "stacking": {
-          "type": "toggle",
-          "name": "Stacking",
-          "help": "Allow draw penalty cards to be stacked onto another draw penalty instead of taking the accumulated penalty immediately.",
-          "default": false,
-          "release": "normal"
-        },
-        "drawUntilPlayable": {
-          "type": "toggle",
-          "name": "Draw until playable",
-          "help": "When you cannot play, draw until you find a playable card instead of drawing one card and passing.",
-          "default": false,
-          "release": "normal"
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <div class="header-row">
+          <div>
+            <h1>Game Library</h1>
+            <p>Chess — local, computer, and online play</p>
+          </div>
+          <div class="top-tabs">
+            <button id="libraryButton" class="top-tab selected" type="button">
+              Library
+            </button>
+            <button id="betaButton" class="top-tab" type="button">Beta</button>
+            <button id="playersButton" class="top-tab" type="button">
+              Players &amp; Online
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+    <div id="onlineWinsCorner" class="online-wins-corner" hidden>
+      Online wins: 0
+    </div>
+    <main>
+      <div id="releasePanel" class="release-panel" hidden></div>
+      <div id="gamesGrid" class="games-grid"></div>
+    </main>
+    <div id="backdrop" class="drawer-backdrop"></div>
+    <aside id="setupDrawer" class="drawer" aria-hidden="true">
+      <div class="drawer-header">
+        <div>
+          <h2>Players &amp; Online</h2>
+          <p>
+            Set up player profiles and your online room here. Games are selected
+            from the library.
+          </p>
+        </div>
+        <button id="closeSetup" class="small" aria-label="Close">×</button>
+      </div>
+      <div class="drawer-body">
+        <section class="section">
+          <h3>Online group</h3>
+          <div class="online-box">
+            <div class="online-actions">
+              <button id="requestOnlineCode" class="primary">Create room</button
+              ><button id="disconnectOnline">Disconnect</button>
+            </div>
+            <div id="onlineCodeDisplay" class="online-code" hidden>
+              <span>ROOM CODE</span><strong id="onlineCode"></strong>
+            </div>
+            <div class="join-row">
+              <input
+                id="joinOnlineCode"
+                inputmode="numeric"
+                maxlength="4"
+                placeholder="4-digit code"
+                aria-label="Room code"
+              /><button id="joinOnlineGroup" class="small">Join</button>
+            </div>
+            <div id="onlineCodeStatus" class="status-line">Not connected</div>
+            <div style="margin-top: 10px">
+              <div class="muted" style="margin-bottom: 7px">
+                Connected players
+              </div>
+              <div id="onlineParticipants" class="players-list"></div>
+            </div>
+            <div id="onlineError" class="error" hidden></div>
+            <details class="debug-panel">
+              <summary>Connection diagnostics</summary>
+              <div class="debug-body">
+                <button id="runDiagnostics" class="small debug-button">
+                  Run diagnostics
+                </button>
+                <pre id="debugOutput" class="debug-output">
+No diagnostics run yet.</pre
+                >
+              </div>
+            </details>
+          </div>
+        </section>
+        <section class="section">
+          <h3>Current party</h3>
+          <div class="muted" style="margin-bottom: 9px">
+            Your party is the group of local players participating in this
+            browser session. The party can contain multiple people at this
+            computer.
+          </div>
+          <div id="partyList" class="party-list"></div>
+        </section>
+        <section class="section">
+          <h3>Player profiles</h3>
+          <div class="muted" style="margin-bottom: 9px">
+            Profiles save player names and avatars on this device. Add any
+            profiles you want to the current party.
+          </div>
+          <div id="profileList" class="profile-list"></div>
+          <button
+            id="addProfile"
+            class="small"
+            style="margin-top: 9px; width: 100%"
+          >
+            + Add profile
+          </button>
+          <div id="profileEditor"></div>
+          <div class="management-actions">
+            <button id="resetScores" class="small">Reset all scores</button>
+            <button id="resetPlayerInfo" class="small danger-button">
+              Reset player info
+            </button>
+          </div>
+        </section>
+      </div>
+    </aside>
+    <aside id="gameSetupDrawer" class="game-setup-drawer" aria-hidden="true">
+      <div class="drawer-header">
+        <div>
+          <h2 id="gameSetupTitle">Chess Setup</h2>
+          <p id="gameSetupSubtitle">
+            Choose the variant and configure this match.
+          </p>
+        </div>
+        <button id="closeGameSetup" class="small" aria-label="Close">×</button>
+      </div>
+      <div id="gameSetupBody" class="game-setup-body"></div>
+      <div class="setup-footer">
+        <button id="gameSetupPlay" class="primary">Play</button>
+      </div>
+    </aside>
+    <script>
+      "use strict";
+      const RAW_ONLINE_SERVER_URL =
+        "https://opengamegallery.georgegames.workers.dev";
+      const $ = (id) => document.getElementById(id);
+      const gamesGrid = $("gamesGrid"),
+        releasePanel = $("releasePanel"),
+        libraryButton = $("libraryButton"),
+        betaButton = $("betaButton"),
+        playersButton = $("playersButton"),
+        backdrop = $("backdrop"),
+        setupDrawer = $("setupDrawer"),
+        closeSetup = $("closeSetup"),
+        requestOnlineCodeButton = $("requestOnlineCode"),
+        disconnectOnlineButton = $("disconnectOnline"),
+        onlineCodeDisplay = $("onlineCodeDisplay"),
+        onlineCode = $("onlineCode"),
+        onlineCodeStatus = $("onlineCodeStatus"),
+        joinOnlineCode = $("joinOnlineCode"),
+        joinOnlineGroupButton = $("joinOnlineGroup"),
+        onlineParticipants = $("onlineParticipants"),
+        onlineError = $("onlineError"),
+        partyList = $("partyList"),
+        profileList = $("profileList"),
+        addProfileButton = $("addProfile"),
+        profileEditor = $("profileEditor"),
+        resetScoresButton = $("resetScores"),
+        resetPlayerInfoButton = $("resetPlayerInfo"),
+        runDiagnosticsButton = $("runDiagnostics"),
+        debugOutput = $("debugOutput"),
+        onlineWinsCorner = $("onlineWinsCorner"),
+        gameSetupDrawer = $("gameSetupDrawer"),
+        gameSetupPlay = $("gameSetupPlay"),
+        closeGameSetupButton = $("closeGameSetup");
+      let profiles = loadProfiles(),
+        editingProfileId = null,
+        partyProfileIds = loadPartyProfileIds();
+      if (!partyProfileIds.some((id) => profiles.some((p) => p.id === id))) {
+        partyProfileIds = profiles[0]?.id ? [profiles[0].id] : [];
+        savePartyProfileIds();
+      }
+      const onlineState = {
+        code: sessionStorage.getItem("gameLibraryOnlineCode") || "",
+        joinedCode: sessionStorage.getItem("gameLibraryOnlineJoinedCode") || "",
+        hostToken: sessionStorage.getItem("gameLibraryOnlineHostToken") || "",
+        clientId: sessionStorage.getItem("gameLibraryOnlineClientId") || "",
+        connected: false,
+        isHost: false,
+        socket: null,
+        participants: [],
+        config: null,
+      };
+      let games = [];
+      let libraryLoaded = false;
+      let selectedSetupGame = "chess";
+      let selectedSetupVariant = "standard";
+      let selectedSetupOptions = {};
+      let setupComputerCount = 0;
+      let setupComputerDifficulties = {};
+      let setupPlayerOrder = [];
+      let setupSpectatorTokens = new Set();
+      let gameSetupOpen = false;
+
+      // Release channels: normal is the public library, Beta is the separate
+      // beta menu, and Alpha is shown inside Beta only after the access code.
+      let libraryMode = "normal";
+      let alphaUnlocked = sessionStorage.getItem("1972") === "true";
+      // This is a client-side access gate, not a security mechanism. Change it
+      // here to whatever code you want to use for your private alpha builds.
+      const ALPHA_ACCESS_CODE = "OPEN-GAME-GALLERY-ALPHA";
+
+      const LIBRARY_URL = "library.json?v=20261007-release1";
+
+      function libraryGame(gameId) {
+        return games.find((game) => game.id === gameId) || null;
+      }
+
+      function libraryVariants(gameId) {
+        return libraryGame(gameId)?.variants || [];
+      }
+
+      function selectedGameDefinition() {
+        return libraryGame(selectedSetupGame) || libraryGame("chess");
+      }
+
+      function releaseStatus(value) {
+        return value === "beta" || value === "alpha" ? value : "normal";
+      }
+
+      function releaseRank(value) {
+        return releaseStatus(value) === "alpha"
+          ? 2
+          : releaseStatus(value) === "beta"
+            ? 1
+            : 0;
+      }
+
+      function releaseVisible(value) {
+        const rank = releaseRank(value);
+        if (rank === 0) return true;
+        if (rank === 1) return libraryMode === "beta";
+        return libraryMode === "beta" && alphaUnlocked;
+      }
+
+      function hasReleaseContent(game, channel) {
+        const targetRank = channel === "normal" ? 0 : 1;
+        if (channel === "normal") return releaseRank(game.release) === 0;
+        if (releaseRank(game.release) === 1) return true;
+        if (releaseRank(game.release) === 2)
+          return channel === "alpha" && alphaUnlocked;
+        for (const v of game.variants || [])
+          if (releaseRank(v.release) === targetRank) return true;
+        for (const option of Object.values(game.options || {}))
+          if (releaseRank(option.release) === targetRank) return true;
+        return false;
+      }
+
+      function gameVisibleInLibrary(game) {
+        const gameRank = releaseRank(game.release);
+        if (libraryMode === "normal") {
+          return gameRank === 0;
         }
-      },
-      "release": "alpha"
-    },
-    {
-      "id": "reversi",
-      "name": "Reversi",
-      "type": "board",
-      "page": "boardGame.html",
-      "description": "A board-control game where players surround and flip their opponent's pieces to claim territory.",
-      "image": "images/cover/reversi.jpg",
-      "categories": ["board", "strategy"],
-      "searchTerms": ["othello"],
-      "players": {
-        "min": 2,
-        "max": 2
-      },
-      "variants": [
-        {
-          "id": "standard",
-          "name": "Standard Reversi",
-          "release": "normal"
+        if (gameRank === 2 && !alphaUnlocked) return false;
+        if (gameRank === 1) return true;
+        // Normal games only appear in Beta when they contain beta/alpha content.
+        return (
+          (game.variants || []).some((v) => {
+            const r = releaseRank(v.release);
+            return r === 1 || (r === 2 && alphaUnlocked);
+          }) ||
+          Object.values(game.options || {}).some((option) => {
+            const r = releaseRank(option.release);
+            return r === 1 || (r === 2 && alphaUnlocked);
+          })
+        );
+      }
+
+      function visibleVariants(gameId) {
+        const game = libraryGame(gameId);
+        return (game?.variants || []).filter((v) => releaseVisible(v.release));
+      }
+
+      function visibleOptions(game) {
+        return Object.entries(game?.options || {}).filter(([, option]) =>
+          releaseVisible(option.release),
+        );
+      }
+
+      function renderReleasePanel() {
+        if (libraryMode === "normal") {
+          releasePanel.hidden = true;
+          releasePanel.innerHTML = "";
+          return;
         }
-      ],
-      "capabilities": {
-        "local": true,
-        "online": false,
-        "computer": true
-      },
-      "options": {},
-      "release": "normal"
-    },
-    {
-      "id": "rummy",
-      "name": "Rummy",
-      "type": "card",
-      "page": "rummy/rummy.html",
-      "description": "A classic draw-and-discard card game of forming sets and runs, with players emptying their hands to win.",
-      "image": "images/cover/rummy.jpg",
-      "categories": ["cards", "strategy"],
-      "searchTerms": ["rummy", "card game", "sets", "runs"],
-      "players": {
-        "min": 2,
-        "max": 6
-      },
-      "variants": [],
-      "capabilities": {
-        "local": true,
-        "online": true,
-        "computer": true
-      },
-      "options": {
-        "topToBottomMeld": {
-          "type": "toggle",
-          "name": "Allow top-to-bottom melds",
-          "help": "Allow runs to wrap from King to Ace to Two, such as K-A-2.",
-          "default": false,
-          "release": "normal"
-        },
-        "scoring": {
-          "type": "select",
-          "name": "Scoring",
-          "help": "Choose how the round winner is determined and how cards are valued.",
-          "default": "firstOut",
-          "choices": [
-            {
-              "value": "firstOut",
-              "name": "First player to empty their hand",
-              "release": "normal"
-            },
-            {
-              "value": "standard",
-              "name": "Melded cards − hand (numbers face value, face cards 10, aces 15)",
-              "release": "normal"
-            },
-            {
-              "value": "flatFive",
-              "name": "Melded cards − hand (number cards 5, face cards 10, aces 15)",
-              "release": "normal"
+        releasePanel.hidden = false;
+        const alphaText = alphaUnlocked
+          ? "Alpha access is enabled for this browser session."
+          : "Alpha content is locked. Enter the special alpha code to enable it.";
+        releasePanel.innerHTML = `
+          <div class="release-panel-title">Beta &amp; experimental content</div>
+          <div class="release-panel-text">Beta games and beta settings are shown here separately from the main library. ${escapeHtml(alphaText)}</div>
+          ${
+            alphaUnlocked
+              ? `<button id="lockAlpha" class="small" style="margin-top:10px" type="button">Lock alpha access</button>`
+              : `<div class="alpha-access-row"><input id="alphaAccessInput" type="password" autocomplete="off" placeholder="Alpha access code" aria-label="Alpha access code"><button id="alphaAccessButton" class="small primary" type="button">Unlock Alpha</button></div>`
+          }
+          <div id="alphaAccessStatus" class="release-panel-text" style="margin-top:7px"></div>`;
+
+        if (alphaUnlocked) {
+          $("lockAlpha").onclick = () => {
+            alphaUnlocked = false;
+            sessionStorage.removeItem("gameLibraryAlphaAccess");
+            renderReleasePanel();
+            renderGames();
+            if (gameSetupOpen) {
+              initializeSetupState();
+              renderGameSetup();
             }
-          ],
-          "release": "normal"
+          };
+        } else {
+          const input = $("alphaAccessInput");
+          const button = $("alphaAccessButton");
+          const status = $("alphaAccessStatus");
+          const attempt = () => {
+            if (input.value === ALPHA_ACCESS_CODE) {
+              alphaUnlocked = true;
+              sessionStorage.setItem("gameLibraryAlphaAccess", "true");
+              renderReleasePanel();
+              renderGames();
+              return;
+            }
+            status.textContent = "Incorrect alpha access code.";
+          };
+          button.onclick = attempt;
+          input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") attempt();
+          });
         }
-      },
-      "release": "beta"
-    }
-  ]
-}
+      }
+
+      function setLibraryMode(mode) {
+        libraryMode = mode === "beta" ? "beta" : "normal";
+        libraryButton.classList.toggle("selected", libraryMode === "normal");
+        betaButton.classList.toggle("selected", libraryMode === "beta");
+        renderReleasePanel();
+        renderGames();
+      }
+
+      async function loadLibrary() {
+        try {
+          const response = await fetch(LIBRARY_URL, { cache: "no-store" });
+          if (!response.ok) throw new Error(`library.json: ${response.status}`);
+          const data = await response.json();
+          const loaded = Array.isArray(data) ? data : data.games || [];
+          if (!Array.isArray(loaded) || !loaded.length) {
+            throw new Error("library.json does not contain any games.");
+          }
+          games = loaded;
+          libraryLoaded = true;
+
+          if (!gameVisibleInLibrary(libraryGame(selectedSetupGame) || {})) {
+            selectedSetupGame =
+              games.find(gameVisibleInLibrary)?.id || games[0].id;
+          }
+          const initialVisibleVariants = visibleVariants(selectedSetupGame);
+          if (
+            !initialVisibleVariants.some((v) => v.id === selectedSetupVariant)
+          ) {
+            selectedSetupVariant = initialVisibleVariants[0]?.id || "standard";
+          }
+
+          renderGames();
+          renderReleasePanel();
+          if (gameSetupOpen) {
+            initializeSetupState();
+            renderGameSetup();
+          }
+        } catch (e) {
+          console.error("Could not load library.json:", e);
+          gamesGrid.innerHTML = `<div class="setup-message error">Could not load library.json. Make sure it is beside index.html and that the site is being served through a web server.</div>`;
+        }
+      }
+
+      const AVATARS = [
+        "♟",
+        "♞",
+        "♜",
+        "♛",
+        "♚",
+        "⚔",
+        "🎲",
+        "★",
+        "◆",
+        "●",
+        "▲",
+        "■",
+        "☀",
+        "☾",
+        "⚙",
+        "🎮",
+      ];
+      function id() {
+        return "client_" + Math.random().toString(36).slice(2, 12);
+      }
+      function escapeHtml(v) {
+        return String(v).replace(
+          /[&<>\"]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+        );
+      }
+      function loadProfiles() {
+        try {
+          const p = JSON.parse(
+            localStorage.getItem("gameLibraryProfiles") || "null",
+          );
+          if (Array.isArray(p) && p.length) return p;
+        } catch {}
+        return [
+          {
+            id: "p_" + Math.random().toString(36).slice(2, 10),
+            name: "Player 1",
+            avatar: "♟",
+          },
+        ];
+      }
+
+      function loadPartyProfileIds() {
+        try {
+          const p = JSON.parse(
+            sessionStorage.getItem("gameLibraryParty") || "null",
+          );
+          if (Array.isArray(p)) return p.filter((id) => typeof id === "string");
+        } catch {}
+        return profiles[0]?.id ? [profiles[0].id] : [];
+      }
+
+      function savePartyProfileIds() {
+        try {
+          sessionStorage.setItem(
+            "gameLibraryParty",
+            JSON.stringify(partyProfileIds),
+          );
+        } catch {}
+      }
+
+      function partyProfiles() {
+        return partyProfileIds
+          .map((id) => profiles.find((p) => p.id === id))
+          .filter(Boolean);
+      }
+
+      function loadLocalScores() {
+        try {
+          const scores = JSON.parse(
+            localStorage.getItem("gameLibraryLocalScores") || "{}",
+          );
+          return scores && typeof scores === "object" && !Array.isArray(scores)
+            ? scores
+            : {};
+        } catch {
+          return {};
+        }
+      }
+
+      function saveLocalScores(scores) {
+        localStorage.setItem("gameLibraryLocalScores", JSON.stringify(scores));
+      }
+
+      function localWins(profileId) {
+        const scores = loadLocalScores();
+        return Math.max(0, Number(scores[profileId]) || 0);
+      }
+
+      function awardLocalWin(profileId) {
+        if (!profileId) return;
+        const scores = loadLocalScores();
+        scores[profileId] = Math.max(0, Number(scores[profileId]) || 0) + 1;
+        saveLocalScores(scores);
+      }
+
+      function resetLocalScores() {
+        localStorage.removeItem("gameLibraryLocalScores");
+        renderParty();
+        if (
+          onlineState.connected &&
+          onlineState.socket?.readyState === WebSocket.OPEN
+        ) {
+          try {
+            onlineState.socket.send(JSON.stringify({ type: "scores:reset" }));
+          } catch {}
+        }
+      }
+
+      function addProfileToParty(profileId) {
+        if (
+          !profiles.some((p) => p.id === profileId) ||
+          partyProfileIds.includes(profileId)
+        )
+          return;
+        partyProfileIds.push(profileId);
+        savePartyProfileIds();
+        renderParty();
+        renderProfiles();
+        sendIdentify();
+        if (gameSetupOpen) {
+          initializeSetupState();
+          renderGameSetup();
+        }
+      }
+
+      function removeProfileFromParty(profileId) {
+        if (!partyProfileIds.includes(profileId)) return;
+        partyProfileIds = partyProfileIds.filter((id) => id !== profileId);
+        savePartyProfileIds();
+        renderParty();
+        renderProfiles();
+        sendIdentify();
+        if (gameSetupOpen) {
+          initializeSetupState();
+          renderGameSetup();
+        }
+      }
+
+      function resetPlayerInfo() {
+        localStorage.removeItem("gameLibraryProfiles");
+        localStorage.removeItem("gameLibraryActiveProfileId");
+        profiles = [];
+        partyProfileIds = [];
+        savePartyProfileIds();
+        editingProfileId = null;
+        profileEditor.innerHTML = "";
+        renderParty();
+        renderProfiles();
+        sendIdentify();
+        if (gameSetupOpen) {
+          initializeSetupState();
+          renderGameSetup();
+        }
+      }
+
+      function saveProfiles() {
+        localStorage.setItem("gameLibraryProfiles", JSON.stringify(profiles));
+      }
+      function configured() {
+        return (
+          RAW_ONLINE_SERVER_URL &&
+          !RAW_ONLINE_SERVER_URL.includes("YOUR-WORKER-URL")
+        );
+      }
+      function serverBase() {
+        let u = RAW_ONLINE_SERVER_URL.trim().replace(/\/+$/, "");
+        u = u.replace(/\/(?:api\/rooms(?:\/[^/]+)?|api|ws(?:\/[^/]+)?)$/i, "");
+        return u;
+      }
+      function roomCode() {
+        return onlineState.code || onlineState.joinedCode || "";
+      }
+      function persistOnline() {
+        sessionStorage.setItem(
+          "gameLibraryOnlineClientId",
+          onlineState.clientId,
+        );
+        if (onlineState.code)
+          sessionStorage.setItem("gameLibraryOnlineCode", onlineState.code);
+        else sessionStorage.removeItem("gameLibraryOnlineCode");
+        if (onlineState.hostToken)
+          sessionStorage.setItem(
+            "gameLibraryOnlineHostToken",
+            onlineState.hostToken,
+          );
+        else sessionStorage.removeItem("gameLibraryOnlineHostToken");
+        if (onlineState.joinedCode)
+          sessionStorage.setItem(
+            "gameLibraryOnlineJoinedCode",
+            onlineState.joinedCode,
+          );
+        else sessionStorage.removeItem("gameLibraryOnlineJoinedCode");
+      }
+      function error(msg) {
+        onlineError.textContent = msg || "";
+        onlineError.hidden = !msg;
+      }
+      function closeSocket() {
+        if (onlineState.socket) {
+          try {
+            onlineState.socket.close();
+          } catch {}
+        }
+        onlineState.socket = null;
+        onlineState.connected = false;
+        onlineState.isHost = false;
+        onlineState.participants = [];
+      }
+      function renderParty() {
+        partyList.innerHTML = "";
+        const party = partyProfiles();
+        if (!party.length) {
+          partyList.innerHTML =
+            '<div class="party-empty">No players in the current party. Add a profile below.</div>';
+          return;
+        }
+        party.forEach((p, index) => {
+          const row = document.createElement("div");
+          row.className = "party-row";
+          const avatar = document.createElement("div");
+          avatar.className = "avatar";
+          avatar.textContent = p.avatar || "♟";
+          const info = document.createElement("div");
+          info.className = "grow";
+          const name = document.createElement("div");
+          name.className = "player-name";
+          name.textContent = p.name || `Player ${index + 1}`;
+          const type = document.createElement("div");
+          type.className = "player-type";
+          type.textContent = `Local player${onlineState.connected ? " • This computer" : ""}`;
+          info.append(name, type);
+          const wins = localWins(p.id);
+          const score = document.createElement("div");
+          score.className = "party-score";
+          score.textContent = `${wins} win${wins === 1 ? "" : "s"}`;
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "party-remove";
+          remove.textContent = "×";
+          remove.title = "Remove from party";
+          remove.dataset.partyAction = "remove";
+          remove.dataset.profileId = p.id;
+          row.append(avatar, info, score, remove);
+          partyList.appendChild(row);
+        });
+      }
+
+      function renderProfiles() {
+        profileList.innerHTML = "";
+        for (const p of profiles) {
+          const inParty = partyProfileIds.includes(p.id);
+          const row = document.createElement("div");
+          row.className = "profile-row";
+          const editButton = document.createElement("button");
+          editButton.type = "button";
+          editButton.className = "profile-edit-area";
+          editButton.innerHTML = `<div class="avatar">${escapeHtml(p.avatar || "♟")}</div><div class="grow"><div class="player-name">${escapeHtml(p.name)}</div><div class="player-type">${inParty ? "In current party • Click to edit" : "Not in current party • Click to edit"}</div></div>`;
+          editButton.dataset.profileAction = "edit";
+          editButton.dataset.profileId = p.id;
+          const partyButton = document.createElement("button");
+          partyButton.type = "button";
+          partyButton.className = "profile-party-button small";
+          partyButton.textContent = inParty ? "In party" : "Add";
+          partyButton.disabled = inParty;
+          partyButton.dataset.profileAction = "party";
+          partyButton.dataset.profileId = p.id;
+          const removeButton = document.createElement("button");
+          removeButton.type = "button";
+          removeButton.className = "profile-remove";
+          removeButton.textContent = "×";
+          removeButton.title = `Remove ${p.name}`;
+          removeButton.dataset.profileAction = "remove";
+          removeButton.dataset.profileId = p.id;
+          row.append(editButton, partyButton, removeButton);
+          profileList.appendChild(row);
+        }
+        if (!profiles.length)
+          profileList.innerHTML =
+            '<div class="party-empty">No saved player profiles.</div>';
+      }
+
+      function removeProfile(profileId) {
+        const index = profiles.findIndex((p) => p.id === profileId);
+        if (index < 0) return;
+        profiles.splice(index, 1);
+        partyProfileIds = partyProfileIds.filter((id) => id !== profileId);
+        savePartyProfileIds();
+        saveProfiles();
+        profileEditor.innerHTML = "";
+        renderParty();
+        renderProfiles();
+        sendIdentify();
+        renderOnline();
+        if (gameSetupOpen) {
+          initializeSetupState();
+          renderGameSetup();
+        }
+      }
+      function openProfileEditor(profileId = null) {
+        editingProfileId = profileId;
+        const p = profiles.find((x) => x.id === profileId) || {
+          name: "Player",
+          avatar: "♟",
+        };
+        profileEditor.innerHTML = `<div style="margin-top:9px;padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px"><input id="profileNameInput" maxlength="30" value="${escapeHtml(p.name)}" style="width:100%;padding:8px;border-radius:7px;border:1px solid var(--border);background:var(--panel);color:var(--text)"><div id="avatarChoices" style="display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin-top:8px"></div><div class="row" style="margin-top:8px"><button id="saveProfile" class="small primary">Save</button><button id="cancelProfile" class="small">Cancel</button></div></div>`;
+        const choices = $("avatarChoices");
+        for (const a of AVATARS) {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "small";
+          b.textContent = a;
+          b.onclick = () => ($("profileNameInput").dataset.avatar = a);
+          choices.appendChild(b);
+        }
+        $("profileNameInput").dataset.avatar = p.avatar || "♟";
+        $("saveProfile").onclick = () => {
+          const name = $("profileNameInput").value.trim() || "Player";
+          const avatar = $("profileNameInput").dataset.avatar || "♟";
+          if (editingProfileId) {
+            const x = profiles.find((y) => y.id === editingProfileId);
+            if (x) {
+              x.name = name;
+              x.avatar = avatar;
+            }
+          } else {
+            const created = {
+              id: "p_" + Math.random().toString(36).slice(2, 10),
+              name,
+              avatar,
+            };
+            profiles.push(created);
+            if (!partyProfileIds.includes(created.id))
+              partyProfileIds.push(created.id);
+            savePartyProfileIds();
+          }
+          saveProfiles();
+          profileEditor.innerHTML = "";
+          renderParty();
+          renderProfiles();
+          sendIdentify();
+          renderOnline();
+          if (gameSetupOpen) {
+            initializeSetupState();
+            renderGameSetup();
+          }
+        };
+        $("cancelProfile").onclick = () => (profileEditor.innerHTML = "");
+      }
+      function openSetup() {
+        setupDrawer.classList.add("open");
+        backdrop.classList.add("open");
+        setupDrawer.setAttribute("aria-hidden", "false");
+        renderProfiles();
+        renderOnline();
+      }
+      function selectedProfile() {
+        return (
+          partyProfiles()[0] ||
+          profiles[0] || { name: "Player 1", avatar: "♟", id: "" }
+        );
+      }
+
+      function setupEntries() {
+        const localEntries = partyProfiles().map((p) => ({
+          token: `local:${p.id}`,
+          id: p.id,
+          profileId: p.id,
+          name: p.name || "Player",
+          avatar: p.avatar || "♟",
+          type: onlineState.connected
+            ? "Local player • This computer"
+            : "Local player",
+          online: false,
+          spectator: setupSpectatorTokens.has(`local:${p.id}`),
+          controllerClientId: onlineState.connected ? onlineState.clientId : "",
+        }));
+        if (!onlineState.connected) return localEntries;
+        const remoteEntries = [];
+        for (const participant of onlineState.participants.filter(
+          (p) => p.connected && p.clientId !== onlineState.clientId,
+        )) {
+          const remoteParty =
+            Array.isArray(participant.party) && participant.party.length
+              ? participant.party
+              : [
+                  {
+                    id: participant.profileId || participant.clientId,
+                    name: participant.name,
+                    avatar: participant.avatar,
+                  },
+                ];
+          for (const member of remoteParty) {
+            const memberId = String(member.id || participant.clientId);
+            remoteEntries.push({
+              token: `online:${participant.clientId}:${memberId}`,
+              id: memberId,
+              profileId: memberId,
+              name: member.name || participant.name || "Online player",
+              avatar: member.avatar || participant.avatar || "♟",
+              type: "Online player • Remote computer",
+              online: true,
+              participantClientId: participant.clientId,
+              controllerClientId: participant.clientId,
+              spectator: Boolean(participant.spectator),
+            });
+          }
+        }
+        return [...localEntries, ...remoteEntries];
+      }
+
+      function setupComputerEntry(index) {
+        return {
+          token: `computer:${index}`,
+          id: `computer:${index}`,
+          name: `Computer ${index + 1}`,
+          avatar: "🤖",
+          type: "Computer player",
+          computer: true,
+          difficulty:
+            setupComputerDifficulties[`computer:${index}`] || "normal",
+        };
+      }
+
+      function activeSetupEntries() {
+        const humans = setupEntries().filter(
+          (entry) => !setupSpectatorTokens.has(entry.token),
+        );
+        const computers = Array.from({ length: setupComputerCount }, (_, i) =>
+          setupComputerEntry(i),
+        );
+        const all = [...humans, ...computers];
+        const valid = new Set(all.map((entry) => entry.token));
+        const normalized = setupPlayerOrder.filter((token) => valid.has(token));
+        for (const entry of all)
+          if (!normalized.includes(entry.token)) normalized.push(entry.token);
+        setupPlayerOrder = normalized;
+        return all;
+      }
+
+      function initializeSetupState() {
+        const requestedGame = selectedSetupGame;
+        const configuredGame = onlineState.config?.game;
+        // Non-host clients must follow the host's room game, but the host
+        // must be able to click a different game card and open that game's
+        // setup menu. Previously the room game always overrode the clicked
+        // game, which caused every setup button to open (for example) Reversi.
+        const nonHostOnline = onlineState.connected && !onlineState.isHost;
+        const roomGame =
+          nonHostOnline && configuredGame && libraryGame(configuredGame)
+            ? configuredGame
+            : null;
+        selectedSetupGame =
+          roomGame || (libraryGame(requestedGame) ? requestedGame : "chess");
+
+        const variants = visibleVariants(selectedSetupGame);
+        const roomVariant =
+          nonHostOnline && roomGame ? onlineState.config?.variant : null;
+        selectedSetupVariant = variants.some((v) => v.id === roomVariant)
+          ? roomVariant
+          : variants[0]?.id || "standard";
+
+        const gameDefinition = libraryGame(selectedSetupGame);
+        const variantDefinition =
+          (gameDefinition?.variants || []).find(
+            (v) => v.id === selectedSetupVariant,
+          ) || gameDefinition?.variants?.[0];
+        selectedSetupOptions = {};
+        for (const [key, option] of visibleOptions(gameDefinition)) {
+          const fallback =
+            option.default ??
+            (option.type === "select" &&
+            Array.isArray(option.choices) &&
+            option.choices.length
+              ? typeof option.choices[0] === "object"
+                ? option.choices[0].value
+                : option.choices[0]
+              : false);
+          selectedSetupOptions[key] =
+            onlineState.config?.options?.[key] ?? fallback;
+        }
+        if (selectedSetupGame === "chess") {
+          selectedSetupOptions.fogOfWar = Boolean(
+            onlineState.config?.options?.fogOfWar,
+          );
+        }
+        setupComputerDifficulties = {};
+
+        if (onlineState.connected) {
+          setupSpectatorTokens = new Set(
+            onlineState.participants
+              .filter((p) => p.connected && p.spectator)
+              .flatMap((p) => {
+                const members =
+                  Array.isArray(p.party) && p.party.length
+                    ? p.party
+                    : [{ id: p.profileId || p.clientId }];
+                return members.map(
+                  (member) =>
+                    `online:${p.clientId}:${String(member.id || p.clientId)}`,
+                );
+              }),
+          );
+        } else {
+          setupSpectatorTokens = new Set();
+        }
+
+        const activeHumans = setupEntries().filter(
+          (entry) => !setupSpectatorTokens.has(entry.token),
+        ).length;
+        const initialRange = selectedPlayerRange();
+        setupComputerCount = Math.max(0, initialRange.min - activeHumans);
+        setupComputerCount = Math.min(
+          Math.max(0, initialRange.max - activeHumans),
+          setupComputerCount,
+        );
+
+        if (onlineState.config?.players?.length) {
+          const ordered = [];
+          for (const p of onlineState.config.players) {
+            if (p.id) ordered.push(p.id);
+            else if (p.type === "computer") {
+              const id = p.id || p.seat || "";
+              const m = String(id).match(/computer:(\d+)/);
+              if (m) ordered.push(`computer:${m[1]}`);
+            } else if (p.controllerClientId && p.profileId)
+              ordered.push(`online:${p.controllerClientId}:${p.profileId}`);
+            else if (p.profileId) ordered.push(`local:${p.profileId}`);
+          }
+          setupComputerCount = onlineState.config.players.filter(
+            (p) => p.type === "computer",
+          ).length;
+          const configuredBounds = computerBounds();
+          setupComputerCount = Math.max(
+            configuredBounds.min,
+            Math.min(configuredBounds.max, setupComputerCount),
+          );
+          for (let i = 0; i < setupComputerCount; i++) {
+            const configured = onlineState.config.players.find((p) =>
+              String(p.id || "").includes(`computer:${i}`),
+            );
+            setupComputerDifficulties[`computer:${i}`] =
+              configured?.difficulty || "normal";
+          }
+          setupPlayerOrder = ordered;
+        }
+
+        ensureSetupCounts();
+        const active = activeSetupEntries();
+        if (!setupPlayerOrder.length)
+          setupPlayerOrder = active.map((entry) => entry.token);
+      }
+
+      function selectedVariantDefinition() {
+        const variants = visibleVariants(selectedSetupGame);
+        return (
+          variants.find((variant) => variant.id === selectedSetupVariant) ||
+          variants[0] || {
+            id: "standard",
+            name: "",
+            players: libraryGame(selectedSetupGame)?.players || {
+              min: 2,
+              max: 2,
+            },
+          }
+        );
+      }
+
+      function selectedPlayerRange() {
+        const range = selectedVariantDefinition()?.players ||
+          libraryGame(selectedSetupGame)?.players || { min: 2, max: 2 };
+        const min = Number.isFinite(Number(range.min)) ? Number(range.min) : 2;
+        const max = Number.isFinite(Number(range.max))
+          ? Number(range.max)
+          : min;
+        return { min, max: Math.max(min, max) };
+      }
+
+      function computerBounds() {
+        const { min, max } = selectedPlayerRange();
+        const humans = setupEntries().filter(
+          (entry) => !setupSpectatorTokens.has(entry.token),
+        ).length;
+        return {
+          min: Math.max(0, min - humans),
+          max: Math.max(0, max - humans),
+        };
+      }
+
+      function ensureSetupCounts() {
+        const bounds = computerBounds();
+        setupComputerCount = Math.max(
+          bounds.min,
+          Math.min(setupComputerCount, bounds.max),
+        );
+      }
+
+      function setupConfigFromState() {
+        ensureSetupCounts();
+        const active = activeSetupEntries();
+        const range = selectedPlayerRange();
+        if (active.length < range.min || active.length > range.max) return null;
+
+        const entries = new Map(active.map((entry) => [entry.token, entry]));
+        const order = setupPlayerOrder
+          .map((token) => entries.get(token))
+          .filter(Boolean);
+        const seatOrder =
+          selectedSetupVariant === "fourplayer"
+            ? ["white", "red", "black", "blue"]
+            : selectedSetupVariant === "threeman"
+              ? ["white", "red", "black"]
+              : selectedSetupGame === "reversi"
+                ? ["black", "white"]
+                : selectedSetupGame === "rummy" || selectedSetupGame === "eins"
+                  ? order.map((_, index) => `seat-${index}`)
+                  : ["white", "black"];
+        if (order.length < seatOrder.length) return null;
+
+        const human = (entry) => {
+          if (entry.computer) {
+            return {
+              seat: "",
+              type: "computer",
+              name: entry.name,
+              avatar: entry.avatar,
+              controllerClientId: onlineState.connected
+                ? onlineState.participants.find((p) => p.role === "host")
+                    ?.clientId || onlineState.clientId
+                : "",
+              difficulty: setupComputerDifficulties[entry.token] || "normal",
+              id: entry.token,
+            };
+          }
+          if (entry.online) {
+            return {
+              seat: "",
+              type: "human",
+              controllerClientId:
+                entry.controllerClientId || entry.participantClientId || "",
+              profileId: entry.profileId || "",
+              name: entry.name,
+              avatar: entry.avatar,
+              playerType: "Online player",
+              id: entry.token,
+            };
+          }
+          const p = profiles.find((x) => x.id === entry.id) || {};
+          return {
+            seat: "",
+            type: "human",
+            controllerClientId: "",
+            profileId: p.id || entry.id,
+            name: p.name || entry.name,
+            avatar: p.avatar || entry.avatar,
+            playerType: "Local player",
+            id: entry.token,
+          };
+        };
+
+        return {
+          game: selectedSetupGame,
+          variant: selectedSetupVariant,
+          hostClientId: onlineState.connected
+            ? onlineState.participants.find((p) => p.role === "host")
+                ?.clientId || ""
+            : "",
+          players: order.slice(0, seatOrder.length).map((entry, index) => ({
+            ...human(entry),
+            seat: seatOrder[index],
+          })),
+          spectators: onlineState.connected
+            ? onlineState.participants
+                .filter((p) => p.spectator)
+                .map((p) => p.clientId)
+            : [...setupSpectatorTokens],
+          options: { ...selectedSetupOptions },
+        };
+      }
+
+      function sendPreGameConfig() {
+        if (
+          !onlineState.connected ||
+          !onlineState.isHost ||
+          !onlineState.socket ||
+          onlineState.socket.readyState !== WebSocket.OPEN
+        )
+          return;
+        const config = setupConfigFromState();
+        if (!config) return;
+        onlineState.config = config;
+        try {
+          sessionStorage.setItem(
+            "gameLibraryOnlineConfig",
+            JSON.stringify(config),
+          );
+        } catch {}
+        onlineState.socket.send(
+          JSON.stringify({ type: "room:config", config }),
+        );
+      }
+
+      function renderGameSetup() {
+        if (!gameSetupOpen) return;
+        const body = $("gameSetupBody");
+        const play = $("gameSetupPlay");
+        const subtitle = $("gameSetupSubtitle");
+        body.innerHTML = "";
+
+        const host = onlineState.connected && !onlineState.isHost;
+        ensureSetupCounts();
+        const active = activeSetupEntries();
+        const humans = setupEntries().filter(
+          (entry) => !setupSpectatorTokens.has(entry.token),
+        ).length;
+        const playerRange = selectedPlayerRange();
+        const bounds = computerBounds();
+        const valid =
+          active.length >= playerRange.min && active.length <= playerRange.max;
+
+        const gameDefinition = selectedGameDefinition();
+        const isChess = selectedSetupGame === "chess";
+        $("gameSetupTitle").textContent =
+          `${gameDefinition?.name || "Game"} Setup`;
+        subtitle.textContent = onlineState.connected
+          ? host
+            ? "The host controls the match configuration."
+            : `Room ${roomCode()} • Host setup`
+          : "Choose the variant and configure this match.";
+
+        const variants = libraryVariants(selectedSetupGame);
+        if (variants.length) {
+          const variantSection = document.createElement("section");
+          variantSection.className = "setup-section";
+          const vh = document.createElement("h3");
+          vh.textContent = "Variant";
+          const variantList = document.createElement("div");
+          variantList.className = "variant-list";
+          for (const variant of variants) {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.className = "variant-button";
+            b.textContent = variant.name;
+            b.disabled = host;
+            if (variant.id === selectedSetupVariant)
+              b.classList.add("selected");
+            b.onclick = () => {
+              selectedSetupVariant = variant.id;
+              ensureSetupCounts();
+              normalizeSetupOrder();
+              if (onlineState.connected && onlineState.isHost)
+                sendPreGameConfig();
+              renderGameSetup();
+            };
+            variantList.appendChild(b);
+          }
+          variantSection.append(vh, variantList);
+          body.appendChild(variantSection);
+        }
+
+        if (isChess) {
+          const optionSection = document.createElement("section");
+          optionSection.className = "setup-section";
+          const optionsHeading = document.createElement("h3");
+          optionsHeading.textContent = "Game options";
+          const optionList = document.createElement("div");
+          optionList.className = "setup-option-list";
+
+          const fogRow = document.createElement("label");
+          fogRow.className = "toggle-option";
+          const fogLabel = document.createElement("span");
+          fogLabel.className = "toggle-label";
+          fogLabel.innerHTML =
+            '<strong>Fog of War</strong><br><span class="range-help">Players see their own pieces and the squares those pieces attack. Spectators see the entire board.</span>';
+          const fogSwitch = document.createElement("span");
+          fogSwitch.className = "toggle-switch";
+          const fogCheckbox = document.createElement("input");
+          fogCheckbox.type = "checkbox";
+          fogCheckbox.checked = Boolean(selectedSetupOptions.fogOfWar);
+          fogCheckbox.disabled = host;
+          const fogSlider = document.createElement("span");
+          fogSlider.className = "toggle-slider";
+          fogCheckbox.addEventListener("change", () => {
+            selectedSetupOptions.fogOfWar = fogCheckbox.checked;
+            if (onlineState.connected && onlineState.isHost)
+              sendPreGameConfig();
+          });
+          fogSwitch.append(fogCheckbox, fogSlider);
+          fogRow.append(fogLabel, fogSwitch);
+          optionList.appendChild(fogRow);
+
+          const note = document.createElement("div");
+          note.className = "setup-player-summary";
+          note.textContent =
+            "Fog of War works with Standard Chess, Chess960, Three Player Chess, and 4-Player Chess. In local games with multiple human players, a 2-second pass-the-device timer hides the board between turns.";
+          optionList.appendChild(note);
+          optionSection.append(optionsHeading, optionList);
+          body.appendChild(optionSection);
+        }
+
+        const libraryOptionEntries = visibleOptions(gameDefinition);
+        if (libraryOptionEntries.length) {
+          const optionSection = document.createElement("section");
+          optionSection.className = "setup-section";
+          const optionsHeading = document.createElement("h3");
+          optionsHeading.textContent = "Game options";
+          const optionList = document.createElement("div");
+          optionList.className = "setup-option-list";
+
+          for (const [key, option] of libraryOptionEntries) {
+            if (option.type === "toggle") {
+              const row = document.createElement("label");
+              row.className = "toggle-option";
+              const label = document.createElement("span");
+              label.className = "toggle-label";
+              label.innerHTML = `<strong>${escapeHtml(option.name || formatSetupLabel(key))}</strong>`;
+              if (option.help)
+                label.innerHTML += `<br><span class="range-help">${escapeHtml(option.help)}</span>`;
+              const sw = document.createElement("span");
+              sw.className = "toggle-switch";
+              const cb = document.createElement("input");
+              cb.type = "checkbox";
+              cb.checked = Boolean(selectedSetupOptions[key] ?? option.default);
+              cb.disabled = host;
+              const slider = document.createElement("span");
+              slider.className = "toggle-slider";
+              cb.addEventListener("change", () => {
+                selectedSetupOptions[key] = cb.checked;
+                if (onlineState.connected && onlineState.isHost)
+                  sendPreGameConfig();
+              });
+              sw.append(cb, slider);
+              row.append(label, sw);
+              optionList.appendChild(row);
+            } else if (option.type === "select") {
+              const row = document.createElement("div");
+              row.className = "setup-select-row";
+
+              const label = document.createElement("label");
+              label.className = "toggle-label";
+              label.setAttribute("for", `setup-option-${key}`);
+              label.innerHTML = `<strong>${escapeHtml(option.name || formatSetupLabel(key))}</strong>`;
+              if (option.help)
+                label.innerHTML += `<br><span class="range-help">${escapeHtml(option.help)}</span>`;
+
+              const select = document.createElement("select");
+              select.id = `setup-option-${key}`;
+              select.disabled = host;
+
+              const choices = (
+                Array.isArray(option.choices) ? option.choices : []
+              ).filter((choice) => {
+                return releaseVisible(
+                  typeof choice === "object" ? choice.release : undefined,
+                );
+              });
+              for (const choice of choices) {
+                const value =
+                  typeof choice === "object" ? choice.value : choice;
+                const name =
+                  typeof choice === "object"
+                    ? (choice.name ?? choice.value)
+                    : choice;
+                const opt = document.createElement("option");
+                opt.value = String(value);
+                opt.textContent = String(name);
+                select.appendChild(opt);
+              }
+
+              const fallback =
+                option.default ??
+                (choices.length
+                  ? typeof choices[0] === "object"
+                    ? choices[0].value
+                    : choices[0]
+                  : "");
+              const currentValue = selectedSetupOptions[key] ?? fallback;
+              if (
+                [...select.options].some(
+                  (opt) => opt.value === String(currentValue),
+                )
+              ) {
+                select.value = String(currentValue);
+              }
+
+              select.addEventListener("change", () => {
+                selectedSetupOptions[key] = select.value;
+                if (onlineState.connected && onlineState.isHost)
+                  sendPreGameConfig();
+              });
+
+              row.append(label, select);
+              optionList.appendChild(row);
+            }
+          }
+
+          if (optionList.children.length) {
+            optionSection.append(optionsHeading, optionList);
+            body.appendChild(optionSection);
+          }
+        }
+
+        const playerSection = document.createElement("section");
+        playerSection.className = "setup-section";
+        const ph = document.createElement("h3");
+        ph.textContent = "Players & spectators";
+        const summary = document.createElement("div");
+        summary.className = "setup-player-summary";
+        summary.innerHTML = `<strong>${humans} active human${humans === 1 ? "" : "s"}</strong> in the room, plus ${setupComputerCount} computer${setupComputerCount === 1 ? "" : "s"}.`;
+        playerSection.append(ph, summary);
+
+        const spectatorList = document.createElement("div");
+        spectatorList.className = "setup-player-list";
+        for (const entry of setupEntries()) {
+          const isSpectator = setupSpectatorTokens.has(entry.token);
+          const row = document.createElement("div");
+          row.className =
+            "spectator-row" + (isSpectator ? " is-spectator" : "");
+          const avatar = document.createElement("div");
+          avatar.className = "setup-player-avatar";
+          avatar.textContent = entry.avatar;
+          const info = document.createElement("div");
+          info.className = "setup-player-name";
+          const name = document.createElement("strong");
+          name.textContent = entry.name;
+          const type = document.createElement("span");
+          type.textContent = isSpectator ? "Spectator" : entry.type;
+          info.append(name, type);
+          const toggle = document.createElement("button");
+          toggle.type = "button";
+          toggle.className = "spectator-toggle";
+          toggle.textContent = isSpectator ? "↩" : "×";
+          toggle.title = isSpectator
+            ? "Return player to the game"
+            : "Make spectator for this match";
+          toggle.disabled = host;
+          toggle.onclick = () => {
+            const next = !isSpectator;
+            if (onlineState.connected && entry.online) {
+              onlineState.socket?.send(
+                JSON.stringify({
+                  type: "player:spectator",
+                  clientId: entry.id,
+                  spectator: next,
+                }),
+              );
+            } else {
+              if (next) setupSpectatorTokens.add(entry.token);
+              else setupSpectatorTokens.delete(entry.token);
+              ensureSetupCounts();
+              normalizeSetupOrder();
+              renderGameSetup();
+            }
+          };
+          row.append(avatar, info, toggle);
+          spectatorList.appendChild(row);
+        }
+        playerSection.appendChild(spectatorList);
+        const help = document.createElement("div");
+        help.className = "range-help";
+        help.textContent = host
+          ? "Only the host can change spectator assignments for an online room."
+          : "Spectators watch the match without occupying a chess side.";
+        playerSection.appendChild(help);
+        body.appendChild(playerSection);
+
+        const compSection = document.createElement("section");
+        compSection.className = "setup-section";
+        const ch = document.createElement("h3");
+        ch.textContent = "Computer players";
+        const rangeRow = document.createElement("div");
+        rangeRow.className = "range-row";
+        const main = document.createElement("div");
+        const rl = document.createElement("div");
+        rl.className = "range-label";
+        const lab = document.createElement("span");
+        lab.textContent = "Number of computers";
+        const val = document.createElement("span");
+        val.className = "range-value";
+        val.textContent = String(setupComputerCount);
+        rl.append(lab, val);
+        const slider = document.createElement("input");
+        slider.type = "range";
+        slider.min = String(bounds.min);
+        slider.max = String(bounds.max);
+        slider.step = "1";
+        slider.value = String(setupComputerCount);
+        slider.disabled = host || bounds.min === bounds.max;
+        slider.oninput = () => {
+          setupComputerCount = Number(slider.value);
+          ensureSetupCounts();
+          normalizeSetupOrder();
+          renderGameSetup();
+          if (onlineState.connected && onlineState.isHost) sendPreGameConfig();
+        };
+        const rh = document.createElement("div");
+        rh.className = "range-help";
+        rh.textContent = `Allowed computer players: ${bounds.min}–${bounds.max} (game limit ${playerRange.min}–${playerRange.max}, minus ${humans} active human${humans === 1 ? "" : "s"}).`;
+        main.append(rl, slider, rh);
+        rangeRow.appendChild(main);
+        compSection.append(ch, rangeRow);
+        body.appendChild(compSection);
+
+        const orderSection = document.createElement("section");
+        orderSection.className = "setup-section";
+        const oh = document.createElement("h3");
+        oh.textContent = "Player order";
+        const ohd = document.createElement("div");
+        ohd.className = "range-help";
+        ohd.textContent =
+          selectedSetupVariant === "fourplayer"
+            ? "Order determines the four sides: White, Red, Black, Blue."
+            : selectedSetupVariant === "threeman"
+              ? "Order determines the three sides: White, Red, Black."
+              : selectedSetupGame === "reversi"
+                ? "Order determines the two sides: Black, then White."
+                : "The first active player becomes White; the second becomes Black.";
+        const orderList = document.createElement("div");
+        orderList.className = "setup-order-list";
+        normalizeSetupOrder();
+        const entries = new Map(
+          activeSetupEntries().map((entry) => [entry.token, entry]),
+        );
+        setupPlayerOrder.forEach((token, index) => {
+          const entry = entries.get(token);
+          if (!entry) return;
+          const row = document.createElement("div");
+          row.className = "setup-order-row";
+          const pos = document.createElement("div");
+          pos.className = "setup-order-position";
+          pos.textContent = String(index + 1);
+          const info = document.createElement("div");
+          info.className = "setup-player-name";
+          const seatNames =
+            selectedSetupVariant === "fourplayer"
+              ? ["White", "Red", "Black", "Blue"]
+              : selectedSetupVariant === "threeman"
+                ? ["White", "Red", "Black"]
+                : selectedSetupGame === "reversi"
+                  ? ["Black", "White"]
+                  : ["White", "Black"];
+          const name = document.createElement("strong");
+          name.textContent = `${seatNames[index] || `Player ${index + 1}`} — ${entry.name}`;
+          const type = document.createElement("span");
+          type.textContent =
+            entry.type +
+            (entry.computer ? ` • ${formatSetupLabel(entry.difficulty)}` : "");
+          info.append(name, type);
+          if (entry.computer) {
+            const select = document.createElement("select");
+            select.className = "computer-difficulty-select";
+            select.disabled = host;
+            select.innerHTML =
+              '<option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option><option value="expert">Expert</option>';
+            select.value = setupComputerDifficulties[entry.token] || "normal";
+            select.onchange = () => {
+              setupComputerDifficulties[entry.token] = select.value;
+              renderGameSetup();
+              if (onlineState.connected && onlineState.isHost)
+                sendPreGameConfig();
+            };
+            row.append(pos, info, select);
+          } else row.append(pos, info, document.createElement("span"));
+          const buttons = document.createElement("div");
+          buttons.className = "setup-order-buttons";
+          const up = document.createElement("button");
+          up.className = "order-button";
+          up.type = "button";
+          up.textContent = "↑";
+          up.disabled = host || index === 0;
+          up.onclick = () => {
+            [setupPlayerOrder[index - 1], setupPlayerOrder[index]] = [
+              setupPlayerOrder[index],
+              setupPlayerOrder[index - 1],
+            ];
+            renderGameSetup();
+            if (onlineState.connected && onlineState.isHost)
+              sendPreGameConfig();
+          };
+          const down = document.createElement("button");
+          down.className = "order-button";
+          down.type = "button";
+          down.textContent = "↓";
+          down.disabled = host || index === setupPlayerOrder.length - 1;
+          down.onclick = () => {
+            [setupPlayerOrder[index + 1], setupPlayerOrder[index]] = [
+              setupPlayerOrder[index],
+              setupPlayerOrder[index + 1],
+            ];
+            renderGameSetup();
+            if (onlineState.connected && onlineState.isHost)
+              sendPreGameConfig();
+          };
+          buttons.append(up, down);
+          row.appendChild(buttons);
+          orderList.appendChild(row);
+        });
+        orderSection.append(oh, ohd, orderList);
+        body.appendChild(orderSection);
+
+        const message = document.createElement("div");
+        message.className = "setup-message";
+        if (host)
+          message.textContent =
+            "Waiting for the host to finish configuring the match.";
+        else if (
+          activeSetupEntries().length < playerRange.min ||
+          activeSetupEntries().length > playerRange.max
+        ) {
+          message.classList.add("error");
+          message.textContent = `This variant requires ${playerRange.min}–${playerRange.max} active players.`;
+        } else
+          message.textContent = onlineState.connected
+            ? "Both sides are configured. Start the match when ready."
+            : "Start the match when ready.";
+        body.appendChild(message);
+
+        play.disabled =
+          host || !valid || (onlineState.connected && !onlineState.isHost);
+        play.textContent =
+          onlineState.connected && !onlineState.isHost
+            ? "Waiting for host"
+            : "Play";
+      }
+
+      function formatSetupLabel(value) {
+        return String(value || "")
+          .replace(/[-_]+/g, " ")
+          .replace(/\b\w/g, (c) => c.toUpperCase());
+      }
+
+      function normalizeSetupOrder() {
+        const active = activeSetupEntries();
+        const valid = new Set(active.map((entry) => entry.token));
+        setupPlayerOrder = setupPlayerOrder.filter((token) => valid.has(token));
+        for (const entry of active)
+          if (!setupPlayerOrder.includes(entry.token))
+            setupPlayerOrder.push(entry.token);
+        const maxPlayers = selectedPlayerRange().max;
+        setupPlayerOrder = setupPlayerOrder.slice(0, maxPlayers);
+      }
+
+      function openGameSetup(gameId = "chess") {
+        selectedSetupGame = gameId;
+        initializeSetupState();
+        ensureSetupCounts();
+        normalizeSetupOrder();
+        gameSetupOpen = true;
+        setupDrawer.classList.remove("open");
+        setupDrawer.setAttribute("aria-hidden", "true");
+        gameSetupDrawer.classList.add("open");
+        gameSetupDrawer.setAttribute("aria-hidden", "false");
+        backdrop.classList.add("open");
+        renderGameSetup();
+      }
+
+      function closeGameSetup() {
+        gameSetupOpen = false;
+        gameSetupDrawer.classList.remove("open");
+        gameSetupDrawer.setAttribute("aria-hidden", "true");
+        if (!setupDrawer.classList.contains("open"))
+          backdrop.classList.remove("open");
+      }
+
+      function startSelectedGame() {
+        if (onlineState.connected && !onlineState.isHost) return;
+        const gameDefinition = selectedGameDefinition();
+        if (!gameDefinition || !gameVisibleInLibrary(gameDefinition)) return;
+        if (
+          !visibleVariants(selectedSetupGame).some(
+            (v) => v.id === selectedSetupVariant,
+          ) &&
+          visibleVariants(selectedSetupGame).length
+        ) {
+          selectedSetupVariant = visibleVariants(selectedSetupGame)[0].id;
+        }
+
+        // Launch any game with a configured page and a supported play mode.
+        // The actual configured seat count may vary within the game's limits.
+        if (
+          !gameDefinition.page ||
+          !(
+            gameDefinition.capabilities?.local ||
+            gameDefinition.capabilities?.computer ||
+            gameDefinition.capabilities?.online
+          )
+        )
+          return;
+
+        const config = setupConfigFromState();
+        const range = selectedPlayerRange();
+        if (
+          !config ||
+          config.players.length < range.min ||
+          config.players.length > range.max
+        )
+          return;
+
+        onlineState.config = config;
+        try {
+          sessionStorage.setItem(
+            "gameLibraryOnlineConfig",
+            JSON.stringify(config),
+          );
+        } catch {}
+
+        const params = new URLSearchParams({
+          game: selectedSetupGame,
+          variant: selectedSetupVariant,
+          online: onlineState.connected ? "1" : "0",
+          onlineCode: onlineState.connected ? roomCode() : "",
+          onlineServer: onlineState.connected ? serverBase() : "",
+          onlineClientId: onlineState.connected ? onlineState.clientId : "",
+          onlineConfig: JSON.stringify(config),
+        });
+        if (
+          onlineState.connected &&
+          onlineState.isHost &&
+          onlineState.hostToken
+        )
+          params.set("hostToken", onlineState.hostToken);
+
+        if (onlineState.connected) {
+          if (
+            !onlineState.socket ||
+            onlineState.socket.readyState !== WebSocket.OPEN
+          )
+            return;
+          onlineState.socket.send(
+            JSON.stringify({ type: "room:config", config }),
+          );
+          onlineState.socket.send(
+            JSON.stringify({ type: "game:start", config, resetState: true }),
+          );
+        }
+
+        // Keep the library data-driven while making the two currently playable
+        // pages unambiguous. This prevents an old/incorrect page field from
+        // ever routing Chess to the Draughts player (or vice versa).
+        const playablePages = {
+          chess: "chess/chess.html",
+          draughts: "draughts/draughts.html",
+          reversi: "reversi/reversi.html",
+        };
+        const gamePage =
+          playablePages[selectedSetupGame] || gameDefinition.page;
+        if (!gamePage) return;
+
+        closeGameSetup();
+        window.location.href = `${gamePage}?${params}`;
+      }
+
+      function openGame(gameId, variantId) {
+        openGameSetup(gameId);
+        const variants = visibleVariants(gameId);
+        if (variantId && variants.some((v) => v.id === variantId))
+          selectedSetupVariant = variantId;
+        else selectedSetupVariant = variants[0]?.id || "standard";
+        renderGameSetup();
+      }
+
+      function renderGames() {
+        gamesGrid.innerHTML = "";
+        if (!libraryLoaded || !games.length) {
+          const loading = document.createElement("div");
+          loading.className = "setup-message";
+          loading.textContent = "Loading game library…";
+          gamesGrid.appendChild(loading);
+          return;
+        }
+
+        const waitingForHost = onlineState.connected && !onlineState.isHost;
+        const visibleGames = games.filter(gameVisibleInLibrary);
+        if (!visibleGames.length) {
+          const empty = document.createElement("div");
+          empty.className = "setup-message";
+          empty.textContent =
+            libraryMode === "beta"
+              ? "No beta games or beta settings are currently available. Unlock Alpha to see alpha content."
+              : "No released games are currently available.";
+          gamesGrid.appendChild(empty);
+          return;
+        }
+        for (const game of visibleGames) {
+          const card = document.createElement("article");
+          card.className = "game-card";
+
+          const image = document.createElement("div");
+          image.className = "game-image";
+          if (game.image) {
+            const img = document.createElement("img");
+            img.src = game.image;
+            img.alt = `${game.name} preview`;
+            img.onerror = () => {
+              img.remove();
+              const p = document.createElement("div");
+              p.className = "placeholder-image";
+              p.textContent = game.id === "chess" ? "♟" : "🎲";
+              image.appendChild(p);
+            };
+            image.appendChild(img);
+          } else {
+            const p = document.createElement("div");
+            p.className = "placeholder-image";
+            p.textContent = game.id === "chess" ? "♟" : "🎲";
+            image.appendChild(p);
+          }
+
+          const content = document.createElement("div");
+          content.className = "game-content";
+          const min = Number(game.players?.min);
+          const max = Number(game.players?.max);
+          const rangeLabel =
+            Number.isFinite(min) && Number.isFinite(max)
+              ? min === max
+                ? `${min} player${min === 1 ? "" : "s"}`
+                : `${min}–${max} players`
+              : "Players vary";
+          const variantsLabel = visibleVariants(game.id)
+            .map((v) => v.name)
+            .join(" / ");
+          const playable = Boolean(
+            game.page &&
+            (game.capabilities?.local ||
+              game.capabilities?.computer ||
+              game.capabilities?.online),
+          );
+          const status = releaseStatus(game.release);
+          const statusLabel =
+            status === "beta"
+              ? "Beta"
+              : status === "alpha"
+                ? "Alpha"
+                : "Released";
+
+          content.innerHTML = `
+            <h2>${escapeHtml(game.name || "Untitled Game")}</h2>
+            <p class="description">${escapeHtml(game.description || "")}</p>
+            <div class="game-meta">
+              <span class="meta-tag">${escapeHtml(rangeLabel)}</span>
+              ${variantsLabel ? `<span class="meta-tag">${escapeHtml(variantsLabel)}</span>` : ""}
+              <span class="meta-tag">${playable ? [game.capabilities?.local ? "Local" : null, game.capabilities?.computer ? "Computer" : null, game.capabilities?.online ? "Online" : null].filter(Boolean).join(" / ") : "Unavailable"}</span>
+              <span class="release-badge ${status}">${statusLabel}</span>
+            </div>`;
+
+          const button = document.createElement("button");
+          button.className = "play-button";
+          button.textContent = playable
+            ? waitingForHost
+              ? "View game setup"
+              : "Set up & Play"
+            : "Unavailable";
+          button.disabled = !playable;
+          if (playable)
+            button.onclick = () => openGame(game.id, game.variants?.[0]?.id);
+          content.appendChild(button);
+          card.append(image, content);
+          gamesGrid.appendChild(card);
+        }
+      }
+
+      function renderOnline() {
+        onlineCodeDisplay.hidden = !onlineState.code;
+        onlineCode.textContent = onlineState.code || "";
+        const ps = onlineState.participants.filter((p) => p.connected);
+        onlineParticipants.innerHTML = "";
+        if (!ps.length)
+          onlineParticipants.innerHTML =
+            '<div class="muted">No connected players yet.</div>';
+        else
+          for (const p of ps) {
+            const row = document.createElement("div");
+            row.className = "player-row";
+            const partyNames =
+              Array.isArray(p.party) && p.party.length
+                ? p.party.map((member) => member.name || "Player").join(", ")
+                : p.name || "Player";
+            row.innerHTML = `<div class="avatar">${escapeHtml(p.avatar || "🎮")}</div><div class="grow"><div class="player-name">${escapeHtml(partyNames)}</div><div class="player-type">${p.clientId === onlineState.clientId ? "You • " : ""}${p.role === "host" ? "Host" : "Online computer"}</div></div>`;
+            onlineParticipants.appendChild(row);
+          }
+        if (onlineState.connected) {
+          onlineCodeStatus.textContent = `Connected • ${ps.length} player${ps.length === 1 ? "" : "s"}`;
+          onlineCodeStatus.classList.add("ok");
+          const me = onlineState.participants.find(
+            (p) => p.clientId === onlineState.clientId,
+          );
+          const wins = Number.isFinite(Number(me?.wins)) ? Number(me.wins) : 0;
+          onlineWinsCorner.textContent = `Online wins: ${wins}`;
+          onlineWinsCorner.hidden = false;
+        } else {
+          onlineCodeStatus.textContent = roomCode()
+            ? `Room ${roomCode()}`
+            : "Not connected";
+          onlineCodeStatus.classList.remove("ok");
+          onlineWinsCorner.hidden = true;
+        }
+        renderGames();
+      }
+      function setDebug(text) {
+        debugOutput.textContent = text;
+      }
+      async function readResponse(response) {
+        const body = await response.text();
+        const headers = {};
+        for (const [k, v] of response.headers.entries()) headers[k] = v;
+        return {
+          status: response.status,
+          statusText: response.statusText,
+          headers,
+          body: body.slice(0, 4000),
+        };
+      }
+      async function probeFetch(label, url, options = {}) {
+        const started = performance.now();
+        try {
+          const response = await fetch(url, options);
+          const info = await readResponse(response);
+          return {
+            label,
+            url,
+            ms: Math.round(performance.now() - started),
+            ok: response.ok,
+            ...info,
+          };
+        } catch (e) {
+          return {
+            label,
+            url,
+            ms: Math.round(performance.now() - started),
+            networkError: String(e),
+          };
+        }
+      }
+      async function runDiagnostics() {
+        if (!configured()) {
+          setDebug(
+            `ONLINE_SERVER_URL is not configured.\n\nCurrent value: ${RAW_ONLINE_SERVER_URL}`,
+          );
+          return;
+        }
+        runDiagnosticsButton.disabled = true;
+        const base = serverBase();
+        const body = JSON.stringify({
+          hostName: "Diagnostics",
+          hostAvatar: "🛠",
+          config: { game: "chess", variant: "standard" },
+        });
+        const results = [];
+        results.push(await probeFetch("Worker root", base));
+        results.push(await probeFetch("Debug endpoint", `${base}/api/debug`));
+        results.push(
+          await probeFetch("OPTIONS /api/rooms", `${base}/api/rooms`, {
+            method: "OPTIONS",
+          }),
+        );
+        results.push(
+          await probeFetch("POST /api/rooms", `${base}/api/rooms`, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=UTF-8" },
+            body,
+          }),
+        );
+        let wsResult = {
+          label: "WebSocket",
+          url: `${wsBaseForDiagnostics(base)}/ws/0000?clientId=diagnostics&role=player`,
+        };
+        try {
+          const testUrl =
+            wsBaseForDiagnostics(base) +
+            "/ws/0000?clientId=diagnostics&role=player";
+          const ws = new WebSocket(testUrl);
+          await new Promise((resolve) => {
+            let done = false;
+            const finish = (x) => {
+              if (done) return;
+              done = true;
+              clearTimeout(timer);
+              resolve(x);
+            };
+            const timer = setTimeout(() => finish({ state: "timeout" }), 3500);
+            ws.onopen = () => finish({ state: "open" });
+            ws.onclose = (e) =>
+              finish({ state: "closed", code: e.code, reason: e.reason });
+            ws.onerror = () => finish({ state: "error" });
+          });
+          try {
+            ws.close();
+          } catch {}
+          wsResult = { label: "WebSocket", url: testUrl, result: wsResult };
+        } catch (e) {
+          wsResult = { ...wsResult, error: String(e) };
+        }
+        results.push(wsResult);
+        setDebug(
+          `Worker base: ${base}\n\n` +
+            results.map((r) => JSON.stringify(r, null, 2)).join("\n\n"),
+        );
+        runDiagnosticsButton.disabled = false;
+      }
+      function wsBaseForDiagnostics(base) {
+        return base.replace(/^https:/i, "wss:").replace(/^http:/i, "ws:");
+      }
+      function sendIdentify() {
+        if (
+          !onlineState.socket ||
+          onlineState.socket.readyState !== WebSocket.OPEN
+        )
+          return;
+        const party = partyProfiles().map((p) => ({
+          id: p.id,
+          name: p.name || "Player",
+          avatar: p.avatar || "♟",
+        }));
+        const primary = party[0] || { id: "", name: "Player 1", avatar: "♟" };
+        onlineState.socket.send(
+          JSON.stringify({
+            type: "player:identify",
+            profileId: primary.id,
+            name: primary.name,
+            avatar: primary.avatar,
+            party,
+            spectator: false,
+          }),
+        );
+      }
+      function wsUrl(code) {
+        const base = serverBase().replace(
+          /^https?:/i,
+          location.protocol === "https:" ? "wss:" : "ws:",
+        );
+        const q = new URLSearchParams({
+          clientId: onlineState.clientId || id(),
+          role: onlineState.isHost ? "host" : "player",
+        });
+        if (onlineState.isHost && onlineState.hostToken)
+          q.set("token", onlineState.hostToken);
+        return `${base}/ws/${encodeURIComponent(code)}?${q}`;
+      }
+      function connectRoom(code, host) {
+        if (!configured()) {
+          error(
+            "Set ONLINE_SERVER_URL in index.html to your Cloudflare Worker URL.",
+          );
+          return;
+        }
+        closeSocket();
+        onlineState.clientId = onlineState.clientId || id();
+        onlineState.isHost = !!host;
+        persistOnline();
+        onlineCodeStatus.textContent = "Connecting…";
+        const ws = new WebSocket(wsUrl(code));
+        onlineState.socket = ws;
+        ws.onopen = () => {
+          onlineState.connected = true;
+          error("");
+          sendIdentify();
+          renderOnline();
+        };
+        ws.onmessage = async (e) => {
+          let m;
+          try {
+            m = JSON.parse(e.data);
+          } catch {
+            return;
+          }
+          switch (m.type) {
+            case "room:hello":
+              onlineState.participants = m.room?.participants || [];
+              onlineState.config = m.room?.config || null;
+              renderOnline();
+              if (gameSetupOpen) {
+                initializeSetupState();
+                renderGameSetup();
+              }
+              // Returning to the Game Library reconnects to the existing room,
+              // but does not reopen the previous match automatically. A fresh
+              // game:start message starts the next match.
+              break;
+            case "room:participants":
+              onlineState.participants = Array.isArray(m.participants)
+                ? m.participants
+                : [];
+              renderOnline();
+              if (gameSetupOpen) {
+                initializeSetupState();
+                renderGameSetup();
+              }
+              break;
+            case "room:config":
+              onlineState.config = m.config || null;
+              renderOnline();
+              if (gameSetupOpen) {
+                initializeSetupState();
+                renderGameSetup();
+              }
+              break;
+            case "game:select":
+              onlineState.config = {
+                ...(onlineState.config || {}),
+                game: m.game || "chess",
+                variant: m.variant || "standard",
+              };
+              if (gameSetupOpen) {
+                initializeSetupState();
+                renderGameSetup();
+              }
+              renderOnline();
+              renderGames();
+              break;
+            case "scores:reset":
+              renderOnline();
+              break;
+            case "game:start": {
+              onlineState.config = m.config || onlineState.config;
+              try {
+                sessionStorage.setItem(
+                  "gameLibraryOnlineConfig",
+                  JSON.stringify(onlineState.config || {}),
+                );
+              } catch {}
+              renderOnline();
+              if (onlineState.connected && !onlineState.isHost) {
+                const gameId = onlineState.config?.game || "";
+                if (!libraryLoaded) {
+                  try {
+                    await loadLibrary();
+                  } catch {}
+                }
+                const gameDefinition = libraryGame(gameId);
+                const page = gameDefinition?.page || "";
+                if (!page) {
+                  error(
+                    `Could not find the game page for "${gameId || "unknown game"}".`,
+                  );
+                  break;
+                }
+                const params = new URLSearchParams({
+                  game: gameId,
+                  variant: onlineState.config?.variant || "standard",
+                  online: "1",
+                  onlineCode: roomCode(),
+                  onlineServer: serverBase(),
+                  onlineClientId: onlineState.clientId,
+                  onlineConfig: JSON.stringify(onlineState.config || {}),
+                });
+                window.location.href = `${page}?${params}`;
+              }
+              break;
+            }
+            case "error":
+              error(m.message || "Server error");
+              break;
+          }
+        };
+        ws.onclose = () => {
+          if (onlineState.socket !== ws) return;
+          onlineState.connected = false;
+          onlineState.socket = null;
+          renderOnline();
+        };
+        ws.onerror = () => {
+          if (onlineState.socket === ws)
+            error(
+              "Could not connect to the multiplayer server. Check the Worker URL and deployment.",
+            );
+        };
+      }
+      async function createRoom() {
+        error("");
+        if (!configured()) {
+          error(
+            "Replace YOUR-WORKER-URL in ONLINE_SERVER_URL with your Worker URL.",
+          );
+          return;
+        }
+        requestOnlineCodeButton.disabled = true;
+        onlineCodeStatus.textContent = "Creating room…";
+        const base = serverBase();
+        const url = `${base}/api/rooms`;
+        const p = selectedProfile();
+        const body = JSON.stringify({
+          hostName: p.name || "Player 1",
+          hostAvatar: p.avatar || "♟",
+          config: {},
+        });
+        try {
+          closeSocket();
+          onlineState.clientId = onlineState.clientId || id();
+          const started = performance.now();
+          let response;
+          try {
+            response = await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "text/plain;charset=UTF-8" },
+              body,
+            });
+          } catch (fetchError) {
+            const detail = `CREATE ROOM NETWORK ERROR\n\nURL: ${url}\nError: ${String(fetchError)}\nTime: ${new Date().toISOString()}`;
+            setDebug(detail);
+            throw new Error(
+              `Network error contacting ${url}. See Connection diagnostics for details.`,
+            );
+          }
+          const info = await readResponse(response);
+          setDebug(
+            `CREATE ROOM REQUEST\n\nURL: ${url}\nElapsed: ${Math.round(performance.now() - started)} ms\n\n${JSON.stringify(info, null, 2)}`,
+          );
+          if (!response.ok) {
+            throw new Error(
+              `Server returned HTTP ${response.status}${response.statusText ? ` (${response.statusText})` : ""}. See Connection diagnostics for the exact response.`,
+            );
+          }
+          let data = {};
+          try {
+            data = JSON.parse(info.body || "{}");
+          } catch {}
+          if (!data.code || !data.hostToken) {
+            throw new Error(
+              "The Worker responded successfully, but did not return a room code and host token. See Connection diagnostics.",
+            );
+          }
+          onlineState.code = String(data.code);
+          onlineState.joinedCode = "";
+          onlineState.hostToken = String(data.hostToken);
+          onlineState.config = data.room?.config || null;
+          persistOnline();
+          connectRoom(onlineState.code, true);
+        } catch (e) {
+          onlineCodeStatus.textContent = "Room creation failed";
+          error(e.message || String(e));
+        } finally {
+          requestOnlineCodeButton.disabled = false;
+        }
+      }
+      async function joinRoom() {
+        error("");
+        const code = joinOnlineCode.value.replace(/\D/g, "").slice(0, 4);
+        joinOnlineCode.value = code;
+        if (code.length !== 4) {
+          error("Enter a 4-digit room code.");
+          return;
+        }
+        if (!configured()) {
+          error(
+            "Replace YOUR-WORKER-URL in ONLINE_SERVER_URL with your Cloudflare Worker URL.",
+          );
+          return;
+        }
+        joinOnlineGroupButton.disabled = true;
+        try {
+          onlineState.code = "";
+          onlineState.joinedCode = code;
+          onlineState.hostToken = "";
+          onlineState.config = null;
+          onlineState.clientId = onlineState.clientId || id();
+          persistOnline();
+          connectRoom(code, false);
+        } finally {
+          joinOnlineGroupButton.disabled = false;
+        }
+      }
+      libraryButton.onclick = () => {
+        setLibraryMode("normal");
+      };
+      betaButton.onclick = () => {
+        setLibraryMode("beta");
+      };
+      playersButton.onclick = openSetup;
+      closeSetup.onclick = () => {
+        setupDrawer.classList.remove("open");
+        backdrop.classList.remove("open");
+        setupDrawer.setAttribute("aria-hidden", "true");
+      };
+      backdrop.onclick = () => {
+        if (gameSetupOpen) closeGameSetup();
+        closeSetup.onclick();
+      };
+      closeGameSetupButton.onclick = closeGameSetup;
+      gameSetupPlay.onclick = startSelectedGame;
+      requestOnlineCodeButton.onclick = createRoom;
+      disconnectOnlineButton.onclick = () => {
+        closeSocket();
+        onlineState.code = "";
+        onlineState.joinedCode = "";
+        onlineState.hostToken = "";
+        onlineState.config = null;
+        try {
+          sessionStorage.removeItem("gameLibrarySelectedGame");
+        } catch {}
+        persistOnline();
+        renderOnline();
+        renderGames();
+      };
+      joinOnlineGroupButton.onclick = joinRoom;
+      runDiagnosticsButton.onclick = runDiagnostics;
+      addProfileButton.onclick = () => openProfileEditor();
+      resetScoresButton.onclick = () => resetLocalScores();
+      resetPlayerInfoButton.onclick = () => resetPlayerInfo();
+      partyList.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-party-action]");
+        if (!button || !partyList.contains(button) || button.disabled) return;
+        if (button.dataset.partyAction === "remove")
+          removeProfileFromParty(button.dataset.profileId);
+      });
+
+      // Profile controls are rendered dynamically. Handle them from the
+      // stable parent so Edit, Use, and × remain clickable after every
+      // profile-list refresh.
+      profileList.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-profile-action]");
+        if (!button || !profileList.contains(button) || button.disabled) return;
+        const profileId = button.dataset.profileId;
+        switch (button.dataset.profileAction) {
+          case "edit":
+            openProfileEditor(profileId);
+            break;
+          case "party":
+            addProfileToParty(profileId);
+            break;
+          case "remove":
+            removeProfile(profileId);
+            break;
+        }
+      });
+
+      // Keep the online room across trips between the Game Library and the
+      // game page. The WebSocket closes during navigation, but the room
+      // identity and host credentials remain in sessionStorage so this page
+      // can reconnect automatically.
+      function reconnectSavedRoom() {
+        const savedCode = onlineState.code || onlineState.joinedCode || "";
+        if (!savedCode || onlineState.connected) return;
+
+        const host = Boolean(onlineState.code && onlineState.hostToken);
+        onlineState.isHost = host;
+        onlineState.code = host ? savedCode : "";
+        onlineState.joinedCode = host ? "" : savedCode;
+        persistOnline();
+        onlineCodeStatus.textContent = `Reconnecting to room ${savedCode}…`;
+        connectRoom(savedCode, host);
+      }
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && gameSetupOpen) closeGameSetup();
+      });
+      joinOnlineCode.addEventListener(
+        "input",
+        () =>
+          (joinOnlineCode.value = joinOnlineCode.value
+            .replace(/\D/g, "")
+            .slice(0, 4)),
+      );
+      renderParty();
+      renderProfiles();
+      renderOnline();
+      setLibraryMode("normal");
+      loadLibrary();
+      reconnectSavedRoom();
+    </script>
+  </body>
+</html>
