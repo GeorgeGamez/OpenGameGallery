@@ -183,6 +183,33 @@
         min-width: 78px;
         min-height: 100px;
       }
+      .discard-pile {
+        flex: 1 1 420px;
+        min-width: 300px;
+        max-width: 100%;
+      }
+      .discard-line {
+        display: flex;
+        gap: 6px;
+        align-items: flex-end;
+        overflow-x: auto;
+        max-width: 100%;
+        width: 100%;
+        min-height: 78px;
+        padding: 4px 4px 9px;
+      }
+      .discard-slot {
+        flex: 0 0 auto;
+        position: relative;
+      }
+      .discard-slot .card {
+        cursor: pointer;
+      }
+      .discard-slot.latest .card {
+        box-shadow:
+          0 0 0 2px #78d6b2,
+          0 3px 7px #0004;
+      }
       .hand {
         display: flex;
         gap: 7px;
@@ -491,7 +518,7 @@
         </div>
       </section>
     </main>
-    <script src="rummy-ai.js?v=20261003-cards2"></script>
-    <script src="rummy.js?v=20261003-cards2"></script>
+    <script src="rummy-ai.js?v=20261006-discard1"></script>
+    <script src="rummy.js?v=20261006-discard1"></script>
   </body>
 </html>
