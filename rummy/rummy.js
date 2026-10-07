@@ -81,6 +81,7 @@ class RummyGame {
     this.moveHistory = [];
     this.over = false;
     this.winner = -1;
+    this.requiredMeldCardId = "";
     this.reset(config.players || []);
   }
   reset(players = []) {
@@ -112,6 +113,7 @@ class RummyGame {
     this.moveHistory = [];
     this.over = false;
     this.winner = -1;
+    this.requiredMeldCardId = "";
     const count = this.players.length === 2 ? 10 : 7;
     for (let k = 0; k < count; k++)
       for (let i = 0; i < this.players.length; i++)
@@ -128,6 +130,7 @@ class RummyGame {
       turn: this.turn,
       phase: this.phase,
       selected: this.selected,
+      requiredMeldCardId: this.requiredMeldCardId,
       moveHistory: this.moveHistory,
       over: this.over,
       winner: this.winner,
@@ -168,14 +171,24 @@ class RummyGame {
     this.moveHistory.unshift(`${this.current().name} drew from the stock.`);
     return true;
   }
-  drawDiscard() {
+  drawDiscard(index = this.discard.length - 1) {
     if (this.over || this.phase !== "draw" || !this.discard.length)
       return false;
+    if (!Number.isInteger(index) || index < 0 || index >= this.discard.length)
+      return false;
+    const taken = this.discard.slice(0, index + 1),
+      required = taken[taken.length - 1],
+      available = [...this.hands[this.turn], ...taken];
+    if (!this.canMeldWithCard(required, available)) return false;
     this.save();
-    this.hands[this.turn].push(this.discard.pop());
+    this.discard.splice(0, index + 1);
+    this.hands[this.turn].push(...taken);
+    this.requiredMeldCardId = required.id;
     this.phase = "play";
     this.selected = [];
-    this.moveHistory.unshift(`${this.current().name} drew the discard.`);
+    this.moveHistory.unshift(
+      `${this.current().name} took ${taken.length} card${taken.length === 1 ? "" : "s"} from the discard, starting with ${required.label}. They must meld that card this turn.`,
+    );
     return true;
   }
   isSet(cards) {
@@ -192,6 +205,23 @@ class RummyGame {
     const ranks = cards.map((c) => c.rank).sort((a, b) => a - b);
     return ranks.every((r, i) => i === 0 || r === ranks[i - 1] + 1);
   }
+  canMeldWithCard(card, pool) {
+    if (!card) return false;
+    const sameRank = [
+      ...new Map(
+        pool.filter((c) => c.rank === card.rank).map((c) => [c.suit, c]),
+      ).values(),
+    ];
+    if (sameRank.length >= 3) return true;
+    const ranks = [
+      ...new Set(pool.filter((c) => c.suit === card.suit).map((c) => c.rank)),
+    ].sort((a, b) => a - b);
+    if (!ranks.includes(card.rank)) return false;
+    let run = 1;
+    for (let r = card.rank - 1; r >= 1 && ranks.includes(r); r--) run++;
+    for (let r = card.rank + 1; r <= 13 && ranks.includes(r); r++) run++;
+    return run >= 3;
+  }
   makeMeld(ids) {
     if (this.over || this.phase !== "play" || ids.length < 3) return false;
     const hand = this.hands[this.turn],
@@ -200,6 +230,8 @@ class RummyGame {
       cards.length !== ids.length ||
       (!this.isSet(cards) && !this.isRun(cards))
     )
+      return false;
+    if (this.requiredMeldCardId && !ids.includes(this.requiredMeldCardId))
       return false;
     this.save();
     this.hands[this.turn] = hand.filter((c) => !ids.includes(c.id));
@@ -211,6 +243,8 @@ class RummyGame {
     this.moveHistory.unshift(
       `${this.current().name} laid down a ${this.isSet(cards) ? "set" : "run"} (${cards.length} cards).`,
     );
+    if (this.requiredMeldCardId && ids.includes(this.requiredMeldCardId))
+      this.requiredMeldCardId = "";
     this.selected = [];
     if (!this.hands[this.turn].length) {
       this.finish(this.turn);
@@ -232,7 +266,8 @@ class RummyGame {
     return false;
   }
   layOff(ids, meldId) {
-    if (this.over || this.phase !== "play") return false;
+    if (this.over || this.phase !== "play" || this.requiredMeldCardId)
+      return false;
     const hand = this.hands[this.turn],
       meld = this.melds.find((m) => m.id === meldId);
     if (!meld || !ids.length) return false;
@@ -257,7 +292,8 @@ class RummyGame {
     return true;
   }
   discardCard(id) {
-    if (this.over || this.phase !== "play") return false;
+    if (this.over || this.phase !== "play" || this.requiredMeldCardId)
+      return false;
     const hand = this.hands[this.turn],
       card = hand.find((c) => c.id === id);
     if (!card) return false;
@@ -278,6 +314,7 @@ class RummyGame {
     this.over = true;
     this.winner = i;
     this.phase = "over";
+    this.requiredMeldCardId = "";
     this.moveHistory.unshift(`${this.players[i].name} wins the round!`);
   }
   action(a) {
@@ -285,7 +322,7 @@ class RummyGame {
       case "drawStock":
         return this.drawStock();
       case "drawDiscard":
-        return this.drawDiscard();
+        return this.drawDiscard(a.index);
       case "meld":
         return this.makeMeld(a.ids || []);
       case "layoff":
@@ -299,22 +336,13 @@ class RummyGame {
   aiTurn() {
     if (this.over) return false;
     if (this.phase === "draw") {
-      const top = this.discard[this.discard.length - 1],
-        hand = this.hands[this.turn];
-      const potential =
-        top &&
-        hand.some(
-          (c) =>
-            c.rank === top.rank ||
-            (c.suit === top.suit &&
-              hand.some(
-                (d) =>
-                  d.id !== c.id &&
-                  d.suit === c.suit &&
-                  Math.abs(d.rank - c.rank) <= 2,
-              )),
-        );
-      return this.action({ type: potential ? "drawDiscard" : "drawStock" });
+      const hand = this.hands[this.turn],
+        pick = window.RummyAI.chooseDiscardTake(this.discard, hand);
+      return this.action(
+        pick
+          ? { type: "drawDiscard", index: pick.index }
+          : { type: "drawStock" },
+      );
     }
     let changed = true;
     while (changed) {
@@ -324,7 +352,12 @@ class RummyGame {
       for (let n = Math.min(13, hand.length); n >= 3 && !found; n--) {
         const seek = (start, chosen) => {
           if (chosen.length === n) {
-            if (this.isSet(chosen) || this.isRun(chosen)) found = [...chosen];
+            if (
+              (this.isSet(chosen) || this.isRun(chosen)) &&
+              (!this.requiredMeldCardId ||
+                chosen.some((c) => c.id === this.requiredMeldCardId))
+            )
+              found = [...chosen];
             return;
           }
           for (
@@ -342,6 +375,7 @@ class RummyGame {
       }
       if (this.over) return true;
     }
+    if (this.requiredMeldCardId) return false;
     if (this.over) return true;
     const card = window.RummyAI.chooseDiscard(this.hands[this.turn]);
     return card ? this.discardCard(card.id) : false;
@@ -417,26 +451,45 @@ function render() {
     ? `${game.players[game.winner]?.name || "A player"} wins!`
     : game.phase === "draw"
       ? `${game.current().name}'s turn — draw from the stock or discard pile.`
-      : `${game.current().name}'s turn — meld cards if you can, then discard one.`;
+      : game.requiredMeldCardId
+        ? `${game.current().name}'s turn — you must meld the first card taken from the discard pile.`
+        : `${game.current().name}'s turn — meld cards if you can, then discard one.`;
   $("playerList").innerHTML = game.players
     .map(
       (p, i) =>
         `<div class="player-row ${i === game.turn && !game.over ? "current" : ""}"><span class="avatar">${p.avatar || "🃏"}</span><div><div class="player-name">${esc(p.name || `Player ${i + 1}`)}</div><div class="player-sub">${p.type === "computer" ? "Computer" : p.playerType || "Player"} · ${game.hands[i]?.length || 0} cards</div></div></div>`,
     )
     .join("");
-  const top = game.discard.at(-1);
+  const discardCards = game.discard
+    .map(
+      (c, i) =>
+        `<div class="discard-slot ${i === game.discard.length - 1 ? "latest" : ""}" title="Take this card and all cards to its left" data-discard-index="${i}">${cardHtml(c, false, true)}</div>`,
+    )
+    .join("");
   $("piles").innerHTML =
-    `<div class="pile"><div class="zone-label">Stock · ${game.stock.length}</div><button id="stockBtn" class="card back">DRAW<br>STOCK</button></div><div class="pile"><div class="zone-label">Discard pile</div><button id="discardPileBtn" class="card ${top && ["♥", "♦"].includes(top.suit) ? "red" : "black"}">${top ? cardInner(top) : "Empty"}</button></div>`;
+    `<div class="pile"><div class="zone-label">Stock · ${game.stock.length}</div><button id="stockBtn" class="card back">DRAW<br>STOCK</button></div><div class="pile discard-pile"><div class="zone-label">Discard pile · oldest → newest</div><div class="discard-line">${discardCards || '<div class="muted">Empty</div>'}</div></div>`;
   $("stockBtn").onclick = () => {
     if (!controlledTurn()) return;
     const a = { type: "drawStock" };
     if (action(a)) render();
   };
-  $("discardPileBtn").onclick = () => {
-    if (!controlledTurn()) return;
-    const a = { type: "drawDiscard" };
-    if (action(a)) render();
-  };
+  $("piles")
+    .querySelectorAll("[data-discard-index]")
+    .forEach(
+      (el) =>
+        (el.onclick = () => {
+          if (!controlledTurn()) return;
+          const a = {
+            type: "drawDiscard",
+            index: Number(el.dataset.discardIndex),
+          };
+          if (action(a)) render();
+          else {
+            $("status").textContent =
+              "You can only take from that point if the first card taken can be used in a new meld.";
+          }
+        }),
+    );
   const canSee = controlledTurn() && !game.over;
   const hand = canSee ? game.hands[game.turn] : [];
   $("hand").innerHTML = hand
@@ -454,6 +507,14 @@ function render() {
           render();
         }),
     );
+  if (game.requiredMeldCardId) {
+    $("hand")
+      .querySelectorAll("[data-card]")
+      .forEach((el) => {
+        if (el.dataset.card === game.requiredMeldCardId)
+          el.classList.add("required");
+      });
+  }
   $("handTitle").textContent = canSee
     ? `${game.current().name}'s hand`
     : "Current player's hand is hidden";
@@ -475,15 +536,18 @@ function render() {
   if (canSee) {
     if (game.phase === "draw") {
       add("Draw from stock", () => action({ type: "drawStock" }));
-      add("Take discard", () => action({ type: "drawDiscard" }));
+      add("Take newest discard", () => action({ type: "drawDiscard" }));
     } else {
       add(
         "Meld selected",
         () => action({ type: "meld", ids: [...selected] }),
-        selected.size < 3,
+        selected.size < 3 ||
+          Boolean(
+            game.requiredMeldCardId && !selected.has(game.requiredMeldCardId),
+          ),
         "action-primary",
       );
-      if (game.melds.length) {
+      if (game.melds.length && !game.requiredMeldCardId) {
         const sel = document.createElement("select");
         sel.id = "layoffSelect";
         sel.innerHTML = game.melds
@@ -503,7 +567,7 @@ function render() {
       add(
         "Discard selected",
         () => action({ type: "discard", id: [...selected][0] }),
-        selected.size !== 1,
+        selected.size !== 1 || Boolean(game.requiredMeldCardId),
         "action-danger",
       );
     }
@@ -518,7 +582,7 @@ function render() {
         .join("")
     : '<div class="muted">No moves yet.</div>';
   $("rules").textContent =
-    "Classic draw-and-discard Rummy: draw one card, form sets of three or more cards of the same rank or runs of three or more consecutive cards in the same suit, and discard one card. You may add cards to existing melds. Empty your hand to win. Aces are low.";
+    "Classic draw-and-discard Rummy: draw one card, or take any discard card and all cards to its left. The first card you take from the discard must be included in a new meld of three or more cards. Form sets of three or more cards of the same rank or runs of three or more consecutive cards in the same suit, then discard one card. You may add cards to existing melds after satisfying the discard-meld requirement. Empty your hand to win. Aces are low.";
   scheduleAI();
   if (ONLINE_MODE && ONLINE_HOST_TOKEN && onlineConnected) publishState();
 }
