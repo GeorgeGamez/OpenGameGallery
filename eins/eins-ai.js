@@ -13,6 +13,9 @@
     const hand=game?.hands?.[player] || [];
     const side=game?.side;
     const top=game?.discard?.at(-1);
+    if(game?.drawnCardId!==null && game?.drawnCardId!==undefined){
+      return hand.find(card=>card?.id===game.drawnCardId && game.canPlay(card,player)) || null;
+    }
     const topFace=top?.[side];
     const playable=hand.filter(card => card && game.canPlay(card,player));
     if(!playable.length) return null;
