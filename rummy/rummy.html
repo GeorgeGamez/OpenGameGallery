@@ -287,6 +287,11 @@
         transform: translateY(-10px);
         outline: 3px solid #f6e58d;
       }
+      .card.required {
+        box-shadow:
+          0 0 0 3px #efb44f,
+          0 3px 7px #0004;
+      }
       .card.red {
         background: #fff;
         color: #c62828;
@@ -381,6 +386,17 @@
         border-radius: 8px;
         padding: 8px;
         min-width: 85px;
+        cursor: pointer;
+        transition:
+          border-color 0.12s,
+          box-shadow 0.12s;
+      }
+      .meld:hover {
+        border-color: #78a9ff;
+      }
+      .meld.selected {
+        border-color: #78a9ff;
+        box-shadow: 0 0 0 1px #78a9ff;
       }
       .meld-title {
         font-size: 10px;
@@ -518,7 +534,7 @@
         </div>
       </section>
     </main>
-    <script src="rummy-ai.js?v=20261006-discard1"></script>
-    <script src="rummy.js?v=20261006-discard1"></script>
+    <script src="rummy-ai.js?v=20261006-rummy2"></script>
+    <script src="rummy.js?v=20261006-rummy2"></script>
   </body>
 </html>
