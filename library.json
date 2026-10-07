@@ -136,7 +136,34 @@
         "online": true,
         "computer": true
       },
-      "options": {}
+      "options": {
+        "topToBottomMeld": {
+          "type": "toggle",
+          "name": "Allow top-to-bottom melds",
+          "help": "Allow runs to wrap from King to Ace to Two, such as K-A-2.",
+          "default": false
+        },
+        "scoring": {
+          "type": "select",
+          "name": "Scoring",
+          "help": "Choose how the round winner is determined and how cards are valued.",
+          "default": "firstOut",
+          "choices": [
+            {
+              "value": "firstOut",
+              "name": "First player to empty their hand"
+            },
+            {
+              "value": "standard",
+              "name": "Melded cards − hand (numbers face value, face cards 10, aces 15)"
+            },
+            {
+              "value": "flatFive",
+              "name": "Melded cards − hand (number cards 5, face cards 10, aces 15)"
+            }
+          ]
+        }
+      }
     },
     {
       "id": "eins",
