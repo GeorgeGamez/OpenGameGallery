@@ -7,7 +7,10 @@
       "page": "boardGame.html",
       "description": "The classic two-player strategy game of kings, queens, and tactical manoeuvring.",
       "image": "images/cover/chess.jpg",
-      "categories": ["board", "strategy"],
+      "categories": [
+        "board",
+        "strategy"
+      ],
       "searchTerms": [],
       "players": {
         "min": 2,
@@ -58,8 +61,14 @@
       "page": "boardGame.html",
       "description": "A tactical jumping game in which players capture opposing pieces and promote them to kings.",
       "image": "images/cover/draughts.jpg",
-      "categories": ["board", "strategy"],
-      "searchTerms": ["checkers", "chequers"],
+      "categories": [
+        "board",
+        "strategy"
+      ],
+      "searchTerms": [
+        "checkers",
+        "chequers"
+      ],
       "players": {
         "min": 2,
         "max": 2
@@ -92,14 +101,66 @@
       "release": "normal"
     },
     {
+      "id": "hex",
+      "name": "Hex",
+      "type": "board",
+      "page": "hex/hex.html",
+      "description": "A connection game where players race to build an unbroken path between their opposing borders.",
+      "image": "images/cover/hex.png",
+      "categories": [
+        "board",
+        "strategy",
+        "connection"
+      ],
+      "searchTerms": [
+        "hex",
+        "connection game"
+      ],
+      "players": {
+        "min": 2,
+        "max": 2
+      },
+      "variants": [
+        {
+          "id": "mini",
+          "name": "Mini 6x6",
+          "release": "alpha"
+        },
+        {
+          "id": "standard",
+          "name": "Standard 11x11",
+          "release": "alpha"
+        },
+        {
+          "id": "nash",
+          "name": "Nash 14x14",
+          "release": "alpha"
+        }
+      ],
+      "capabilities": {
+        "local": true,
+        "online": false,
+        "computer": true
+      },
+      "options": {},
+      "release": "alpha"
+    },
+    {
       "id": "eins",
       "name": "Eins",
       "type": "card",
       "page": "eins/eins.html",
       "description": "A color-and-number matching card game with action cards, wild cards, and an optional flipped-deck variant.",
       "image": "images/cover/eins.jpg",
-      "categories": ["cards", "party"],
-      "searchTerms": ["uno", "uno flip", "last card"],
+      "categories": [
+        "cards",
+        "party"
+      ],
+      "searchTerms": [
+        "uno",
+        "uno flip",
+        "last card"
+      ],
       "players": {
         "min": 2,
         "max": 10
@@ -146,8 +207,13 @@
       "page": "boardGame.html",
       "description": "A board-control game where players surround and flip their opponent's pieces to claim territory.",
       "image": "images/cover/reversi.jpg",
-      "categories": ["board", "strategy"],
-      "searchTerms": ["othello"],
+      "categories": [
+        "board",
+        "strategy"
+      ],
+      "searchTerms": [
+        "othello"
+      ],
       "players": {
         "min": 2,
         "max": 2
@@ -174,8 +240,16 @@
       "page": "rummy/rummy.html",
       "description": "A classic draw-and-discard card game of forming sets and runs, with players emptying their hands to win.",
       "image": "images/cover/rummy.jpg",
-      "categories": ["cards", "strategy"],
-      "searchTerms": ["rummy", "card game", "sets", "runs"],
+      "categories": [
+        "cards",
+        "strategy"
+      ],
+      "searchTerms": [
+        "rummy",
+        "card game",
+        "sets",
+        "runs"
+      ],
       "players": {
         "min": 2,
         "max": 6
