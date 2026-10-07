@@ -121,12 +121,12 @@
         font-size: 12px;
         line-height: 1.45;
       }
-      .alpha-access-row {
+      .-access-row {
         display: flex;
         gap: 8px;
         margin-top: 10px;
       }
-      .alpha-access-row input {
+      .-access-row input {
         flex: 1;
         min-width: 0;
         color: var(--text);
@@ -144,7 +144,7 @@
         background: var(--panel2);
       }
       .release-badge.beta { color: var(--accent); border-color: var(--accent); }
-      .release-badge.alpha { color: #f0b6ff; border-color: #9f6bb0; }
+      .release-badge. { color: #f0b6ff; border-color: #9f6bb0; }
       main {
         padding: 24px;
       }
@@ -879,12 +879,12 @@ No diagnostics run yet.</pre
       let gameSetupOpen = false;
 
       // Release channels: normal is the public library, Beta is the separate
-      // beta menu, and Alpha is shown inside Beta only after the access code.
+      // beta menu, and  is shown inside Beta only after the access code.
       let libraryMode = "normal";
-      let alphaUnlocked = sessionStorage.getItem("gameLibraryAlphaAccess") === "true";
+      let Unlocked = sessionStorage.getItem("gameLibraryAlphaAccess") === "true";
       // This is a client-side access gate, not a security mechanism. Change it
       // here to whatever code you want to use for your private alpha builds.
-      const ALPHA_ACCESS_CODE = "OPEN-GAME-GALLERY-ALPHA";
+      const ALPHA_ACCESS_CODE = "1972";
 
       const LIBRARY_URL = "library.json?v=20261007-release2";
 
