@@ -137,6 +137,9 @@ function shuffle(a) {
 function faceOf(c, side) {
   return c?.[side] || c?.light;
 }
+function penaltyStackType(type) {
+  return ["drawFour", "drawColor"].includes(type) ? "wildDraw" : type;
+}
 function displayFace(c, side) {
   const f = faceOf(c, side);
   return f ? f.label : "?";
@@ -267,7 +270,8 @@ class EinsGame {
         this.options.stacking &&
         ["drawTwo", "drawFour", "drawOne", "drawFive", "drawColor"].includes(
           f.type,
-        )
+        ) &&
+        penaltyStackType(f.type) === penaltyStackType(this.pendingType)
       );
     }
     return (
@@ -296,68 +300,50 @@ class EinsGame {
     }
   }
   draw() {
-    if (this.over || this.phase !== "play") return false;
+    if (this.over || this.phase !== "play" || this.drawnCardId !== null)
+      return false;
     this.save();
     const player = this.turn;
     if (this.pendingDraw > 0) {
-      const n = this.pendingDraw;
-      this.drawCards(player, n);
-      this.moveHistory.unshift(
-        `${this.current().name} drew ${n} penalty cards.`,
-      );
-      this.pendingDraw = 0;
-      this.pendingType = "";
-      this.advance();
-      this.drawnCardId = null;
+      this.drawCards(player, 1);
+      this.pendingDraw--;
+      this.moveHistory.unshift(`${this.current().name} drew 1 penalty card.`);
+      if (this.pendingDraw <= 0) {
+        this.pendingDraw = 0;
+        this.pendingType = "";
+        this.advance();
+        this.drawnCardId = null;
+      }
       return true;
     }
     if (this.options.drawUntilPlayable) {
-      let safety = 0,
-        last = null;
-      while (
-        !this.hands[player].some((c) => this.canPlay(c, player)) &&
-        this.drawPile.length &&
-        safety++ < 250
-      ) {
-        this.drawCards(player, 1);
-        last = this.hands[player].at(-1);
-      }
-      const playable = this.hands[player].filter((c) =>
-        this.canPlay(c, player),
+      this.drawCards(player, 1);
+      const last = this.hands[player].at(-1);
+      if (!last) return false;
+      this.drawnCardId = this.canPlay(last, player) ? last.id : null;
+      this.moveHistory.unshift(
+        this.drawnCardId
+          ? `${this.current().name} drew a playable card and must play it.`
+          : `${this.current().name} drew a card that is not playable; draw again.`,
       );
-      if (playable.length) {
-        this.drawnCardId = last?.id || playable.at(-1).id;
-        this.moveHistory.unshift(
-          `${this.current().name} drew until a playable card was found.`,
-        );
-        return true;
-      }
-      this.moveHistory.unshift(`${this.current().name} drew but cannot play.`);
-      this.advance();
-      this.drawnCardId = null;
       return true;
     }
     this.drawCards(player, 1);
     const last = this.hands[player].at(-1);
     this.drawnCardId = last?.id || null;
-    if (!last) {
-      this.advance();
-      return true;
-    }
-    if (!this.canPlay(last, player)) {
-      this.moveHistory.unshift(
-        `${this.current().name} drew a card and passed.`,
-      );
-      this.advance();
-      this.drawnCardId = null;
-    } else
-      this.moveHistory.unshift(
-        `${this.current().name} drew a card and may play it or pass.`,
-      );
+    if (!last) return false;
+    this.moveHistory.unshift(
+      `${this.current().name} drew a card${this.canPlay(last, player) ? " and may play it or pass" : " and may pass"}.`,
+    );
     return true;
   }
   pass() {
-    if (this.over || this.drawnCardId === null) return false;
+    if (
+      this.over ||
+      this.options.drawUntilPlayable ||
+      this.drawnCardId === null
+    )
+      return false;
     this.save();
     this.moveHistory.unshift(`${this.current().name} passed after drawing.`);
     this.drawnCardId = null;
@@ -431,21 +417,32 @@ class EinsGame {
   }
   aiTurn() {
     if (this.over) return false;
-    const player = this.turn,
-      hand = this.hands[player];
+    const player = this.turn;
+    if (this.pendingDraw > 0) {
+      while (this.turn === player && this.pendingDraw > 0 && !this.over)
+        this.draw();
+      return this.turn !== player;
+    }
     let c = window.EinsAI.chooseCard(this, player);
     if (!c) {
-      if (!this.draw()) return false;
-      if (this.turn !== player || this.over) return true;
-      c =
-        hand.find((x) => x.id === this.drawnCardId) ||
-        window.EinsAI.chooseCard(this, player);
-      if (!c) {
-        this.pass();
-        return true;
+      if (this.options.drawUntilPlayable) {
+        let guard = 0;
+        while (
+          this.turn === player &&
+          !this.drawnCardId &&
+          !this.over &&
+          guard++ < 250
+        )
+          this.draw();
+      } else {
+        if (!this.draw()) return false;
       }
+      if (this.turn !== player || this.over) return true;
+      c = window.EinsAI.chooseCard(this, player);
     }
-    const f = faceOf(c, this.side);
+    if (!c) return this.options.drawUntilPlayable ? false : this.pass();
+    const hand = this.hands[player],
+      f = faceOf(c, this.side);
     let color = null;
     if (["wild", "drawFour", "drawColor"].includes(f.type))
       color = window.EinsAI.chooseColor(
@@ -529,13 +526,17 @@ function render() {
   }
   const flip = game.variant === "flip";
   $("variantName").textContent = flip ? "Eins Flip" : "Eins";
-  $("status").textContent = game.over
-    ? `${game.players[game.winner]?.name} wins!`
-    : game.pendingDraw
-      ? `${game.current().name} must draw ${game.pendingDraw} card(s)${game.options.stacking ? " or stack another matching draw card" : ""}.`
-      : game.current().name +
-        "'s turn" +
-        (game.drawnCardId ? " — play the drawn card or pass." : ".");
+  let statusText;
+  if (game.over) statusText = `${game.players[game.winner]?.name} wins!`;
+  else if (game.pendingDraw)
+    statusText = `${game.current().name} must draw ${game.pendingDraw} card${game.pendingDraw === 1 ? "" : "s"}. Click the draw pile once for each card.`;
+  else if (game.drawnCardId)
+    statusText = `${game.current().name} drew a playable card — select it and press Play Card.`;
+  else if (game.options.drawUntilPlayable)
+    statusText = `${game.current().name}'s turn — draw until you get a playable card.`;
+  else
+    statusText = `${game.current().name}'s turn — select a card, then press Play Card.`;
+  $("status").textContent = statusText;
   $("playerList").innerHTML = game.players
     .map(
       (p, i) =>
@@ -543,10 +544,15 @@ function render() {
     )
     .join("");
   const top = game.top();
+  const drawLabel = game.pendingDraw
+    ? `DRAW PENALTY (${game.pendingDraw})`
+    : game.options.drawUntilPlayable
+      ? "DRAW"
+      : "DRAW";
   $("piles").innerHTML =
-    `<div class="pile"><div class="zone-label">Draw pile · ${game.drawPile.length}</div><button id="drawBtn" class="card back">DRAW</button></div><div class="pile"><div class="zone-label">Discard · ${game.side} side</div>${top ? cardHtml(top, game.side, false, false) : ""}<div class="muted">Active color: ${game.activeColor || "wild"}</div></div>`;
+    `<div class="pile"><div class="zone-label">Draw pile · ${game.drawPile.length}</div><button id="drawBtn" class="card back">${drawLabel}</button></div><div class="pile"><div class="zone-label">Discard · ${game.side} side</div>${top ? cardHtml(top, game.side, false, false) : ""}<div class="muted">Active color: ${game.activeColor || "wild"}</div></div>`;
   $("drawBtn").onclick = () => {
-    if (!controlledTurn()) return;
+    if (!controlledTurn() || game.over) return;
     if (action({ type: "draw" })) render();
   };
   const canSee = controlledTurn() && !game.over,
@@ -555,8 +561,8 @@ function render() {
     ? `${game.current().name}'s hand`
     : "Current player's hand is hidden";
   $("handHint").textContent = canSee
-    ? `${hand.length} cards · click a card to play it`
-    : "Only the player whose turn it is can see their hand.";
+    ? `${hand.length} cards · click a card to select it, then press Play Card`
+    : `Only the player whose turn it is can see their hand.`;
   $("hand").innerHTML = hand
     .map((c) => cardHtml(c, game.side, c.id === selected))
     .join("");
@@ -565,20 +571,14 @@ function render() {
     .forEach(
       (el) =>
         (el.onclick = () => {
-          if (!canSee) return;
+          if (!canSee || game.pendingDraw) return;
           const c = hand.find((x) => x.id === el.dataset.card);
           if (!c) return;
+          if (game.drawnCardId && c.id !== game.drawnCardId) return;
           if (!game.canPlay(c, game.turn)) return;
-          if (
-            ["wild", "drawFour", "drawColor"].includes(
-              faceOf(c, game.side).type,
-            )
-          ) {
-            pendingWild = c.id;
-            renderColors();
-            return;
-          }
-          if (action({ type: "play", id: c.id })) render();
+          selected = selected === c.id ? null : c.id;
+          pendingWild = null;
+          render();
         }),
     );
   const actions = $("mainActions");
@@ -593,10 +593,29 @@ function render() {
     };
     actions.appendChild(b);
   };
-  if (canSee && game.drawnCardId)
-    add("Pass / keep drawn card", () => action({ type: "pass" }));
-  if (canSee && game.pendingDraw && game.options.stacking)
-    add("Draw penalty", () => action({ type: "draw" }));
+  if (canSee && !game.pendingDraw) {
+    add(
+      "Play Card",
+      () => {
+        if (!selected) return false;
+        const c = game.hands[game.turn].find((x) => x.id === selected);
+        if (!c || !game.canPlay(c, game.turn)) return false;
+        const f = faceOf(c, game.side);
+        if (["wild", "drawFour", "drawColor"].includes(f.type)) {
+          pendingWild = c.id;
+          renderColors();
+          return false;
+        }
+        const ok = action({ type: "play", id: c.id });
+        selected = null;
+        return ok;
+      },
+      !selected,
+      "action-primary",
+    );
+    if (game.drawnCardId && !game.options.drawUntilPlayable)
+      add("Pass", () => action({ type: "pass" }));
+  }
   $("meldArea").innerHTML = "";
   $("history").innerHTML =
     game.moveHistory
@@ -604,8 +623,8 @@ function render() {
       .map((x) => `<div>${esc(x)}</div>`)
       .join("") || '<div class="muted">No moves yet.</div>';
   $("rules").textContent = flip
-    ? "Eins Flip uses Light and Dark sides. Playing a Flip card turns every hand, the draw pile, and the discard pile over. Draw One/Five and Wild Draw Two/Draw Color penalties can stack when stacking is enabled."
-    : "Eins follows classic UNO-style play: match the top card by color or label, use action and wild cards, and empty your hand to win. Stacking and draw-until-playable are setup options.";
+    ? "Eins Flip uses Light and Dark sides. Flip changes every card to the opposite side. Draw penalties stack only with the same draw type; Wild Draw cards stack with other Wild Draw cards when stacking is enabled. Select cards and press Play Card to play them. Draw until playable requires repeated draws until a playable card is found."
+    : "Eins follows UNO-style play: match by color or label, use action and wild cards, and empty your hand to win. With stacking enabled, a draw card may only be stacked by the same draw type; Wild Draw cards can stack with other Wild Draw cards. Select a card and press Play Card to play it.";
   scheduleAI();
   if (ONLINE_MODE && ONLINE_HOST_TOKEN && onlineConnected) publishState();
 }
