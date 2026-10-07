@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hex</title>
+  <style>
+    :root{
+      --bg:#17191f;
+      --panel:#22252d;
+      --panel2:#2b2f39;
+      --border:#3b414d;
+      --text:#edf1f7;
+      --muted:#aab2c0;
+      --accent:#78a9ff;
+      --blue:#4d8cff;
+      --red:#e35b65;
+      --cell:#9ca3af;
+      --cell-empty:#6f7784;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    body{min-height:100vh;display:flex;flex-direction:column}
+    header{padding:18px 22px;border-bottom:1px solid var(--border);background:#1c1f26;display:flex;align-items:center;justify-content:space-between;gap:16px}
+    header h1{margin:0;font-size:22px}
+    header p{margin:3px 0 0;color:var(--muted);font-size:12px}
+    .header-actions{display:flex;gap:8px;flex-wrap:wrap}
+    button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;cursor:pointer}
+    button:hover:not(:disabled){border-color:var(--accent)}
+    button:disabled{opacity:.45;cursor:not-allowed}
+    main{width:min(1350px,100%);margin:0 auto;padding:22px;display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;flex:1}
+    .game-panel,.side-panel{background:var(--panel);border:1px solid var(--border);border-radius:12px}
+    .game-panel{padding:18px;display:flex;flex-direction:column;min-width:0}
+    .status-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+    .status{padding:9px 11px;border-radius:8px;background:var(--panel2);border:1px solid var(--border);font-size:13px}
+    .status.blue{border-color:var(--blue)}
+    .status.red{border-color:var(--red)}
+    .board-shell{overflow:auto;padding:22px 10px 30px}
+    .board-wrap{position:relative;width:max-content;margin:0 auto;padding:26px 34px 26px 34px}
+    .edge-label{position:absolute;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.72;pointer-events:none}
+    .edge-label.top{top:0;left:50%;transform:translateX(-50%);color:var(--blue)}
+    .edge-label.bottom{bottom:0;left:50%;transform:translateX(-50%);color:var(--blue)}
+    .edge-label.left{left:0;top:50%;transform:translateY(-50%) rotate(-30deg);color:var(--red)}
+    .edge-label.right{right:0;top:50%;transform:translateY(-50%) rotate(-30deg);color:var(--red)}
+    .board{--cell-size:clamp(34px,7.2vw,64px);display:flex;flex-direction:column;gap:4px}
+    .hex-row{display:flex;gap:4px;height:calc(var(--cell-size) * .866)}
+    .hex-row.offset{margin-left:calc((var(--cell-size) + 4px) * .5)}
+    .hex-cell{position:relative;width:var(--cell-size);height:var(--cell-size);margin-top:calc(var(--cell-size) * -.067);clip-path:polygon(25% 6.7%,75% 6.7%,100% 50%,75% 93.3%,25% 93.3%,0 50%);display:grid;place-items:center;border:0;background:var(--cell-empty);padding:0;transition:transform .08s ease,filter .08s ease}
+    .hex-cell:hover:not(:disabled){transform:scale(1.04);filter:brightness(1.12)}
+    .hex-cell.blue{background:var(--blue)}
+    .hex-cell.red{background:var(--red)}
+    .hex-cell.last::after{content:"";width:27%;height:27%;border-radius:50%;background:#f7f9fc;opacity:.9}
+    .legend{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:10px;color:var(--muted);font-size:12px}
+    .legend-item{display:flex;align-items:center;gap:7px}
+    .dot{width:13px;height:13px;clip-path:polygon(25% 6.7%,75% 6.7%,100% 50%,75% 93.3%,25% 93.3%,0 50%)}
+    .dot.blue{background:var(--blue)}.dot.red{background:var(--red)}.dot.empty{background:var(--cell-empty)}
+    .side-panel{padding:15px;display:flex;flex-direction:column;gap:14px;min-width:0}
+    .section{padding-bottom:14px;border-bottom:1px solid var(--border)}
+    .section:last-child{border-bottom:0;padding-bottom:0}
+    h2{font-size:15px;margin:0 0 8px}
+    .meta{color:var(--muted);font-size:12px;line-height:1.45}
+    .players{display:flex;flex-direction:column;gap:8px}
+    .player{display:flex;align-items:center;gap:9px;padding:9px 10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px}
+    .player.active{border-color:var(--accent)}
+    .swatch{width:18px;height:18px;clip-path:polygon(25% 6.7%,75% 6.7%,100% 50%,75% 93.3%,25% 93.3%,0 50%);flex:0 0 18px}
+    .swatch.blue{background:var(--blue)}.swatch.red{background:var(--red)}
+    .player-main{min-width:0}.player-name{font-weight:700;font-size:12px}.player-role{color:var(--muted);font-size:11px;margin-top:1px}
+    .move-list{max-height:300px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+    .move{display:grid;grid-template-columns:35px 1fr;gap:8px;padding:5px 6px;border-radius:5px;font-size:12px}
+    .move:nth-child(odd){background:var(--panel2)}
+    .move-num{color:var(--muted)}
+    .message{font-size:12px;color:var(--muted);line-height:1.45}
+    .winner{font-size:15px;font-weight:800}
+    .winner.blue{color:var(--blue)}.winner.red{color:var(--red)}
+    @media(max-width:850px){
+      main{grid-template-columns:1fr;padding:12px}
+      .side-panel{order:2}
+      header{padding:15px}
+      .board-shell{padding-left:0;padding-right:0}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1 id="gameTitle">Hex</h1>
+      <p id="variantTitle">Loading variant…</p>
+    </div>
+    <div class="header-actions">
+      <button id="newGameButton" type="button">New Game</button>
+      <button id="undoButton" type="button">Undo</button>
+      <button id="backButton" type="button">Back to Game Library</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="game-panel">
+      <div class="status-row">
+        <div id="status" class="status">Loading…</div>
+        <div id="moveCount" class="meta"></div>
+      </div>
+      <div class="board-shell">
+        <div class="board-wrap">
+          <div class="edge-label top">Blue</div>
+          <div class="edge-label bottom">Blue</div>
+          <div class="edge-label left">Red</div>
+          <div class="edge-label right">Red</div>
+          <div id="board" class="board" aria-label="Hex board"></div>
+        </div>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><span class="dot blue"></span> Blue: top ↕ bottom</div>
+        <div class="legend-item"><span class="dot red"></span> Red: left ↔ right</div>
+        <div class="legend-item"><span class="dot empty"></span> Empty</div>
+      </div>
+    </section>
+
+    <aside class="side-panel">
+      <section class="section">
+        <h2>Players</h2>
+        <div id="players" class="players"></div>
+      </section>
+      <section class="section">
+        <h2>Rules</h2>
+        <div class="message">
+          Place one stone per turn. Blue wins by connecting the top edge to the bottom edge; Red wins by connecting the left edge to the right edge. There are no draws in Hex.
+        </div>
+      </section>
+      <section class="section">
+        <h2>Move History</h2>
+        <div id="moveList" class="move-list"></div>
+      </section>
+      <section class="section">
+        <h2>Game Status</h2>
+        <div id="result" class="message">Game in progress.</div>
+      </section>
+    </aside>
+  </main>
+
+  <script src="hex.js?v=20261007-alpha1"></script>
+  <script src="hex-ai.js?v=20261007-alpha1"></script>
+  <script>
+    "use strict";
+
+    const params = new URLSearchParams(location.search);
+    const variant = params.get("variant") || "standard";
+    const sizeByVariant = {
+      mini: 6,
+      standard: 11,
+      nash: 14
+    };
+    const namesByVariant = {
+      mini: "Mini (6x6)",
+      standard: "Standard (11x11)",
+      nash: "Nash (14x14)"
+    };
+
+    const size = sizeByVariant[variant] || 11;
+    const variantName = namesByVariant[variant] || "Standard (11x11)";
+    const localPlayers = Math.max(1, parseInt(params.get("localPlayers"), 10) || 1);
+    const computerPlayers = Math.max(0, parseInt(params.get("computerPlayers"), 10) || 0);
+    const profileIds = (() => {
+      try {
+        const parsed = JSON.parse(params.get("localProfileIds") || "[]");
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    })();
+    const computerDifficulties = (() => {
+      try {
+        const parsed = JSON.parse(params.get("computerDifficulties") || "{}");
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch {
+        return {};
+      }
+    })();
+
+    const game = new HexGame(size);
+    const boardEl = document.getElementById("board");
+    const statusEl = document.getElementById("status");
+    const moveListEl = document.getElementById("moveList");
+    const resultEl = document.getElementById("result");
+    const playersEl = document.getElementById("players");
+    const moveCountEl = document.getElementById("moveCount");
+    const undoButton = document.getElementById("undoButton");
+
+    let profiles = [];
+    try {
+      const saved = JSON.parse(localStorage.getItem("gameLibraryProfiles") || "[]");
+      if (Array.isArray(saved)) profiles = saved;
+    } catch {}
+
+    function profileName(index) {
+      const id = profileIds[index];
+      const profile = profiles.find(p => p.id === id) || profiles[index];
+      return profile?.name || `Player ${index + 1}`;
+    }
+
+    function difficultyForComputer(index) {
+      return computerDifficulties[`computer:${index}`] || "normal";
+    }
+
+    const playerInfo = [
+      { player: 1, name: profileName(0), computer: false },
+      { player: 2, name: localPlayers >= 2 ? profileName(1) : "Computer", computer: computerPlayers > 0 }
+    ];
+
+    document.getElementById("gameTitle").textContent = "Hex";
+    document.getElementById("variantTitle").textContent = `${variantName} • ${size}×${size}`;
+
+    function playerColor(player) {
+      return player === 1 ? "blue" : "red";
+    }
+
+    function playerName(player) {
+      return playerInfo[player - 1]?.name || `Player ${player}`;
+    }
+
+    function isComputerTurn() {
+      return playerInfo[game.turn - 1]?.computer === true && !game.winner;
+    }
+
+    function coordName(r, c) {
+      return `${String.fromCharCode(65 + c)}${r + 1}`;
+    }
+
+    function renderPlayers() {
+      playersEl.innerHTML = "";
+      for (const info of playerInfo) {
+        const row = document.createElement("div");
+        row.className = `player${game.turn === info.player && !game.winner ? " active" : ""}`;
+        row.innerHTML = `
+          <span class="swatch ${playerColor(info.player)}"></span>
+          <div class="player-main">
+            <div class="player-name">${escapeHtml(info.name)}</div>
+            <div class="player-role">${info.player === 1 ? "Blue · top to bottom" : "Red · left to right"}${info.computer ? " · Computer" : " · Human"}</div>
+          </div>
+        `;
+        playersEl.appendChild(row);
+      }
+    }
+
+    function renderBoard() {
+      boardEl.innerHTML = "";
+      for (let r = 0; r < game.size; r++) {
+        const row = document.createElement("div");
+        row.className = `hex-row${r ? " offset" : ""}`;
+
+        for (let c = 0; c < game.size; c++) {
+          const button = document.createElement("button");
+          const value = game.board[r][c];
+          button.type = "button";
+          button.className = "hex-cell";
+          if (value === 1) button.classList.add("blue");
+          else if (value === 2) button.classList.add("red");
+          if (game.moves.at(-1)?.r === r && game.moves.at(-1)?.c === c) button.classList.add("last");
+          button.title = `${coordName(r, c)}${value ? ` — ${playerName(value)}` : ""}`;
+          button.setAttribute("aria-label", button.title);
+          button.disabled = Boolean(value || game.winner || isComputerTurn());
+          button.addEventListener("click", () => playHumanMove(r, c));
+          row.appendChild(button);
+        }
+        boardEl.appendChild(row);
+      }
+    }
+
+    function renderStatus() {
+      const state = game.gameStatus();
+      statusEl.textContent = state.text;
+      statusEl.className = `status${game.winner ? ` ${playerColor(game.winner)}` : ` ${playerColor(game.turn)}`}`;
+      moveCountEl.textContent = `${game.moves.length} move${game.moves.length === 1 ? "" : "s"}`;
+      undoButton.disabled = game.history.length === 0 || Boolean(game.winner) || isComputerTurn();
+
+      if (game.winner) {
+        resultEl.innerHTML = `<span class="winner ${playerColor(game.winner)}">${escapeHtml(playerName(game.winner))} wins!</span>`;
+      } else {
+        resultEl.textContent = "Game in progress.";
+      }
+    }
+
+    function renderMoveList() {
+      moveListEl.innerHTML = "";
+      game.moves.forEach((move, index) => {
+        const row = document.createElement("div");
+        row.className = "move";
+        row.innerHTML = `<span class="move-num">${index + 1}.</span><span><strong>${escapeHtml(playerName(move.player))}</strong> — ${coordName(move.r, move.c)}</span>`;
+        moveListEl.appendChild(row);
+      });
+      moveListEl.scrollTop = moveListEl.scrollHeight;
+    }
+
+    function render() {
+      renderBoard();
+      renderPlayers();
+      renderStatus();
+      renderMoveList();
+    }
+
+    function playHumanMove(r, c) {
+      if (game.winner || isComputerTurn()) return;
+      if (!game.makeMove(r, c)) return;
+      render();
+      scheduleComputerTurn();
+    }
+
+    function scheduleComputerTurn() {
+      if (!isComputerTurn()) return;
+      render();
+      window.setTimeout(() => {
+        if (!isComputerTurn()) return;
+        const difficulty = difficultyForComputer(0);
+        const move = window.HexAI?.findBestMove(game, difficulty);
+        if (!move) return;
+        game.makeMove(move.r, move.c);
+        render();
+      }, 300);
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    document.getElementById("newGameButton").addEventListener("click", () => {
+      game.reset();
+      render();
+      scheduleComputerTurn();
+    });
+
+    undoButton.addEventListener("click", () => {
+      if (!game.history.length || game.winner || isComputerTurn()) return;
+
+      const lastMove = game.moves.at(-1);
+      const wasComputerMove = lastMove?.player === 2 && playerInfo[1]?.computer;
+
+      game.undo();
+
+      if (wasComputerMove && game.history.length && game.moves.at(-1)?.player === 1) {
+        game.undo();
+      }
+
+      render();
+    });
+
+    document.getElementById("backButton").addEventListener("click", () => {
+      window.location.href = "../index.html";
+    });
+
+    render();
+    scheduleComputerTurn();
+  </script>
+</body>
+</html>
