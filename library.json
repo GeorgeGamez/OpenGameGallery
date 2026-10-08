@@ -165,6 +165,51 @@
       },
       "release": "alpha"
     },
+        {
+      "id": "hex",
+      "name": "Hex",
+      "type": "board",
+      "page": "hex/hex.html",
+      "description": "A connection game where players race to build an unbroken path between their opposing borders.",
+      "image": "images/cover/hex.png",
+      "categories": [
+        "board",
+        "strategy",
+        "connection"
+      ],
+      "searchTerms": [
+        "hex",
+        "connection game"
+      ],
+      "players": {
+        "min": 2,
+        "max": 2
+      },
+      "variants": [
+        {
+          "id": "mini",
+          "name": "Mini 6x6",
+          "release": "alpha"
+        },
+        {
+          "id": "standard",
+          "name": "Standard 11x11",
+          "release": "alpha"
+        },
+        {
+          "id": "nash",
+          "name": "Nash 14x14",
+          "release": "alpha"
+        }
+      ],
+      "capabilities": {
+        "local": true,
+        "online": false,
+        "computer": true
+      },
+      "options": {},
+      "release": "alpha"
+    },
     {
       "id": "reversi",
       "name": "Reversi",
