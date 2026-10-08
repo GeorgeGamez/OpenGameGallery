@@ -1,471 +1,812 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Eins — Game Library</title>
-    <style>
-      :root {
-        --bg: #17191f;
-        --panel: #22252d;
-        --panel2: #2b2f39;
-        --text: #f1f3f5;
-        --muted: #aeb4c0;
-        --accent: #78a9ff;
-        --border: #3a3f4a;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        background: var(--bg);
-        color: var(--text);
-        font:
-          15px system-ui,
-          -apple-system,
-          "Segoe UI",
-          sans-serif;
-      }
-      header {
-        height: 62px;
-        padding: 0 22px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        background: #1d2027;
-        border-bottom: 1px solid var(--border);
-      }
-      header h1 {
-        font-size: 21px;
-        margin: 0;
-      }
-      header span {
-        color: var(--muted);
-        font-size: 13px;
-      }
-      button,
-      select {
-        font: inherit;
-        color: var(--text);
-        background: var(--panel2);
-        border: 1px solid var(--border);
-        border-radius: 7px;
-        padding: 8px 11px;
-        cursor: pointer;
-      }
-      button:hover {
-        filter: brightness(1.12);
-      }
-      button:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-      }
-      .app {
-        max-width: 1440px;
-        margin: auto;
-        padding: 18px;
-        display: grid;
-        grid-template-columns: 220px minmax(0, 1fr) 240px;
-        gap: 16px;
-        align-items: start;
-      }
-      .panel {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 14px;
-        margin-bottom: 12px;
-      }
-      .panel h2 {
-        font-size: 14px;
-        margin: 0 0 10px;
-      }
-      .button-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 7px;
-      }
-      .button-grid button:first-child {
-        grid-column: 1/-1;
-      }
-      .status,
-      .online {
-        background: var(--panel2);
-        border-radius: 7px;
-        padding: 10px;
-        line-height: 1.4;
-        font-size: 13px;
-      }
-      .online {
-        font-size: 12px;
-        color: var(--muted);
-        overflow-wrap: anywhere;
-      }
-      .muted,
-      .note {
-        color: var(--muted);
-        font-size: 12px;
-        line-height: 1.45;
-      }
-      .game-info {
-        text-align: center;
-        margin: 2px 0 12px;
-      }
-      .game-info strong {
-        font-size: 17px;
-      }
-      .game-info div {
-        font-size: 12px;
-        color: var(--muted);
-        margin-top: 3px;
-      }
-      .player-list {
-        display: flex;
-        flex-direction: column;
-        gap: 7px;
-      }
-      .player-row {
-        display: flex;
-        align-items: center;
-        gap: 9px;
-        background: var(--panel2);
-        border: 1px solid var(--border);
-        border-radius: 7px;
-        padding: 8px;
-      }
-      .player-row.current {
-        border-color: var(--accent);
-      }
-      .avatar {
-        font-size: 21px;
-      }
-      .player-name {
-        font-weight: 700;
-        font-size: 13px;
-      }
-      .player-sub {
-        color: var(--muted);
-        font-size: 11px;
-      }
-      .table-area {
-        min-width: 0;
-      }
-      .table-surface {
-        background: #164d3b;
-        border: 5px solid #0c3026;
-        border-radius: 22px;
-        padding: 18px;
-        min-height: 240px;
-        box-shadow: 0 8px 25px #0003;
-      }
-      .zone-label {
-        color: #d1e4dc;
-        font-size: 12px;
-        margin-bottom: 7px;
-      }
-      .piles {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 22px;
-        flex-wrap: wrap;
-        min-height: 120px;
-      }
-      .pile {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 7px;
-        min-width: 85px;
-      }
-      .pile button {
-        min-width: 78px;
-        min-height: 100px;
-      }
-      .hand {
-        display: flex;
-        gap: 7px;
-        flex-wrap: wrap;
-        justify-content: center;
-        align-items: center;
-        min-height: 125px;
-        padding: 12px 4px;
-      }
-      .card {
-        width: 70px;
-        height: 104px;
-        border: 2px solid #f5f5f5;
-        border-radius: 9px;
-        background: #fff;
-        color: #17191f;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        align-items: center;
-        padding: 7px 4px;
-        box-shadow: 0 3px 7px #0004;
-        position: relative;
-        cursor: pointer;
-        user-select: none;
-        font-weight: 750;
-      }
-      .card .corner {
-        font-size: 12px;
-        align-self: flex-start;
-      }
-      .card .face {
-        font-size: 19px;
-        text-align: center;
-        line-height: 1.05;
-        overflow-wrap: anywhere;
-      }
-      .card .bottom {
-        align-self: flex-end;
-        transform: rotate(180deg);
-        font-size: 12px;
-      }
-      .card.selected {
-        transform: translateY(-10px);
-        outline: 3px solid #f6e58d;
-      }
-      .card.red {
-        background: #d84444;
-        color: white;
-      }
-      .card.yellow {
-        background: #f4d34d;
-        color: #202020;
-      }
-      .card.green {
-        background: #26965c;
-        color: white;
-      }
-      .card.blue {
-        background: #3279d5;
-        color: white;
-      }
-      .card.pink {
-        background: #e94b9a;
-        color: white;
-      }
-      .card.teal {
-        background: #24a8a5;
-        color: white;
-      }
-      .card.orange {
-        background: #f08b35;
-        color: white;
-      }
-      .card.purple {
-        background: #8c59c9;
-        color: white;
-      }
-      .card.back {
-        background: repeating-linear-gradient(
-          45deg,
-          #28558d,
-          #28558d 8px,
-          #1e3e6a 8px,
-          #1e3e6a 16px
+"use strict";
+const params = new URLSearchParams(location.search),
+  ONLINE_MODE = params.get("online") === "1",
+  ONLINE_SERVER = params.get("onlineServer") || "",
+  ONLINE_CODE = params.get("onlineCode") || "",
+  ONLINE_CLIENT_ID =
+    params.get("onlineClientId") ||
+    sessionStorage.getItem("gameLibraryOnlineClientId") ||
+    "client_" + Math.random().toString(36).slice(2, 12),
+  ONLINE_HOST_TOKEN =
+    params.get("hostToken") ||
+    sessionStorage.getItem("gameLibraryOnlineHostToken") ||
+    "";
+let onlineConfig = null;
+try {
+  const raw =
+    params.get("onlineConfig") ||
+    sessionStorage.getItem("gameLibraryOnlineConfig") ||
+    "";
+  if (raw) onlineConfig = JSON.parse(raw);
+} catch {}
+let selectedVariantId = params.get("variant") || "eins",
+  onlineSocket = null,
+  onlineConnected = false,
+  onlineParticipants = [],
+  onlineMatchId = "",
+  onlineResultSent = false,
+  localScoreRecorded = false;
+const profiles = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("gameLibraryProfiles") || "[]");
+    } catch {
+      return [];
+    }
+  })(),
+  $ = (id) => document.getElementById(id),
+  copy = (o) => JSON.parse(JSON.stringify(o));
+const COLORS = ["red", "yellow", "green", "blue"],
+  DARK = ["pink", "teal", "orange", "purple"];
+function card(id, light, dark) {
+  return { id, light, dark };
+}
+function face(color, label, type = "number", value = Number(label) || 0) {
+  return { color, label, type, value };
+}
+function buildDeck(variant) {
+  const d = [];
+  let n = 0;
+  if (variant === "flip") {
+    for (const color of COLORS) {
+      const darkColor = DARK[COLORS.indexOf(color)];
+      for (let v = 1; v <= 9; v++)
+        for (let k = 0; k < 2; k++)
+          d.push(
+            card(
+              "f" + n++,
+              face(color, String(v), "number", v),
+              face(darkColor, String(v), "number", v),
+            ),
+          );
+      d.push(
+        card("f" + n++, face(color, "0"), face(darkColor, "1", "number", 1)),
+      );
+      for (let k = 0; k < 2; k++) {
+        d.push(
+          card(
+            "f" + n++,
+            face(color, "Draw One", "drawOne", 1),
+            face(darkColor, "Draw Five", "drawFive", 5),
+          ),
         );
-        color: white;
-        border: 3px solid #e8efff;
+        d.push(
+          card(
+            "f" + n++,
+            face(color, "Reverse", "reverse"),
+            face(darkColor, "Reverse", "reverse"),
+          ),
+        );
+        d.push(
+          card(
+            "f" + n++,
+            face(color, "Skip", "skip"),
+            face(darkColor, "Skip Everyone", "skipEveryone"),
+          ),
+        );
       }
-      .card.black {
-        background: #252832;
-        color: white;
+      d.push(
+        card(
+          "f" + n++,
+          face(color, "Flip", "flip"),
+          face(darkColor, "Flip", "flip"),
+        ),
+      );
+    }
+    for (let k = 0; k < 4; k++) {
+      d.push(
+        card(
+          "f" + n++,
+          face(null, "Wild", "wild"),
+          face(null, "Wild Draw Color", "drawColor", 4),
+        ),
+      );
+      d.push(
+        card(
+          "f" + n++,
+          face(null, "Wild Draw Four", "drawFour", 4),
+          face(null, "Wild", "wild"),
+        ),
+      );
+    }
+    return shuffle(d);
+  }
+  for (const color of COLORS) {
+    d.push(card("c" + n++, face(color, "0")));
+    for (let v = 1; v <= 9; v++)
+      for (let k = 0; k < 2; k++)
+        d.push(card("c" + n++, face(color, String(v), "number", v)));
+    for (let k = 0; k < 2; k++) {
+      d.push(card("c" + n++, face(color, "Skip", "skip")));
+      d.push(card("c" + n++, face(color, "Reverse", "reverse")));
+      d.push(card("c" + n++, face(color, "Draw Two", "drawTwo", 2)));
+    }
+  }
+  for (let k = 0; k < 4; k++) {
+    d.push(card("c" + n++, face(null, "Wild", "wild")));
+    d.push(card("c" + n++, face(null, "Wild Draw Four", "drawFour", 4)));
+  }
+  return shuffle(d);
+}
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    let j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function faceOf(c, side) {
+  return c?.[side] || c?.light;
+}
+function penaltyStackType(type) {
+  return ["drawFour", "drawColor"].includes(type) ? "wildDraw" : type;
+}
+function displayFace(c, side) {
+  const f = faceOf(c, side);
+  return f ? f.label : "?";
+}
+function cardHtml(c, side, selected = false, mini = false, back = false) {
+  if (back) return '<div class="card back">EINS</div>';
+  const f = faceOf(c, side),
+    color = f?.color || "black";
+  return `<div class="card ${color} ${selected ? "selected" : ""} ${mini ? "mini" : ""}" data-card="${c.id}"><span class="corner">${esc(f.label)}</span><span class="face">${esc(f.label)}</span><span class="bottom">${esc(f.label)}</span></div>`;
+}
+class EinsGame {
+  constructor(config = {}) {
+    this.variant = config.variant || selectedVariantId;
+    this.options = {
+      stacking: config.options?.stacking ?? false,
+      drawUntilPlayable: config.options?.drawUntilPlayable ?? false,
+    };
+    this.players = [];
+    this.hands = [];
+    this.drawPile = [];
+    this.discard = [];
+    this.turn = 0;
+    this.direction = 1;
+    this.side = "light";
+    this.pendingDraw = 0;
+    this.pendingType = "";
+    this.activeColor = null;
+    this.phase = "play";
+    this.drawnCardId = null;
+    this.over = false;
+    this.winner = -1;
+    this.moveHistory = [];
+    this.history = [];
+    this.reset(config.players || []);
+  }
+  reset(ps = []) {
+    this.players = (
+      ps.length
+        ? ps
+        : [
+            {
+              name: profiles[0]?.name || "Player 1",
+              avatar: profiles[0]?.avatar || "♟",
+              type: "human",
+              profileId: profiles[0]?.id || "",
+            },
+            {
+              name: "Computer",
+              avatar: "🤖",
+              type: "computer",
+              difficulty: "normal",
+            },
+          ]
+    ).map((p, i) => ({ ...p, seat: i }));
+    this.drawPile = buildDeck(this.variant);
+    this.hands = this.players.map(() => []);
+    this.discard = [];
+    this.turn = 0;
+    this.direction = 1;
+    this.side = "light";
+    this.pendingDraw = 0;
+    this.pendingType = "";
+    this.activeColor = null;
+    this.phase = "play";
+    this.drawnCardId = null;
+    this.over = false;
+    this.winner = -1;
+    this.moveHistory = [];
+    this.history = [];
+    const count = this.players.length <= 3 ? 7 : 7;
+    for (let n = 0; n < count; n++)
+      for (let i = 0; i < this.players.length; i++)
+        this.hands[i].push(this.drawPile.pop());
+    let first = this.drawPile.pop();
+    while (faceOf(first, this.side).type !== "number" && this.drawPile.length)
+      (this.drawPile.unshift(first), (first = this.drawPile.pop()));
+    this.discard = [first];
+    this.activeColor = faceOf(first, this.side).color;
+  }
+  snapshot() {
+    return {
+      variant: this.variant,
+      options: this.options,
+      players: this.players,
+      hands: this.hands,
+      drawPile: this.drawPile,
+      discard: this.discard,
+      turn: this.turn,
+      direction: this.direction,
+      side: this.side,
+      pendingDraw: this.pendingDraw,
+      pendingType: this.pendingType,
+      activeColor: this.activeColor,
+      phase: this.phase,
+      drawnCardId: this.drawnCardId,
+      over: this.over,
+      winner: this.winner,
+      moveHistory: this.moveHistory,
+    };
+  }
+  restore(s) {
+    Object.assign(this, copy(s));
+    this.history = [];
+  }
+  save() {
+    this.history.push(this.snapshot());
+  }
+  undo() {
+    if (!this.history.length) return false;
+    const h = this.history.pop(),
+      rest = this.history;
+    this.restore(h);
+    this.history = rest;
+    return true;
+  }
+  current() {
+    return this.players[this.turn];
+  }
+  top() {
+    return this.discard.at(-1);
+  }
+  canPlay(c, player = this.turn) {
+    if (this.over || player !== this.turn || !c) return false;
+    const f = faceOf(c, this.side),
+      top = faceOf(this.top(), this.side);
+    if (this.pendingDraw > 0) {
+      return (
+        this.options.stacking &&
+        ["drawTwo", "drawFour", "drawOne", "drawFive", "drawColor"].includes(
+          f.type,
+        ) &&
+        penaltyStackType(f.type) === penaltyStackType(this.pendingType)
+      );
+    }
+    return (
+      f.type === "wild" ||
+      f.type === "drawFour" ||
+      f.type === "drawColor" ||
+      f.color === this.activeColor ||
+      f.label === top.label
+    );
+  }
+  advance(n = 1) {
+    this.turn = (this.turn + this.direction * n) % this.players.length;
+    if (this.turn < 0) this.turn += this.players.length;
+  }
+  refill() {
+    if (this.drawPile.length) return;
+    const top = this.discard.pop();
+    this.drawPile = shuffle(this.discard.splice(0));
+    this.discard = [top];
+  }
+  drawCards(player, count) {
+    for (let i = 0; i < count; i++) {
+      this.refill();
+      if (!this.drawPile.length) break;
+      this.hands[player].push(this.drawPile.pop());
+    }
+  }
+  draw() {
+    if (this.over || this.phase !== "play" || this.drawnCardId !== null)
+      return false;
+    this.save();
+    const player = this.turn;
+    if (this.pendingDraw > 0) {
+      this.drawCards(player, 1);
+      this.pendingDraw--;
+      this.moveHistory.unshift(`${this.current().name} drew 1 penalty card.`);
+      if (this.pendingDraw <= 0) {
+        this.pendingDraw = 0;
+        this.pendingType = "";
+        this.advance();
+        this.drawnCardId = null;
       }
-      .card.mini {
-        width: 45px;
-        height: 66px;
-        font-size: 11px;
+      return true;
+    }
+    if (this.options.drawUntilPlayable) {
+      this.drawCards(player, 1);
+      const last = this.hands[player].at(-1);
+      if (!last) return false;
+      this.drawnCardId = this.canPlay(last, player) ? last.id : null;
+      this.moveHistory.unshift(
+        this.drawnCardId
+          ? `${this.current().name} drew a playable card and must play it.`
+          : `${this.current().name} drew a card that is not playable; draw again.`,
+      );
+      return true;
+    }
+    this.drawCards(player, 1);
+    const last = this.hands[player].at(-1);
+    this.drawnCardId = last?.id || null;
+    if (!last) return false;
+    this.moveHistory.unshift(
+      `${this.current().name} drew a card${this.canPlay(last, player) ? " and may play it or pass" : " and may pass"}.`,
+    );
+    return true;
+  }
+  pass() {
+    if (
+      this.over ||
+      this.options.drawUntilPlayable ||
+      this.drawnCardId === null
+    )
+      return false;
+    this.save();
+    this.moveHistory.unshift(`${this.current().name} passed after drawing.`);
+    this.drawnCardId = null;
+    this.advance();
+    return true;
+  }
+  play(id, color = null) {
+    if (this.over) return false;
+    const player = this.turn,
+      hand = this.hands[player],
+      c = hand.find((x) => x.id === id);
+    if (!c || !this.canPlay(c, player)) return false;
+    if (this.drawnCardId && id !== this.drawnCardId) return false;
+    const f = faceOf(c, this.side);
+    if (["wild", "drawFour", "drawColor"].includes(f.type) && !color)
+      return false;
+    this.save();
+    this.hands[player] = hand.filter((x) => x.id !== id);
+    this.discard.push(c);
+    this.drawnCardId = null;
+    this.activeColor = color || f.color || this.activeColor;
+    this.moveHistory.unshift(
+      `${this.current().name} played ${f.label}${color ? ` (${color})` : ""}.`,
+    );
+    const finish = () => {
+      if (!this.hands[player].length) {
+        this.over = true;
+        this.winner = player;
+        this.moveHistory.unshift(`${this.players[player].name} wins!`);
+        return true;
       }
-      .card.mini .face {
-        font-size: 12px;
+      return false;
+    };
+    if (f.type === "flip") {
+      this.side = this.side === "light" ? "dark" : "light";
+      this.activeColor = faceOf(c, this.side).color;
+      this.moveHistory.unshift(`Everyone flipped to the ${this.side} side.`);
+    }
+    if (
+      ["drawTwo", "drawFour", "drawOne", "drawFive", "drawColor"].includes(
+        f.type,
+      )
+    ) {
+      this.pendingDraw += f.type === "drawColor" ? 4 : f.value || 0;
+      this.pendingType = f.type;
+      this.advance();
+      finish();
+      return true;
+    }
+    if (f.type === "skip" || f.type === "skipEveryone") {
+      this.advance(f.type === "skipEveryone" ? this.players.length : 2);
+      finish();
+      return true;
+    }
+    if (f.type === "reverse") {
+      this.direction *= -1;
+      if (this.players.length === 2) this.advance(2);
+      else this.advance();
+      finish();
+      return true;
+    }
+    this.advance();
+    finish();
+    return true;
+  }
+  action(a) {
+    if (a.type === "draw") return this.draw();
+    if (a.type === "pass") return this.pass();
+    if (a.type === "play") return this.play(a.id, a.color || null);
+    return false;
+  }
+  aiTurn() {
+    if (this.over) return false;
+    const player = this.turn;
+    if (this.pendingDraw > 0) {
+      while (this.turn === player && this.pendingDraw > 0 && !this.over)
+        this.draw();
+      return this.turn !== player;
+    }
+    let c = window.EinsAI.chooseCard(this, player);
+    if (!c) {
+      if (this.options.drawUntilPlayable) {
+        let guard = 0;
+        while (
+          this.turn === player &&
+          !this.drawnCardId &&
+          !this.over &&
+          guard++ < 250
+        )
+          this.draw();
+      } else {
+        if (!this.draw()) return false;
       }
-      .hand-label {
-        font-size: 12px;
-        color: #d1e4dc;
-        text-align: center;
-        margin: 8px 0 0;
-      }
-      .actions {
-        display: flex;
-        justify-content: center;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-top: 12px;
-      }
-      .action-primary {
-        background: var(--accent);
-        color: #111318;
-        border-color: transparent;
-        font-weight: 700;
-      }
-      .action-danger {
-        border-color: #82444b;
-      }
-      .history {
-        max-height: 420px;
-        overflow: auto;
-        font-size: 12px;
-      }
-      .history div {
-        padding: 7px;
-        border-bottom: 1px solid #343943;
-      }
-      .melds {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 9px;
-        justify-content: center;
-        margin-top: 12px;
-      }
-      .meld {
-        background: #0e3b2d;
-        border: 1px solid #36705c;
-        border-radius: 8px;
-        padding: 8px;
-        min-width: 85px;
-      }
-      .meld-title {
-        font-size: 10px;
-        color: #c2d9d0;
-        margin-bottom: 5px;
-      }
-      .meld-cards {
-        display: flex;
-        gap: 3px;
-        flex-wrap: wrap;
-      }
-      .color-choices {
-        display: flex;
-        gap: 8px;
-        justify-content: center;
-        margin-top: 10px;
-      }
-      .color-choices button {
-        min-width: 80px;
-      }
-      .red-choice {
-        background: #d84444;
-      }
-      .yellow-choice {
-        background: #f4d34d;
-        color: #111;
-      }
-      .green-choice {
-        background: #26965c;
-      }
-      .blue-choice {
-        background: #3279d5;
-      }
-      @media (max-width: 1000px) {
-        .app {
-          grid-template-columns: 200px minmax(0, 1fr);
+      if (this.turn !== player || this.over) return true;
+      c = window.EinsAI.chooseCard(this, player);
+    }
+    if (!c) return this.options.drawUntilPlayable ? false : this.pass();
+    const hand = this.hands[player],
+      f = faceOf(c, this.side);
+    let color = null;
+    if (["wild", "drawFour", "drawColor"].includes(f.type))
+      color = window.EinsAI.chooseColor(
+        hand.filter((x) => x.id !== c.id),
+        this.side,
+      );
+    return this.play(c.id, color);
+  }
+}
+let game = new EinsGame(onlineConfig || {}),
+  selected = null,
+  aiTimer = null,
+  aiPending = false,
+  pendingWild = null;
+function localPartyProfiles() {
+  try {
+    const ids = JSON.parse(sessionStorage.getItem("gameLibraryParty") || "[]"),
+      a = ids.map((id) => profiles.find((p) => p.id === id)).filter(Boolean);
+    if (a.length) return a;
+  } catch {}
+  return profiles;
+}
+function isControlled(p) {
+  if (!p || p.type !== "human") return false;
+  if (!ONLINE_MODE) return true;
+  const controller = String(
+    p.controllerClientId || p.participantClientId || "",
+  );
+  if (controller && controller === String(ONLINE_CLIENT_ID)) return true;
+  const me = onlineParticipants.find(
+    (x) => String(x.clientId || "") === String(ONLINE_CLIENT_ID),
+  );
+  const ids = new Set();
+  if (me?.profileId) ids.add(String(me.profileId));
+  if (Array.isArray(me?.party))
+    for (const member of me.party) if (member?.id) ids.add(String(member.id));
+  return Boolean(p.profileId && ids.has(String(p.profileId)));
+}
+function controlledTurn() {
+  return isControlled(game.current());
+}
+function action(a, remote = false) {
+  const ok = game.action(a);
+  if (!ok) return false;
+  selected = null;
+  pendingWild = null;
+  if (ONLINE_MODE && !remote && onlineSocket?.readyState === WebSocket.OPEN)
+    onlineSocket.send(JSON.stringify({ type: "game:move", payload: a }));
+  recordWin();
+  return true;
+}
+function recordWin() {
+  if (ONLINE_MODE || localScoreRecorded || !game.over) return;
+  const p = game.players[game.winner];
+  if (!p?.profileId) return;
+  let s = {};
+  try {
+    s = JSON.parse(localStorage.getItem("gameLibraryLocalScores") || "{}");
+  } catch {}
+  s[p.profileId] = (Number(s[p.profileId]) || 0) + 1;
+  localStorage.setItem("gameLibraryLocalScores", JSON.stringify(s));
+  localScoreRecorded = true;
+}
+function esc(s) {
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ],
+  );
+}
+function render() {
+  if (game.over) {
+    recordWin();
+    publishOnlineResult();
+  }
+  if (!pendingWild) {
+    $("colorChoices").hidden = true;
+    $("colorChoices").innerHTML = "";
+  }
+  const flip = game.variant === "flip";
+  $("variantName").textContent = flip ? "Eins Flip" : "Eins";
+  let statusText;
+  if (game.over) statusText = `${game.players[game.winner]?.name} wins!`;
+  else if (game.pendingDraw)
+    statusText = `${game.current().name} must draw ${game.pendingDraw} card${game.pendingDraw === 1 ? "" : "s"}. Click the draw pile once for each card.`;
+  else if (game.drawnCardId)
+    statusText = `${game.current().name} drew a playable card — select it and press Play Card.`;
+  else if (game.options.drawUntilPlayable)
+    statusText = `${game.current().name}'s turn — draw until you get a playable card.`;
+  else
+    statusText = `${game.current().name}'s turn — select a card, then press Play Card.`;
+  $("status").textContent = statusText;
+  $("playerList").innerHTML = game.players
+    .map(
+      (p, i) =>
+        `<div class="player-row ${i === game.turn && !game.over ? "current" : ""}"><span class="avatar">${p.avatar || "🃏"}</span><div><div class="player-name">${esc(p.name || `Player ${i + 1}`)}</div><div class="player-sub">${p.type === "computer" ? "Computer" : p.playerType || "Player"} · ${game.hands[i]?.length || 0} cards</div></div></div>`,
+    )
+    .join("");
+  const top = game.top();
+  const drawLabel = game.pendingDraw
+    ? `DRAW PENALTY (${game.pendingDraw})`
+    : game.options.drawUntilPlayable
+      ? "DRAW"
+      : "DRAW";
+  $("piles").innerHTML =
+    `<div class="pile"><div class="zone-label">Draw pile · ${game.drawPile.length}</div><button id="drawBtn" class="card back">${drawLabel}</button></div><div class="pile"><div class="zone-label">Discard · ${game.side} side</div>${top ? cardHtml(top, game.side, false, false) : ""}<div class="muted">Active color: ${game.activeColor || "wild"}</div></div>`;
+  $("drawBtn").onclick = () => {
+    if (!controlledTurn() || game.over) return;
+    if (action({ type: "draw" })) render();
+  };
+  const canSee = controlledTurn() && !game.over,
+    hand = canSee ? game.hands[game.turn] : [];
+  $("handTitle").textContent = canSee
+    ? `${game.current().name}'s hand`
+    : "Current player's hand is hidden";
+  $("handHint").textContent = canSee
+    ? `${hand.length} cards · click a card to select it, then press Play Card`
+    : `Only the player whose turn it is can see their hand.`;
+  $("hand").innerHTML = hand
+    .map((c) => cardHtml(c, game.side, c.id === selected))
+    .join("");
+  $("hand")
+    .querySelectorAll("[data-card]")
+    .forEach(
+      (el) =>
+        (el.onclick = () => {
+          if (!canSee || game.pendingDraw) return;
+          const c = hand.find((x) => x.id === el.dataset.card);
+          if (!c) return;
+          if (game.drawnCardId && c.id !== game.drawnCardId) return;
+          if (!game.canPlay(c, game.turn)) return;
+          selected = selected === c.id ? null : c.id;
+          pendingWild = null;
+          render();
+        }),
+    );
+  const actions = $("mainActions");
+  actions.innerHTML = "";
+  const add = (label, fn, disabled = false, cls = "") => {
+    const b = document.createElement("button");
+    b.textContent = label;
+    b.disabled = disabled;
+    b.className = cls;
+    b.onclick = () => {
+      if (fn()) render();
+    };
+    actions.appendChild(b);
+  };
+  if (canSee && !game.pendingDraw) {
+    add(
+      "Play Card",
+      () => {
+        if (!selected) return false;
+        const c = game.hands[game.turn].find((x) => x.id === selected);
+        if (!c || !game.canPlay(c, game.turn)) return false;
+        const f = faceOf(c, game.side);
+        if (["wild", "drawFour", "drawColor"].includes(f.type)) {
+          pendingWild = c.id;
+          renderColors();
+          return false;
         }
-        .right-column {
-          grid-column: 1/-1;
-        }
-        .history {
-          max-height: 220px;
-        }
-      }
-      @media (max-width: 700px) {
-        header span {
-          display: none;
-        }
-        .app {
-          display: flex;
-          flex-direction: column;
-          padding: 10px;
-        }
-        .left-column,
-        .table-area,
-        .right-column {
-          width: 100%;
-        }
-        .left-column {
-          order: 2;
-        }
-        .table-area {
-          order: 1;
-        }
-        .right-column {
-          order: 3;
-        }
-        .table-surface {
-          padding: 10px;
-        }
-        .card {
-          width: 58px;
-          height: 88px;
-        }
-        .card .face {
-          font-size: 16px;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <header>
-      <h1 id="pageTitle">Eins</h1>
-      <span>Game Library · Game Player</span>
-    </header>
-    <main class="app">
-      <section class="left-column">
-        <div class="panel">
-          <h2>Controls</h2>
-          <div class="button-grid">
-            <button id="newGameBtn">Back to Game Library</button
-            ><button id="clearBtn">New Game</button
-            ><button id="undoBtn">Undo</button>
-          </div>
-        </div>
-        <div class="panel">
-          <h2>Players</h2>
-          <div class="player-list" id="playerList"></div>
-        </div>
-        <div class="panel">
-          <h2>Online connection</h2>
-          <div class="online" id="onlineBar">Offline / local game</div>
-        </div>
-        <div class="panel">
-          <h2>Status</h2>
-          <div class="status" id="status">Loading…</div>
-        </div>
-      </section>
-      <section class="table-area">
-        <div class="game-info">
-          <strong id="gameName">Eins</strong>
-          <div id="variantName">Classic</div>
-        </div>
-        <div class="table-surface">
-          <div class="zone-label">Shared table</div>
-          <div class="piles" id="piles"></div>
-          <div id="meldArea"></div>
-          <div class="actions" id="mainActions"></div>
-          <div class="color-choices" id="colorChoices" hidden></div>
-        </div>
-        <div class="panel" style="margin-top: 12px">
-          <h2 id="handTitle">Your hand</h2>
-          <div class="hand" id="hand"></div>
-          <div class="hand-label" id="handHint"></div>
-        </div>
-      </section>
-      <section class="right-column">
-        <div class="panel">
-          <h2>Round / Move History</h2>
-          <div class="history" id="history"></div>
-        </div>
-        <div class="panel">
-          <h2>Rules</h2>
-          <div id="rules" class="note"></div>
-        </div>
-      </section>
-    </main>
-    <script src="eins-ai.js?v=20261006-eins2"></script>
-    <script src="eins.js?v=20261006-eins2"></script>
-  </body>
-</html>
+        const ok = action({ type: "play", id: c.id });
+        selected = null;
+        return ok;
+      },
+      !selected,
+      "action-primary",
+    );
+    if (game.drawnCardId && !game.options.drawUntilPlayable)
+      add("Pass", () => action({ type: "pass" }));
+  }
+  $("meldArea").innerHTML = "";
+  $("history").innerHTML =
+    game.moveHistory
+      .slice(0, 60)
+      .map((x) => `<div>${esc(x)}</div>`)
+      .join("") || '<div class="muted">No moves yet.</div>';
+  $("rules").textContent = flip
+    ? "Eins Flip uses Light and Dark sides. Flip changes every card to the opposite side. Draw penalties stack only with the same draw type; Wild Draw cards stack with other Wild Draw cards when stacking is enabled. Select cards and press Play Card to play them. Draw until playable requires repeated draws until a playable card is found."
+    : "Eins follows UNO-style play: match by color or label, use action and wild cards, and empty your hand to win. With stacking enabled, a draw card may only be stacked by the same draw type; Wild Draw cards can stack with other Wild Draw cards. Select a card and press Play Card to play it.";
+  scheduleAI();
+  if (ONLINE_MODE && ONLINE_HOST_TOKEN && onlineConnected) publishState();
+}
+function renderColors() {
+  const box = $("colorChoices");
+  box.hidden = !pendingWild;
+  if (!pendingWild) return;
+  const f = faceOf(
+    game.hands[game.turn].find((c) => c.id === pendingWild),
+    game.side,
+  );
+  const choices =
+    f.type === "drawColor" ? DARK : game.side === "dark" ? DARK : COLORS;
+  box.innerHTML = choices
+    .map(
+      (c) =>
+        `<button class="${c}-choice" data-color="${c}">${c[0].toUpperCase() + c.slice(1)}</button>`,
+    )
+    .join("");
+  box.querySelectorAll("[data-color]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        if (action({ type: "play", id: pendingWild, color: b.dataset.color }))
+          render();
+      }),
+  );
+}
+function scheduleAI() {
+  clearTimeout(aiTimer);
+  if (
+    aiPending ||
+    game.over ||
+    game.current()?.type !== "computer" ||
+    (ONLINE_MODE && (!ONLINE_HOST_TOKEN || !onlineConnected))
+  )
+    return;
+  aiPending = true;
+  aiTimer = setTimeout(() => {
+    aiPending = false;
+    game.aiTurn();
+    render();
+  }, 450);
+}
+function wsUrl() {
+  return `${ONLINE_SERVER.replace(/\/$/, "")
+    .replace(/^http:/, "ws:")
+    .replace(
+      /^https:/,
+      "wss:",
+    )}/ws/${encodeURIComponent(ONLINE_CODE)}?clientId=${encodeURIComponent(ONLINE_CLIENT_ID)}&role=${ONLINE_HOST_TOKEN ? "host" : "player"}`;
+}
+function publishState() {
+  if (onlineSocket?.readyState === WebSocket.OPEN && ONLINE_HOST_TOKEN)
+    onlineSocket.send(
+      JSON.stringify({
+        type: "game:state",
+        state: { game: game.snapshot(), variant: selectedVariantId },
+      }),
+    );
+}
+function publishOnlineResult() {
+  if (
+    !ONLINE_MODE ||
+    !ONLINE_HOST_TOKEN ||
+    onlineResultSent ||
+    !game.over ||
+    onlineSocket?.readyState !== WebSocket.OPEN
+  )
+    return;
+  const winner = game.players[game.winner],
+    winnerClientId =
+      winner?.controllerClientId || winner?.participantClientId || "";
+  if (!winnerClientId) return;
+  onlineResultSent = true;
+  onlineSocket.send(
+    JSON.stringify({
+      type: "game:result",
+      winnerClientId,
+      matchId: onlineMatchId,
+    }),
+  );
+}
+function connectOnline() {
+  if (!ONLINE_MODE || !ONLINE_SERVER || !ONLINE_CODE) return;
+  try {
+    onlineSocket = new WebSocket(wsUrl());
+  } catch {
+    $("onlineBar").textContent = "Could not connect";
+    return;
+  }
+  onlineSocket.onopen = () => {
+    onlineConnected = true;
+    const p = localPartyProfiles()[0] || {};
+    onlineSocket.send(
+      JSON.stringify({
+        type: "player:identify",
+        profileId: p.id || "",
+        name: p.name || "Player 1",
+        avatar: p.avatar || "♟",
+        party: localPartyProfiles().map((x) => ({
+          id: x.id,
+          name: x.name || "Player",
+          avatar: x.avatar || "♟",
+        })),
+        spectator: Boolean(
+          (onlineConfig?.spectators || []).includes(ONLINE_CLIENT_ID),
+        ),
+      }),
+    );
+    $("onlineBar").textContent = "Connected";
+    render();
+    if (ONLINE_HOST_TOKEN) setTimeout(publishState, 100);
+  };
+  onlineSocket.onmessage = (e) => {
+    let m;
+    try {
+      m = JSON.parse(e.data);
+    } catch {
+      return;
+    }
+    if (m.type === "room:participants") {
+      onlineParticipants = m.participants || [];
+      return;
+    }
+    if (m.type === "room:config") {
+      onlineConfig = m.config || onlineConfig;
+      return;
+    }
+    if (m.type === "game:start") {
+      onlineMatchId = m.matchId || "";
+      onlineResultSent = false;
+      localScoreRecorded = false;
+      onlineConfig = m.config || onlineConfig;
+      selectedVariantId = onlineConfig?.variant || selectedVariantId;
+      game = new EinsGame(onlineConfig || {});
+      selected = null;
+      pendingWild = null;
+      render();
+      if (ONLINE_HOST_TOKEN) setTimeout(publishState, 80);
+      return;
+    }
+    if (m.type === "game:state" && m.state?.game) {
+      game.restore(m.state.game);
+      selected = null;
+      pendingWild = null;
+      render();
+      return;
+    }
+    if (m.type === "game:move" && m.sender?.clientId !== ONLINE_CLIENT_ID) {
+      if (action(m.payload, true)) render();
+      return;
+    }
+    if (m.type === "game:back") location.href = "../index.html";
+  };
+  onlineSocket.onclose = () => ($("onlineBar").textContent = "Disconnected");
+  onlineSocket.onerror = () =>
+    ($("onlineBar").textContent = "Connection error");
+}
+function back() {
+  if (ONLINE_MODE && onlineSocket?.readyState === WebSocket.OPEN) {
+    onlineSocket.send(JSON.stringify({ type: "game:back" }));
+    setTimeout(() => (location.href = "../index.html"), 250);
+  } else location.href = "../index.html";
+}
+$("newGameBtn").onclick = back;
+$("clearBtn").onclick = () => {
+  if (ONLINE_MODE && !ONLINE_HOST_TOKEN) return;
+  game = new EinsGame(onlineConfig || {});
+  selected = null;
+  pendingWild = null;
+  localScoreRecorded = false;
+  render();
+};
+$("undoBtn").onclick = () => {
+  if (ONLINE_MODE && !ONLINE_HOST_TOKEN) return;
+  if (game.undo()) {
+    selected = null;
+    pendingWild = null;
+    localScoreRecorded = false;
+    render();
+  }
+};
+$("onlineBar").textContent = ONLINE_MODE ? "Connecting…" : "Offline/local game";
+render();
+connectOnline();
