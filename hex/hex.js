@@ -7,31 +7,47 @@ class HexGame {
   }
 
   reset() {
-    this.board = Array.from({ length: this.size }, () => Array(this.size).fill(0));
-    this.turn = 1;
+    this.board = Array.from({ length: this.size }, () =>
+      Array(this.size).fill(null),
+    );
+    this.turn = "blue";
     this.history = [];
-    this.moves = [];
-    this.winner = 0;
+    this.sanHistory = [];
+    this.lastMove = null;
   }
 
   clone() {
     return {
-      board: this.board.map(row => row.slice()),
+      board: this.board.map((row) =>
+        row.map((p) => (p ? { ...p } : null)),
+      ),
       turn: this.turn,
-      moves: this.moves.map(move => ({ ...move })),
-      winner: this.winner
+      san: [...this.sanHistory],
+      lastMove: this.lastMove
+        ? {
+            from: { ...this.lastMove.from },
+            to: { ...this.lastMove.to },
+          }
+        : null,
     };
   }
 
   restore(state) {
-    this.board = state.board.map(row => row.slice());
+    this.board = state.board.map((row) =>
+      row.map((p) => (p ? { ...p } : null)),
+    );
     this.turn = state.turn;
-    this.moves = state.moves.map(move => ({ ...move }));
-    this.winner = state.winner || 0;
+    this.sanHistory = [...state.san];
+    this.lastMove = state.lastMove
+      ? {
+          from: { ...state.lastMove.from },
+          to: { ...state.lastMove.to },
+        }
+      : null;
   }
 
   undo() {
-    if (!this.history.length || this.winner) return false;
+    if (!this.history.length) return false;
     this.restore(this.history.pop());
     return true;
   }
@@ -47,56 +63,87 @@ class HexGame {
       [r, c - 1],
       [r, c + 1],
       [r + 1, c - 1],
-      [r + 1, c]
+      [r + 1, c],
     ].filter(([nr, nc]) => this.inside(nr, nc));
   }
 
+  legalMovesFrom(r, c) {
+    if (!this.inside(r, c) || this.board[r][c] !== null) return [];
+    return [{ from: { r, c }, to: { r, c } }];
+  }
+
   getLegalMoves() {
-    if (this.winner) return [];
     const moves = [];
+    if (this.gameStatus().over) return moves;
     for (let r = 0; r < this.size; r++) {
       for (let c = 0; c < this.size; c++) {
-        if (this.board[r][c] === 0) moves.push({ r, c });
+        if (this.board[r][c] === null) moves.push({ r, c });
       }
     }
     return moves;
   }
 
-  hasConnection(player) {
-    const queue = [];
-    const seen = Array.from({ length: this.size }, () => Array(this.size).fill(false));
+  makeMove(m) {
+    const r = m?.to?.r ?? m?.r;
+    const c = m?.to?.c ?? m?.c;
+    if (!this.inside(r, c) || this.board[r][c] !== null) return false;
 
-    if (player === 1) {
+    this.history.push(this.clone());
+    this.board[r][c] = { type: "m", color: this.turn };
+    this.lastMove = { from: { r, c }, to: { r, c } };
+    this.sanHistory.push(
+      `${this.turn === "blue" ? "B" : "R"}: ${String.fromCharCode(97 + c)}${this.size - r}`,
+    );
+
+    if (this.checkWin(this.turn)) return true;
+
+    this.turn = this.turn === "blue" ? "red" : "blue";
+    return true;
+  }
+
+  checkWin(color) {
+    const visited = Array.from({ length: this.size }, () =>
+        Array(this.size).fill(false),
+      ),
+      queue = [];
+
+    if (color === "blue") {
       for (let c = 0; c < this.size; c++) {
-        if (this.board[0][c] === player) {
-          queue.push([0, c]);
-          seen[0][c] = true;
+        if (this.board[0][c]?.color === "blue") {
+          queue.push({ r: 0, c });
+          visited[0][c] = true;
         }
       }
-      while (queue.length) {
-        const [r, c] = queue.shift();
+      while (queue.length > 0) {
+        const { r, c } = queue.shift();
         if (r === this.size - 1) return true;
         for (const [nr, nc] of this.neighbors(r, c)) {
-          if (!seen[nr][nc] && this.board[nr][nc] === player) {
-            seen[nr][nc] = true;
-            queue.push([nr, nc]);
+          if (
+            !visited[nr][nc] &&
+            this.board[nr][nc]?.color === "blue"
+          ) {
+            visited[nr][nc] = true;
+            queue.push({ r: nr, c: nc });
           }
         }
       }
     } else {
       for (let r = 0; r < this.size; r++) {
-        if (this.board[r][0] === player) {
-          queue.push([r, 0]);
-          seen[r][0] = true;
+        if (this.board[r][0]?.color === "red") {
+          queue.push({ r, c: 0 });
+          visited[r][0] = true;
         }
       }
-      while (queue.length) {
-        const [r, c] = queue.shift();
+      while (queue.length > 0) {
+        const { r, c } = queue.shift();
         if (c === this.size - 1) return true;
         for (const [nr, nc] of this.neighbors(r, c)) {
-          if (!seen[nr][nc] && this.board[nr][nc] === player) {
-            seen[nr][nc] = true;
-            queue.push([nr, nc]);
+          if (
+            !visited[nr][nc] &&
+            this.board[nr][nc]?.color === "red"
+          ) {
+            visited[nr][nc] = true;
+            queue.push({ r: nr, c: nc });
           }
         }
       }
@@ -105,44 +152,23 @@ class HexGame {
     return false;
   }
 
-  makeMove(r, c, player = this.turn) {
-    if (this.winner || player !== this.turn || !this.inside(r, c) || this.board[r][c] !== 0) {
-      return false;
-    }
-
-    this.history.push(this.clone());
-    this.board[r][c] = player;
-    this.moves.push({ r, c, player });
-
-    if (this.hasConnection(player)) {
-      this.winner = player;
-      return true;
-    }
-
-    this.turn = player === 1 ? 2 : 1;
-    return true;
-  }
-
   gameStatus() {
-    if (this.winner === 1) {
-      return { over: true, winner: 1, text: "Blue wins — Blue connected the top and bottom edges." };
+    if (this.checkWin("blue")) {
+      return { over: true, winner: "blue", text: "Game Over — Blue wins!" };
     }
-    if (this.winner === 2) {
-      return { over: true, winner: 2, text: "Red wins — Red connected the left and right edges." };
+    if (this.checkWin("red")) {
+      return { over: true, winner: "red", text: "Game Over — Red wins!" };
     }
-
     return {
       over: false,
-      winner: 0,
-      text: this.turn === 1 ? "Blue to move — connect top to bottom." : "Red to move — connect left to right."
+      winner: null,
+      text:
+        this.turn === "blue"
+          ? "Blue (Top-Bottom) to move"
+          : "Red (Left-Right) to move",
     };
   }
 }
 
-if (typeof window !== "undefined") {
-  window.HexGame = HexGame;
-}
-
-if (typeof module !== "undefined" && module.exports) {
-  module.exports = { HexGame };
-}
+if (typeof window !== "undefined") window.HexGame = HexGame;
+if (typeof module !== "undefined" && module.exports) module.exports = { HexGame };
