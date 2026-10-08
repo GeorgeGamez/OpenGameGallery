@@ -6,8 +6,8 @@ function shortestPathCost(game, player) {
   const dist = Array.from({ length: n }, () => Array(n).fill(INF));
   const heap = [];
 
-  const push = (r, c, d) => {
-    heap.push({ r, c, d });
+  const push = (node) => {
+    heap.push(node);
     let i = heap.length - 1;
     while (i > 0) {
       const p = (i - 1) >> 1;
@@ -39,38 +39,37 @@ function shortestPathCost(game, player) {
 
   const cost = (r, c) => {
     const cell = game.board[r][c];
-    if (cell === player) return 0;
-    if (cell === 0) return 1;
+    if (cell?.color === player) return 0;
+    if (!cell) return 1;
     return 1000;
   };
 
-  if (player === 1) {
+  if (player === "blue") {
     for (let c = 0; c < n; c++) {
       dist[0][c] = cost(0, c);
-      push(0, c, dist[0][c]);
+      push({ r: 0, c, d: dist[0][c] });
     }
   } else {
     for (let r = 0; r < n; r++) {
       dist[r][0] = cost(r, 0);
-      push(r, 0, dist[r][0]);
+      push({ r, c: 0, d: dist[r][0] });
     }
   }
 
   while (heap.length) {
     const current = pop();
     if (!current || current.d !== dist[current.r][current.c]) continue;
-
     for (const [nr, nc] of game.neighbors(current.r, current.c)) {
       const nd = current.d + cost(nr, nc);
       if (nd < dist[nr][nc]) {
         dist[nr][nc] = nd;
-        push(nr, nc, nd);
+        push({ r: nr, c: nc, d: nd });
       }
     }
   }
 
   let best = INF;
-  if (player === 1) {
+  if (player === "blue") {
     for (let c = 0; c < n; c++) best = Math.min(best, dist[n - 1][c]);
   } else {
     for (let r = 0; r < n; r++) best = Math.min(best, dist[r][n - 1]);
@@ -78,58 +77,54 @@ function shortestPathCost(game, player) {
   return best;
 }
 
-function componentScore(game, player, r, c) {
-  let score = 0;
-  for (const [nr, nc] of game.neighbors(r, c)) {
-    const cell = game.board[nr][nc];
-    if (cell === player) score += 5;
-    else if (cell === 0) score += 1;
-    else score -= 3;
-  }
-
-  if (player === 1) {
-    score += (game.size - Math.abs((game.size - 1) / 2 - c)) * 0.12;
-  } else {
-    score += (game.size - Math.abs((game.size - 1) / 2 - r)) * 0.12;
-  }
-  return score;
-}
-
 function immediateWinningMove(game, player) {
   for (const move of game.getLegalMoves()) {
-    game.board[move.r][move.c] = player;
-    const win = game.hasConnection(player);
-    game.board[move.r][move.c] = 0;
+    game.board[move.r][move.c] = { type: "m", color: player };
+    const win = game.checkWin(player);
+    game.board[move.r][move.c] = null;
     if (win) return move;
   }
   return null;
+}
+
+function localScore(game, player, move) {
+  let score = 0;
+  for (const [r, c] of game.neighbors(move.r, move.c)) {
+    const cell = game.board[r][c];
+    if (cell?.color === player) score += 5;
+    else if (!cell) score += 1;
+    else score -= 3;
+  }
+  return score;
 }
 
 function findBestMove(game, difficulty = "normal") {
   const legal = game.getLegalMoves();
   if (!legal.length) return null;
 
-  const winning = immediateWinningMove(game, game.turn);
+  const player = game.turn;
+  const opponent = player === "blue" ? "red" : "blue";
+  const winning = immediateWinningMove(game, player);
   if (winning) return winning;
 
-  const opponent = game.turn === 1 ? 2 : 1;
   const blocking = immediateWinningMove(game, opponent);
   const level = String(difficulty || "normal").toLowerCase();
-
   if (blocking && level !== "easy") return blocking;
 
-  const current = game.turn;
   const opponentPath = shortestPathCost(game, opponent);
   const scored = [];
 
   for (const move of legal) {
-    game.board[move.r][move.c] = current;
-    const ownPath = shortestPathCost(game, current);
+    game.board[move.r][move.c] = { type: "m", color: player };
+    const ownPath = shortestPathCost(game, player);
     const enemyPath = shortestPathCost(game, opponent);
-    const local = componentScore(game, current, move.r, move.c);
-    game.board[move.r][move.c] = 0;
+    const local = localScore(game, player, move);
+    game.board[move.r][move.c] = null;
 
-    let score = (opponentPath - enemyPath) * 9 + (game.size + 1 - ownPath) * 7 + local;
+    let score =
+      (opponentPath - enemyPath) * 9 +
+      (game.size + 1 - ownPath) * 7 +
+      local;
 
     if (level === "easy") {
       score *= 0.45;
@@ -148,10 +143,5 @@ function findBestMove(game, difficulty = "normal") {
   return scored[0].move;
 }
 
-if (typeof window !== "undefined") {
-  window.HexAI = { findBestMove };
-}
-
-if (typeof module !== "undefined" && module.exports) {
-  module.exports = { findBestMove };
-}
+if (typeof window !== "undefined") window.HexAI = { findBestMove };
+if (typeof module !== "undefined" && module.exports) module.exports = { findBestMove };
