@@ -1,204 +1,596 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hex</title>
-  <style>
-    :root{
-      --bg:#17191f;--panel:#22252d;--panel2:#2b2f39;--text:#f1f3f5;--muted:#aeb4c0;
-      --accent:#78a9ff;--border:#3a3f4a;--blue:#2878c8;--red:#c62828;
-    }
-    *{box-sizing:border-box}
-    html,body{margin:0;min-height:100%;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:var(--bg)}
-    body{min-height:100vh}
-    button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;cursor:pointer}
-    button:hover:not(:disabled){background:#353a45}
-    button:disabled{opacity:.45;cursor:not-allowed}
-    header{height:64px;display:flex;align-items:center;padding:0 22px;border-bottom:1px solid var(--border);background:#1d2027}
-    header h1{font-size:21px;margin:0}.subtitle{color:var(--muted);margin-left:12px;font-size:14px}
-    .app{display:grid;grid-template-columns:minmax(180px,250px) minmax(420px,760px) minmax(180px,240px);gap:20px;max-width:1380px;margin:0 auto;padding:20px;align-items:start}
-    .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:15px}.panel+.panel{margin-top:14px}.panel h2{font-size:15px;margin:0 0 12px}
-    .button-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.button-grid button:first-child{grid-column:1/-1}
-    .status{padding:10px;background:var(--panel2);border-radius:7px;font-size:14px;line-height:1.4;border:1px solid var(--border)}
-    .status.blue{border-color:var(--blue)}.status.red{border-color:var(--red)}
-    .player-list{display:flex;flex-direction:column;gap:7px}.player-row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--panel2);border:1px solid var(--border);border-radius:7px}.player-row.current{border-color:var(--accent)}
-    .player-avatar{width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;border-radius:50%;background:var(--bg);font-size:18px}.player-details{min-width:0}.player-name{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.player-type{color:var(--muted);font-size:11px}
-    .board-column{min-width:0}.game-info{text-align:center;margin-bottom:14px}.game-name{font-size:16px;font-weight:650}.variant-name{color:var(--muted);font-size:12px;margin-top:2px}
-    .board-wrap{width:min(76vw,760px);max-width:100%;margin:auto;overflow:auto;padding:14px 8px 16px}
-    .hex-board-svg{width:100%;height:auto;display:block;overflow:visible}
-    .hex-tile{fill:#d2c0a8;stroke:#1d2027;stroke-width:1.5;cursor:pointer;transition:fill .15s,filter .15s}
-    .hex-tile:hover{filter:brightness(1.18)}.hex-tile.blue{fill:var(--blue)}.hex-tile.red{fill:var(--red)}.hex-tile.last-move{stroke:#f6e58d;stroke-width:3.5}
-    .hex-edge-blue{fill:none;stroke:var(--blue);stroke-width:7;stroke-linecap:round;stroke-linejoin:round}.hex-edge-red{fill:none;stroke:var(--red);stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
-    .edge-label{display:none}
-    .move-list{height:450px;overflow-y:auto;border:1px solid var(--border);border-radius:7px;background:#1b1e24}.move-row{display:grid;grid-template-columns:42px 1fr 1fr;min-height:32px;align-items:center;border-bottom:1px solid #30343d;font-size:13px}.move-number{color:var(--muted);padding-left:8px}.move{padding:6px 8px}
-    .note{color:var(--muted);font-size:12px;line-height:1.45}.winner{font-size:15px;font-weight:800}.winner.blue{color:var(--blue)}.winner.red{color:var(--red)}
-    @media(max-width:1050px){.app{grid-template-columns:210px minmax(400px,700px)}.right-column{grid-column:1/-1}.move-list{height:250px}}
-    @media(max-width:760px){header .subtitle{display:none}.app{display:block;padding:10px}.left-column,.right-column{margin-top:12px}.board-wrap{width:100%;padding:8px 0 12px}}
-  </style>
-</head>
-<body>
-  <header><h1 id="pageTitle">Hex</h1><span class="subtitle">Game Player</span></header>
-  <main class="app">
-    <section class="left-column">
-      <div class="panel"><h2>Controls</h2><div class="button-grid"><button id="newGameBtn">Back to Game Library</button><button id="undoBtn">Undo</button><button id="clearBtn">Reset Position</button></div></div>
-      <div class="panel"><h2>Players</h2><div class="player-list" id="playerList"></div></div>
-      <div class="panel"><h2>Status</h2><div class="status" id="status">Loading…</div></div>
-      <div class="panel"><h2>Rules</h2><div class="note">Place one stone per turn. Blue connects the top and bottom edges; Red connects the left and right edges. There are no draws in Hex.</div></div>
-    </section>
-    <section class="board-column">
-      <div class="game-info"><div class="game-name" id="gameName">Hex</div><div class="variant-name" id="variantName">Loading…</div></div>
-      <div class="board-wrap"><div id="board" aria-label="Hex board"></div></div>
-    </section>
-    <section class="right-column">
-      <div class="panel"><h2>Move History</h2><div class="move-list" id="moveList"></div></div>
-      <div class="panel"><h2>Game Status</h2><div id="result" class="note">Game in progress.</div></div>
-    </section>
-  </main>
-
-  <script src="hex.js?v=20261007-ai2"></script>
-  <script src="hex-ai.js?v=20261007-ai2"></script>
-  <script>
-    "use strict";
-
-    const params = new URLSearchParams(location.search);
-    const variant = params.get("variant") || "standard";
-    const sizeByVariant = { mini: 6, standard: 11, nash: 14 };
-    const namesByVariant = { mini: "Mini (6x6)", standard: "Standard (11x11)", nash: "Nash (14x14)" };
-    const size = sizeByVariant[variant] || 11;
-    const variantName = namesByVariant[variant] || "Standard (11x11)";
-
-    const localPlayers = Math.max(1, parseInt(params.get("localPlayers"), 10) || 1);
-    const computerPlayers = Math.max(0, parseInt(params.get("computerPlayers"), 10) || 0);
-    const profileIds = (() => { try { const v=JSON.parse(params.get("localProfileIds")||"[]"); return Array.isArray(v)?v:[]; } catch { return []; } })();
-    const computerDifficulties = (() => { try { const v=JSON.parse(params.get("computerDifficulties")||"{}"); return v&&typeof v==="object"?v:{}; } catch { return {}; } })();
-
-    const boardEl = document.getElementById("board");
-    const statusEl = document.getElementById("status");
-    const resultEl = document.getElementById("result");
-    const playerListEl = document.getElementById("playerList");
-    const moveListEl = document.getElementById("moveList");
-    const undoBtn = document.getElementById("undoBtn");
-
-    let profiles=[];
-    try { const saved=JSON.parse(localStorage.getItem("gameLibraryProfiles")||"[]"); if(Array.isArray(saved)) profiles=saved; } catch {}
-
-    const playerInfo = [
-      { color:"blue", name: profileIds[0] ? (profiles.find(p=>p.id===profileIds[0])?.name||"Player 1") : "Player 1", computer:false },
-      { color:"red", name: localPlayers>=2 ? (profiles.find(p=>p.id===profileIds[1])?.name||"Player 2") : "Computer", computer: computerPlayers>0 }
-    ];
-
-    const game = new HexGame(size);
-
-    function playerName(color){ return playerInfo.find(p=>p.color===color)?.name || (color==="blue"?"Blue":"Red"); }
-    function difficulty(){ return computerDifficulties["computer:0"] || "normal"; }
-    function escapeHtml(value){ return String(value).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;"); }
-
-    document.getElementById("variantName").textContent = `${variantName} • ${size}×${size}`;
-
-    function renderPlayers(){
-      playerListEl.innerHTML="";
-      for(const p of playerInfo){
-        const row=document.createElement("div"); row.className=`player-row${game.turn===p.color && !game.gameStatus().over?" current":""}`;
-        row.innerHTML=`<span class="player-avatar">${p.color==="blue"?"🔵":"🔴"}</span><div class="player-details"><div class="player-name">${escapeHtml(p.name)}</div><div class="player-type">${p.color==="blue"?"Blue · top to bottom":"Red · left to right"}${p.computer?" · Computer":" · Human"}</div></div>`;
-        playerListEl.appendChild(row);
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hex</title>
+    <style>
+      :root {
+        --bg: #17191f;
+        --panel: #22252d;
+        --panel2: #2b2f39;
+        --text: #f1f3f5;
+        --muted: #aeb4c0;
+        --accent: #78a9ff;
+        --border: #3a3f4a;
+        --blue: #2878c8;
+        --red: #c62828;
       }
-    }
-
-    function renderHexSVG(){
-      const r=18;
-      const hexWidth=Math.sqrt(3)*r;
-      const colX=hexWidth;
-      const rowX=hexWidth/2;
-      const rowY=1.5*r;
-      const getCenter=(row,col)=>({cx:col*colX+row*rowX,cy:row*rowY});
-      const corner=(cx,cy,i)=>{const rad=(Math.PI/180)*(60*i-30);return `${cx+r*Math.cos(rad)},${cy+r*Math.sin(rad)}`;};
-      const lastCenter=getCenter(size-1,size-1);
-      const pad=26;
-      const minX=-r-pad, minY=-r-pad, maxX=lastCenter.cx+r+pad, maxY=lastCenter.cy+r+pad;
-      const vb=`${minX} ${minY} ${maxX-minX} ${maxY-minY}`;
-      let svg=`<svg class="hex-board-svg" viewBox="${vb}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${size} by ${size} Hex board">`;
-
-      // Color the actual outer edges of the Hex board: Blue owns the
-      // top/bottom sides and Red owns the left/right sides. These paths
-      // coincide with the outside edges of the outermost hexagons.
-      const topLeft=getCenter(0,0), topRight=getCenter(0,size-1);
-      const bottomLeft=getCenter(size-1,0), bottomRight=getCenter(size-1,size-1);
-      const p=(x,y)=>`${x},${y}`;
-      svg+=`<path d="M ${p(topLeft.cx-hexWidth*.5,topLeft.cy-r*.866)} L ${p(topRight.cx+hexWidth*.5,topRight.cy-r*.866)}" class="hex-edge-blue"/>`;
-      svg+=`<path d="M ${p(bottomLeft.cx-hexWidth*.5,bottomLeft.cy+r*.866)} L ${p(bottomRight.cx+hexWidth*.5,bottomRight.cy+r*.866)}" class="hex-edge-blue"/>`;
-      svg+=`<path d="M ${p(topLeft.cx-r*.5,topLeft.cy-r*.866)} L ${p(bottomLeft.cx-r*.5,bottomLeft.cy+r*.866)}" class="hex-edge-red"/>`;
-      svg+=`<path d="M ${p(topRight.cx+r*.5,topRight.cy-r*.866)} L ${p(bottomRight.cx+r*.5,bottomRight.cy+r*.866)}" class="hex-edge-red"/>`;
-
-      for(let row=0;row<size;row++) for(let col=0;col<size;col++){
-        const {cx,cy}=getCenter(row,col);
-        const pts=[0,1,2,3,4,5].map(i=>corner(cx,cy,i)).join(" ");
-        const color=game.board[row][col]?.color||"";
-        const last=game.lastMove?.to?.r===row && game.lastMove?.to?.c===col;
-        svg+=`<polygon points="${pts}" class="hex-tile ${color}${last?" last-move":""}" data-row="${row}" data-col="${col}"/>`;
+      * {
+        box-sizing: border-box;
       }
-      svg+=`</svg>`;
-      boardEl.innerHTML=svg;
-      boardEl.querySelectorAll(".hex-tile").forEach(tile=>{
-        tile.addEventListener("click",()=>playHumanMove(Number(tile.dataset.row),Number(tile.dataset.col)));
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        color: var(--text);
+        background: var(--bg);
+      }
+      body {
+        min-height: 100vh;
+      }
+      button {
+        font: inherit;
+        color: var(--text);
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      button:hover:not(:disabled) {
+        background: #353a45;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      header {
+        height: 64px;
+        display: flex;
+        align-items: center;
+        padding: 0 22px;
+        border-bottom: 1px solid var(--border);
+        background: #1d2027;
+      }
+      header h1 {
+        font-size: 21px;
+        margin: 0;
+      }
+      .subtitle {
+        color: var(--muted);
+        margin-left: 12px;
+        font-size: 14px;
+      }
+      .app {
+        display: grid;
+        grid-template-columns: minmax(180px, 250px) minmax(420px, 760px) minmax(
+            180px,
+            240px
+          );
+        gap: 20px;
+        max-width: 1380px;
+        margin: 0 auto;
+        padding: 20px;
+        align-items: start;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 15px;
+      }
+      .panel + .panel {
+        margin-top: 14px;
+      }
+      .panel h2 {
+        font-size: 15px;
+        margin: 0 0 12px;
+      }
+      .button-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .button-grid button:first-child {
+        grid-column: 1/-1;
+      }
+      .status {
+        padding: 10px;
+        background: var(--panel2);
+        border-radius: 7px;
+        font-size: 14px;
+        line-height: 1.4;
+        border: 1px solid var(--border);
+      }
+      .status.blue {
+        border-color: var(--blue);
+      }
+      .status.red {
+        border-color: var(--red);
+      }
+      .player-list {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+      .player-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+      }
+      .player-row.current {
+        border-color: var(--accent);
+      }
+      .player-avatar {
+        width: 32px;
+        height: 32px;
+        flex: 0 0 32px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--bg);
+        font-size: 18px;
+      }
+      .player-details {
+        min-width: 0;
+      }
+      .player-name {
+        font-size: 13px;
+        font-weight: 700;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .player-type {
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .board-column {
+        min-width: 0;
+      }
+      .game-info {
+        text-align: center;
+        margin-bottom: 14px;
+      }
+      .game-name {
+        font-size: 16px;
+        font-weight: 650;
+      }
+      .variant-name {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 2px;
+      }
+      .board-wrap {
+        width: min(76vw, 760px);
+        max-width: 100%;
+        margin: auto;
+        overflow: auto;
+        padding: 14px 8px 16px;
+      }
+      .hex-board-svg {
+        width: 100%;
+        height: auto;
+        display: block;
+        overflow: visible;
+      }
+      .hex-tile {
+        fill: #d2c0a8;
+        stroke: #1d2027;
+        stroke-width: 1.5;
+        cursor: pointer;
+        transition:
+          fill 0.15s,
+          filter 0.15s;
+      }
+      .hex-tile:hover {
+        filter: brightness(1.18);
+      }
+      .hex-tile.blue {
+        fill: var(--blue);
+      }
+      .hex-tile.red {
+        fill: var(--red);
+      }
+      .hex-tile.last-move {
+        stroke: #f6e58d;
+        stroke-width: 3.5;
+      }
+      .hex-edge-blue {
+        fill: none;
+        stroke: var(--blue);
+        stroke-width: 7;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .hex-edge-red {
+        fill: none;
+        stroke: var(--red);
+        stroke-width: 7;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .edge-label {
+        display: none;
+      }
+      .move-list {
+        height: 450px;
+        overflow-y: auto;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        background: #1b1e24;
+      }
+      .move-row {
+        display: grid;
+        grid-template-columns: 42px 1fr 1fr;
+        min-height: 32px;
+        align-items: center;
+        border-bottom: 1px solid #30343d;
+        font-size: 13px;
+      }
+      .move-number {
+        color: var(--muted);
+        padding-left: 8px;
+      }
+      .move {
+        padding: 6px 8px;
+      }
+      .note {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .winner {
+        font-size: 15px;
+        font-weight: 800;
+      }
+      .winner.blue {
+        color: var(--blue);
+      }
+      .winner.red {
+        color: var(--red);
+      }
+      @media (max-width: 1050px) {
+        .app {
+          grid-template-columns: 210px minmax(400px, 700px);
+        }
+        .right-column {
+          grid-column: 1/-1;
+        }
+        .move-list {
+          height: 250px;
+        }
+      }
+      @media (max-width: 760px) {
+        header .subtitle {
+          display: none;
+        }
+        .app {
+          display: block;
+          padding: 10px;
+        }
+        .left-column,
+        .right-column {
+          margin-top: 12px;
+        }
+        .board-wrap {
+          width: 100%;
+          padding: 8px 0 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="pageTitle">Hex</h1>
+      <span class="subtitle">Game Player</span>
+    </header>
+    <main class="app">
+      <section class="left-column">
+        <div class="panel">
+          <h2>Controls</h2>
+          <div class="button-grid">
+            <button id="newGameBtn">Back to Game Library</button
+            ><button id="undoBtn">Undo</button
+            ><button id="clearBtn">Reset Position</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Players</h2>
+          <div class="player-list" id="playerList"></div>
+        </div>
+        <div class="panel">
+          <h2>Status</h2>
+          <div class="status" id="status">Loading…</div>
+        </div>
+        <div class="panel">
+          <h2>Rules</h2>
+          <div class="note">
+            Place one stone per turn. Blue connects the top and bottom edges;
+            Red connects the left and right edges. There are no draws in Hex.
+          </div>
+        </div>
+      </section>
+      <section class="board-column">
+        <div class="game-info">
+          <div class="game-name" id="gameName">Hex</div>
+          <div class="variant-name" id="variantName">Loading…</div>
+        </div>
+        <div class="board-wrap">
+          <div id="board" aria-label="Hex board"></div>
+        </div>
+      </section>
+      <section class="right-column">
+        <div class="panel">
+          <h2>Move History</h2>
+          <div class="move-list" id="moveList"></div>
+        </div>
+        <div class="panel">
+          <h2>Game Status</h2>
+          <div id="result" class="note">Game in progress.</div>
+        </div>
+      </section>
+    </main>
+
+    <script src="hex.js?v=20261007-ai2"></script>
+    <script src="hex-ai.js?v=20261007-ai2"></script>
+    <script>
+      "use strict";
+
+      const params = new URLSearchParams(location.search);
+      const variant = params.get("variant") || "standard";
+      const sizeByVariant = { mini: 6, standard: 11, nash: 14 };
+      const namesByVariant = {
+        mini: "Mini (6x6)",
+        standard: "Standard (11x11)",
+        nash: "Nash (14x14)",
+      };
+      const size = sizeByVariant[variant] || 11;
+      const variantName = namesByVariant[variant] || "Standard (11x11)";
+
+      const localPlayers = Math.max(
+        1,
+        parseInt(params.get("localPlayers"), 10) || 1,
+      );
+      const computerPlayers = Math.max(
+        0,
+        parseInt(params.get("computerPlayers"), 10) || 0,
+      );
+      const profileIds = (() => {
+        try {
+          const v = JSON.parse(params.get("localProfileIds") || "[]");
+          return Array.isArray(v) ? v : [];
+        } catch {
+          return [];
+        }
+      })();
+      const computerDifficulties = (() => {
+        try {
+          const v = JSON.parse(params.get("computerDifficulties") || "{}");
+          return v && typeof v === "object" ? v : {};
+        } catch {
+          return {};
+        }
+      })();
+
+      const boardEl = document.getElementById("board");
+      const statusEl = document.getElementById("status");
+      const resultEl = document.getElementById("result");
+      const playerListEl = document.getElementById("playerList");
+      const moveListEl = document.getElementById("moveList");
+      const undoBtn = document.getElementById("undoBtn");
+
+      let profiles = [];
+      try {
+        const saved = JSON.parse(
+          localStorage.getItem("gameLibraryProfiles") || "[]",
+        );
+        if (Array.isArray(saved)) profiles = saved;
+      } catch {}
+
+      const playerInfo = [
+        {
+          color: "blue",
+          name: profileIds[0]
+            ? profiles.find((p) => p.id === profileIds[0])?.name || "Player 1"
+            : "Player 1",
+          computer: false,
+        },
+        {
+          color: "red",
+          name:
+            localPlayers >= 2
+              ? profiles.find((p) => p.id === profileIds[1])?.name || "Player 2"
+              : "Computer",
+          computer: computerPlayers > 0,
+        },
+      ];
+
+      const game = new HexGame(size);
+
+      function playerName(color) {
+        return (
+          playerInfo.find((p) => p.color === color)?.name ||
+          (color === "blue" ? "Blue" : "Red")
+        );
+      }
+      function difficulty() {
+        return computerDifficulties["computer:0"] || "normal";
+      }
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      document.getElementById("variantName").textContent =
+        `${variantName} • ${size}×${size}`;
+
+      function renderPlayers() {
+        playerListEl.innerHTML = "";
+        for (const p of playerInfo) {
+          const row = document.createElement("div");
+          row.className = `player-row${game.turn === p.color && !game.gameStatus().over ? " current" : ""}`;
+          row.innerHTML = `<span class="player-avatar">${p.color === "blue" ? "🔵" : "🔴"}</span><div class="player-details"><div class="player-name">${escapeHtml(p.name)}</div><div class="player-type">${p.color === "blue" ? "Blue · top to bottom" : "Red · left to right"}${p.computer ? " · Computer" : " · Human"}</div></div>`;
+          playerListEl.appendChild(row);
+        }
+      }
+
+      function renderHexSVG() {
+        const r = 18;
+        const hexWidth = Math.sqrt(3) * r;
+        const colX = hexWidth;
+        const rowX = hexWidth / 2;
+        const rowY = 1.5 * r;
+        const getCenter = (row, col) => ({
+          cx: col * colX + row * rowX,
+          cy: row * rowY,
+        });
+        const corner = (cx, cy, i) => {
+          const rad = (Math.PI / 180) * (60 * i - 30);
+          return `${cx + r * Math.cos(rad)},${cy + r * Math.sin(rad)}`;
+        };
+        const lastCenter = getCenter(size - 1, size - 1);
+        const pad = 26;
+        const minX = -r - pad,
+          minY = -r - pad,
+          maxX = lastCenter.cx + r + pad,
+          maxY = lastCenter.cy + r + pad;
+        const vb = `${minX} ${minY} ${maxX - minX} ${maxY - minY}`;
+        let svg = `<svg class="hex-board-svg" viewBox="${vb}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${size} by ${size} Hex board">`;
+
+        // Color the actual outer edges of the Hex board: Blue owns the
+        // top/bottom sides and Red owns the left/right sides. These paths
+        // coincide with the outside edges of the outermost hexagons.
+        const topLeft = getCenter(0, 0),
+          topRight = getCenter(0, size - 1);
+        const bottomLeft = getCenter(size - 1, 0),
+          bottomRight = getCenter(size - 1, size - 1);
+        const p = (x, y) => `${x},${y}`;
+        svg += `<path d="M ${p(topLeft.cx - hexWidth * 0.5, topLeft.cy - r * 0.866)} L ${p(topRight.cx + hexWidth * 0.5, topRight.cy - r * 0.866)}" class="hex-edge-blue"/>`;
+        svg += `<path d="M ${p(bottomLeft.cx - hexWidth * 0.5, bottomLeft.cy + r * 0.866)} L ${p(bottomRight.cx + hexWidth * 0.5, bottomRight.cy + r * 0.866)}" class="hex-edge-blue"/>`;
+        svg += `<path d="M ${p(topLeft.cx - r * 0.5, topLeft.cy - r * 0.866)} L ${p(bottomLeft.cx - r * 0.5, bottomLeft.cy + r * 0.866)}" class="hex-edge-red"/>`;
+        svg += `<path d="M ${p(topRight.cx + r * 0.5, topRight.cy - r * 0.866)} L ${p(bottomRight.cx + r * 0.5, bottomRight.cy + r * 0.866)}" class="hex-edge-red"/>`;
+
+        for (let row = 0; row < size; row++)
+          for (let col = 0; col < size; col++) {
+            const { cx, cy } = getCenter(row, col);
+            const pts = [0, 1, 2, 3, 4, 5]
+              .map((i) => corner(cx, cy, i))
+              .join(" ");
+            const color = game.board[row][col]?.color || "";
+            const last =
+              game.lastMove?.to?.r === row && game.lastMove?.to?.c === col;
+            svg += `<polygon points="${pts}" class="hex-tile ${color}${last ? " last-move" : ""}" data-row="${row}" data-col="${col}"/>`;
+          }
+        svg += `</svg>`;
+        boardEl.innerHTML = svg;
+        boardEl.querySelectorAll(".hex-tile").forEach((tile) => {
+          tile.addEventListener("click", () =>
+            playHumanMove(Number(tile.dataset.row), Number(tile.dataset.col)),
+          );
+        });
+      }
+
+      function renderStatus() {
+        const s = game.gameStatus();
+        statusEl.textContent = s.text;
+        statusEl.className = `status${game.turn ? ` ${game.turn}` : ""}`;
+        if (s.over) {
+          resultEl.innerHTML = `<span class="winner ${s.winner}">${escapeHtml(playerName(s.winner))} wins!</span>`;
+        } else {
+          resultEl.textContent = "Game in progress.";
+        }
+        undoBtn.disabled = !game.history.length || isComputerTurn() || s.over;
+      }
+
+      function renderMoves() {
+        moveListEl.innerHTML = "";
+        const moves = game.sanHistory;
+        for (let i = 0; i < moves.length; i += 2) {
+          const row = document.createElement("div");
+          row.className = "move-row";
+          row.innerHTML = `<div class="move-number">${Math.floor(i / 2) + 1}.</div><div class="move">${escapeHtml(moves[i] || "")}</div><div class="move">${escapeHtml(moves[i + 1] || "")}</div>`;
+          moveListEl.appendChild(row);
+        }
+        moveListEl.scrollTop = moveListEl.scrollHeight;
+      }
+
+      function render() {
+        renderHexSVG();
+        renderPlayers();
+        renderStatus();
+        renderMoves();
+      }
+      function isComputerTurn() {
+        return (
+          playerInfo.find((p) => p.color === game.turn)?.computer === true &&
+          !game.gameStatus().over
+        );
+      }
+
+      function playHumanMove(r, c) {
+        if (isComputerTurn() || game.gameStatus().over) return;
+        if (!game.makeMove({ from: { r, c }, to: { r, c } })) return;
+        render();
+        scheduleComputerTurn();
+      }
+
+      function scheduleComputerTurn() {
+        if (!isComputerTurn()) return;
+        render();
+        window.setTimeout(() => {
+          if (!isComputerTurn()) return;
+          const move = window.HexAI?.findBestMove(game, difficulty());
+          if (!move) return;
+          if (
+            game.makeMove({
+              from: { r: move.r, c: move.c },
+              to: { r: move.r, c: move.c },
+            })
+          )
+            render();
+        }, 300);
+      }
+
+      document.getElementById("newGameBtn").addEventListener("click", () => {
+        window.location.href = "../index.html";
       });
-    }
+      document.getElementById("clearBtn").addEventListener("click", () => {
+        game.reset();
+        render();
+        scheduleComputerTurn();
+      });
+      undoBtn.addEventListener("click", () => {
+        if (!game.history.length || isComputerTurn() || game.gameStatus().over)
+          return;
+        game.undo();
+        if (
+          playerInfo.find((p) => p.color === "red")?.computer &&
+          game.history.length &&
+          game.turn === "red"
+        ) {
+          game.undo();
+        }
+        render();
+      });
 
-    function renderStatus(){
-      const s=game.gameStatus();
-      statusEl.textContent=s.text;
-      statusEl.className=`status${game.turn?` ${game.turn}`:""}`;
-      if(s.over){
-        resultEl.innerHTML=`<span class="winner ${s.winner}">${escapeHtml(playerName(s.winner))} wins!</span>`;
-      }else{
-        resultEl.textContent="Game in progress.";
-      }
-      undoBtn.disabled=!game.history.length || isComputerTurn() || s.over;
-    }
-
-    function renderMoves(){
-      moveListEl.innerHTML="";
-      const moves=game.sanHistory;
-      for(let i=0;i<moves.length;i+=2){
-        const row=document.createElement("div"); row.className="move-row";
-        row.innerHTML=`<div class="move-number">${Math.floor(i/2)+1}.</div><div class="move">${escapeHtml(moves[i]||"")}</div><div class="move">${escapeHtml(moves[i+1]||"")}</div>`;
-        moveListEl.appendChild(row);
-      }
-      moveListEl.scrollTop=moveListEl.scrollHeight;
-    }
-
-    function render(){renderHexSVG();renderPlayers();renderStatus();renderMoves();}
-    function isComputerTurn(){return playerInfo.find(p=>p.color===game.turn)?.computer===true && !game.gameStatus().over;}
-
-    function playHumanMove(r,c){
-      if(isComputerTurn() || game.gameStatus().over) return;
-      if(!game.makeMove({from:{r,c},to:{r,c}})) return;
       render();
       scheduleComputerTurn();
-    }
-
-    function scheduleComputerTurn(){
-      if(!isComputerTurn()) return;
-      render();
-      window.setTimeout(()=>{
-        if(!isComputerTurn()) return;
-        const move=window.HexAI?.findBestMove(game,difficulty());
-        if(!move) return;
-        if(game.makeMove({from:{r:move.r,c:move.c},to:{r:move.r,c:move.c}})) render();
-      },300);
-    }
-
-    document.getElementById("newGameBtn").addEventListener("click",()=>{window.location.href="../index.html";});
-    document.getElementById("clearBtn").addEventListener("click",()=>{game.reset();render();scheduleComputerTurn();});
-    undoBtn.addEventListener("click",()=>{
-      if(!game.history.length || isComputerTurn() || game.gameStatus().over) return;
-      game.undo();
-      if(playerInfo.find(p=>p.color==="red")?.computer && game.history.length && game.turn==="red"){game.undo();}
-      render();
-    });
-
-    render();
-    scheduleComputerTurn();
-  </script>
-</body>
+    </script>
+  </body>
 </html>
