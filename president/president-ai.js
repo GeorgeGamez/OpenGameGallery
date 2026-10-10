@@ -53,5 +53,16 @@
     return { type: "play", cardIds: best.cardIds };
   }
 
-  window.PresidentAI = { chooseAction };
+  function chooseExchange(game, task) {
+    if (!task) return null;
+    const hand = [...(game.hands[task.player] || [])];
+    const suitOrder = { "♣": 0, "♦": 1, "♥": 2, "♠": 3 };
+    const count = Math.min(task.count, hand.length);
+    hand.sort((a, b) => task.kind === "low"
+      ? (a.rank - b.rank || (suitOrder[a.suit] ?? 4) - (suitOrder[b.suit] ?? 4))
+      : (b.rank - a.rank || (suitOrder[b.suit] ?? 4) - (suitOrder[a.suit] ?? 4)));
+    return { type: "exchange", cardIds: hand.slice(0, count).map(card => card.id) };
+  }
+
+  window.PresidentAI = { chooseAction, chooseExchange };
 })();
