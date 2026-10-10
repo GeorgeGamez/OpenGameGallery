@@ -7,6 +7,11 @@
     const raw = params.get("onlineConfig") || (typeof sessionStorage !== "undefined" && sessionStorage.getItem("gameLibraryOnlineConfig")) || "";
     if (raw) launchConfig = JSON.parse(raw);
   } catch {}
+  // The library launcher stores per-game toggles inside config.options.
+  // Flatten them onto the game config so President can apply them on launch.
+  if (launchConfig && launchConfig.options && typeof launchConfig.options === "object") {
+    launchConfig = { ...launchConfig, ...launchConfig.options };
+  }
   const profiles = (() => {
     try { return JSON.parse(localStorage.getItem("gameLibraryProfiles") || "[]"); }
     catch { return []; }
