@@ -4,11 +4,7 @@ This game is still in very early development. Many features may be broken or rem
 Currently, only chess and draughts available, as the project just started.
 In the future, more games are planned, such as hex, rummy and backgammon.
 
-## Recent Updates
-
-### Online play is now available!
-
-## Working Game List
+## Released Game List
 ### Chess
 Standard  
 Chess 960  
@@ -24,16 +20,19 @@ Russian
 
 ### Reversi
 
-## Coming Soon
-### Chess
-Grand Chess  
-Shako  
+## Beta
 
 ### Hex
 Mini 6x6  
 Standard 11x11  
 Nash 14x14  
 
-## Rummy
+### Rummy
 
-## Backgammon
+## Future Games/Not Public Yet
+
+### Eins
+Standard  
+Eins Flip  
+
+### President
