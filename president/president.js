@@ -17,12 +17,16 @@
   const OPENING_CARD_ID = "3-♣";
 
   function rankLabel(rank) {
-    return ({ 11: "J", 12: "Q", 13: "K", 14: "A", 15: "2" })[rank] || String(rank);
+    return ({ 11: "J", 12: "Q", 13: "K", 14: "A", 15: "2", 16: "Joker" })[rank] || String(rank);
   }
-  function buildDeck() {
+  function buildDeck(includeJokers = false) {
     const deck = [];
     for (let rank = 3; rank <= 15; rank++) {
       for (const suit of SUITS) deck.push({ id: `${rank}-${suit}`, rank, suit });
+    }
+    if (includeJokers) {
+      deck.push({ id: "joker-red", rank: 16, suit: null, joker: true, jokerColor: "red" });
+      deck.push({ id: "joker-black", rank: 16, suit: null, joker: true, jokerColor: "black" });
     }
     for (let i = deck.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -31,15 +35,17 @@
     return deck;
   }
   function sortHand(hand) {
-    hand.sort((a, b) => a.rank - b.rank || SUIT_ORDER[a.suit] - SUIT_ORDER[b.suit]);
+    hand.sort((a, b) => a.rank - b.rank || (SUIT_ORDER[a.suit] ?? 4) - (SUIT_ORDER[b.suit] ?? 4));
   }
-  function suitCard(card) { return `${rankLabel(card.rank)}${card.suit}`; }
+  function suitCard(card) { return card.joker ? "Joker" : `${rankLabel(card.rank)}${card.suit}`; }
   function placeName(index, total) {
     if (index === 0) return "President";
     if (index === total - 1) return "Scum";
-    if (index === 1 && total >= 4) return "Vice-President";
-    if (index === total - 2 && total >= 5) return "Vice-Scum";
-    return `Place ${index + 1}`;
+    if (total === 3) return "Person";
+    if (index === 1) return "Vice President";
+    if (total === 4 && index === 2) return "High Scum";
+    if (total >= 5 && index === total - 2) return "High Scum";
+    return "Person";
   }
 
   class PresidentGame {
@@ -61,15 +67,51 @@
         seat: i,
       }));
       if (this.players.length < 3) {
-        for (let i = this.players.length; i < 3; i++) this.players.push({ type: "computer", name: `Computer ${i}`, avatar: "🤖", difficulty: "normal", seat: i });
+        for (let i = this.players.length; i < 3; i++) this.players.push({ type: "computer", name: `Computer ${i + 1}`, avatar: "🤖", difficulty: "normal", seat: i });
       }
+      this.roundNumber = 1;
+      this.previousFinishOrder = [];
+      this.phase = "playing";
+      this.exchangeTasks = [];
+      this.exchangeTaskIndex = 0;
+      this.exchangeSubmissions = {};
+      this.dealHands();
+      this.startPlayPhase();
+      this.moveHistory = [];
+      this.finishOrder = [];
+      this.over = false;
+      this.winner = -1;
+      this.history = [];
+    }
+
+    dealHands() {
       this.hands = this.players.map(() => []);
-      const deck = buildDeck();
+      // Variation changes affect the next deal, not cards already dealt into the current round.
+      this.roundUsesJokers = this.config.jokers === true;
+      const deck = buildDeck(this.roundUsesJokers);
       let cursor = 0;
       while (deck.length) this.hands[cursor++ % this.players.length].push(deck.pop());
       this.hands.forEach(sortHand);
+    }
+
+    startPlayPhase() {
+      this.phase = "playing";
+      this.currentPlay = null;
+      this.lastPlayer = -1;
+      this.passes = new Set();
+      this.openingPending = true;
+      this.exchangeTasks = [];
+      this.exchangeTaskIndex = 0;
+      this.exchangeSubmissions = {};
       this.turn = this.hands.findIndex(hand => hand.some(card => card.id === OPENING_CARD_ID));
       if (this.turn < 0) this.turn = 0;
+    }
+
+    startNextRound() {
+      if (!this.over || !this.finishOrder.length) return false;
+      this.previousFinishOrder = this.finishOrder.slice();
+      this.roundNumber += 1;
+      this.dealHands();
       this.currentPlay = null;
       this.lastPlayer = -1;
       this.passes = new Set();
@@ -79,6 +121,63 @@
       this.over = false;
       this.winner = -1;
       this.history = [];
+      this.phase = "exchange";
+      this.exchangeTasks = [];
+      this.exchangeTaskIndex = 0;
+      this.exchangeSubmissions = {};
+
+      const ranking = this.previousFinishOrder;
+      const total = this.players.length;
+      const president = ranking[0];
+      const scum = ranking[total - 1];
+      const majorCount = total >= 4 ? 2 : 1;
+      this.exchangeTasks.push({ player: president, count: majorCount, kind: "low", partner: scum, pairId: "president-scum", title: "President" });
+      this.exchangeTasks.push({ player: scum, count: majorCount, kind: "high", partner: president, pairId: "president-scum", title: "Scum" });
+      if (total >= 4) {
+        const vicePresident = ranking[1];
+        const highScum = ranking[total - 2];
+        this.exchangeTasks.push({ player: vicePresident, count: 1, kind: "low", partner: highScum, pairId: "vice-highscum", title: "Vice President" });
+        this.exchangeTasks.push({ player: highScum, count: 1, kind: "high", partner: vicePresident, pairId: "vice-highscum", title: "High Scum" });
+      }
+      if (!this.exchangeTasks.length) this.startPlayPhase();
+      return true;
+    }
+
+    currentExchangeTask() {
+      return this.phase === "exchange" ? this.exchangeTasks[this.exchangeTaskIndex] || null : null;
+    }
+
+    submitExchange(cardIds) {
+      const task = this.currentExchangeTask();
+      if (!task || this.over || !Array.isArray(cardIds)) return false;
+      const ids = [...new Set(cardIds.map(String))];
+      if (ids.length !== task.count || ids.length !== cardIds.length) return false;
+      const hand = this.hands[task.player] || [];
+      const cards = ids.map(id => hand.find(card => card.id === id));
+      if (cards.some(card => !card)) return false;
+      this.exchangeSubmissions[this.exchangeTaskIndex] = cards.map(card => ({ ...card }));
+
+      const completedTaskIndex = this.exchangeTaskIndex;
+      const pairTaskIndexes = this.exchangeTasks.map((candidate, index) => candidate.pairId === task.pairId ? index : -1).filter(index => index >= 0);
+      if (pairTaskIndexes.every(index => this.exchangeSubmissions[index])) {
+        const firstIndex = pairTaskIndexes[0], secondIndex = pairTaskIndexes[1];
+        const firstTask = this.exchangeTasks[firstIndex], secondTask = this.exchangeTasks[secondIndex];
+        const firstCards = this.exchangeSubmissions[firstIndex];
+        const secondCards = this.exchangeSubmissions[secondIndex];
+        const firstIds = new Set(firstCards.map(card => card.id));
+        const secondIds = new Set(secondCards.map(card => card.id));
+        this.hands[firstTask.player] = this.hands[firstTask.player].filter(card => !firstIds.has(card.id));
+        this.hands[secondTask.player] = this.hands[secondTask.player].filter(card => !secondIds.has(card.id));
+        this.hands[firstTask.player].push(...secondCards.map(card => ({ ...card })));
+        this.hands[secondTask.player].push(...firstCards.map(card => ({ ...card })));
+        sortHand(this.hands[firstTask.player]);
+        sortHand(this.hands[secondTask.player]);
+        this.moveHistory.push({ player: firstTask.player, name: this.players[firstTask.player].name, type: "exchange", cards: firstCards.map(suitCard), target: this.players[secondTask.player].name });
+        this.moveHistory.push({ player: secondTask.player, name: this.players[secondTask.player].name, type: "exchange", cards: secondCards.map(suitCard), target: this.players[firstTask.player].name });
+      }
+      this.exchangeTaskIndex = completedTaskIndex + 1;
+      if (this.exchangeTaskIndex >= this.exchangeTasks.length) this.startPlayPhase();
+      return true;
     }
 
     current() { return this.players[this.turn]; }
@@ -90,6 +189,8 @@
         players: this.players, hands: this.hands, turn: this.turn, currentPlay: this.currentPlay,
         lastPlayer: this.lastPlayer, passes: [...this.passes], openingPending: this.openingPending,
         moveHistory: this.moveHistory, finishOrder: this.finishOrder, over: this.over, winner: this.winner,
+        phase: this.phase, exchangeTasks: this.exchangeTasks, exchangeTaskIndex: this.exchangeTaskIndex,
+        exchangeSubmissions: this.exchangeSubmissions, roundNumber: this.roundNumber, previousFinishOrder: this.previousFinishOrder,
       };
     }
     restore(snapshot) {
@@ -146,6 +247,7 @@
       this.save();
       const playerIndex = this.turn;
       this.hands[playerIndex] = hand.filter(card => !ids.includes(card.id));
+      const clearsOnEight = this.config.eightClearsPile === true && cards[0].rank === 8;
       this.currentPlay = { player: playerIndex, cards: cards.map(card => ({ ...card })), rank: cards[0].rank };
       this.lastPlayer = playerIndex;
       this.moveHistory.push({ player: playerIndex, name: this.players[playerIndex].name, type: "play", cards: cards.map(suitCard), rank: cards[0].rank });
@@ -153,7 +255,12 @@
       sortHand(this.hands[playerIndex]);
       if (this.hands[playerIndex].length === 0 && !this.finishOrder.includes(playerIndex)) this.finishOrder.push(playerIndex);
       this.finishIfDone();
-      if (!this.over) this.advanceAfterPlay();
+      if (!this.over) {
+        if (clearsOnEight) {
+          this.moveHistory.push({ player: playerIndex, name: this.players[playerIndex].name, type: "clear", cards: cards.map(suitCard) });
+          this.clearTrick();
+        } else this.advanceAfterPlay();
+      }
       return true;
     }
 
@@ -247,36 +354,63 @@
     return String(value ?? "").replace(/[&<>\"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   }
   function cardInner(card) {
-    const r = rankLabel(card.rank), red = ["♥", "♦"].includes(card.suit);
+    if (card.joker) {
+      return `<span class="corner"><span>JOKER</span><span class="corner-suit">★</span></span><span class="face"><span class="center-rank">🃏</span><span class="center-suit">JOKER</span></span><span class="bottom"><span>JOKER</span><span class="corner-suit">★</span></span>`;
+    }
+    const r = rankLabel(card.rank);
     return `<span class="corner"><span>${r}</span><span class="corner-suit">${card.suit}</span></span><span class="face"><span class="center-rank">${r}</span><span class="center-suit">${card.suit}</span></span><span class="bottom"><span>${r}</span><span class="corner-suit">${card.suit}</span></span>`;
   }
   function cardHtml(card, isSelected = false, mini = false, table = false) {
-    const red = ["♥", "♦"].includes(card.suit);
-    return `<div class="card ${red ? "red" : "black"} ${isSelected ? "selected" : ""} ${mini ? "mini" : ""} ${table ? "table-card" : ""}" data-card-id="${esc(card.id)}">${cardInner(card)}</div>`;
+    const red = card.joker ? card.jokerColor === "red" : ["♥", "♦"].includes(card.suit);
+    return `<div class="card ${red ? "red" : "black"} ${card.joker ? "joker" : ""} ${isSelected ? "selected" : ""} ${mini ? "mini" : ""} ${table ? "table-card" : ""}" data-card-id="${esc(card.id)}">${cardInner(card)}</div>`;
   }
-  function isHumanTurn() { return !game.over && game.current()?.type === "human"; }
+  function activePlayerIndex() {
+    const task = game.currentExchangeTask();
+    return game.phase === "exchange" && task ? task.player : game.turn;
+  }
+  function activePlayer() { return game.players[activePlayerIndex()]; }
+  function isHumanTurn() {
+    if (game.over) return false;
+    if (game.phase === "exchange") return activePlayer()?.type === "human";
+    return game.current()?.type === "human";
+  }
   function setStatus(text) { $("status").textContent = text; }
 
   function renderPlayers() {
     $("playerList").innerHTML = game.players.map((player, index) => {
-      const place = game.finishOrder.indexOf(index);
+      let place = game.finishOrder.indexOf(index);
+      if (game.phase === "exchange") place = game.previousFinishOrder.indexOf(index);
       const placeText = place >= 0 ? placeName(place, game.players.length) : "";
       const type = player.type === "computer" ? `Computer · ${player.difficulty || "normal"}` : "Local player";
-      return `<div class="player-row ${index === game.turn && !game.over ? "current" : ""}"><span class="avatar">${esc(player.avatar || "🃏")}</span><div><div class="player-name">${esc(player.name)}</div><div class="player-sub">${type} · ${game.hands[index].length} card${game.hands[index].length === 1 ? "" : "s"}</div></div>${placeText ? `<span class="place">${esc(placeText)}</span>` : ""}</div>`;
+      return `<div class="player-row ${index === activePlayerIndex() && !game.over ? "current" : ""}"><span class="avatar">${esc(player.avatar || "🃏")}</span><div><div class="player-name">${esc(player.name)}</div><div class="player-sub">${type} · ${game.hands[index].length} card${game.hands[index].length === 1 ? "" : "s"}</div></div>${placeText ? `<span class="place">${esc(placeText)}</span>` : ""}</div>`;
     }).join("");
   }
 
   function render() {
     if (!game) return;
     renderPlayers();
-    $("trickCaption").textContent = game.over ? "Round complete" : game.currentPlay ? `${game.players[game.currentPlay.player].name} played ${game.currentPlay.cards.length} card${game.currentPlay.cards.length === 1 ? "" : "s"} · rank ${rankLabel(game.currentPlay.rank)}` : game.openingPending ? "The player with 3♣ starts; the opening play must include 3♣." : `${game.players[game.turn].name} leads the next trick.`;
-    $("tableCards").innerHTML = game.currentPlay ? game.currentPlay.cards.map(card => cardHtml(card, false, true, true)).join("") : '<div class="muted">No active play · lead any rank</div>';
-    $("trickMeta").innerHTML = game.currentPlay ? `<span class="pill">${game.currentPlay.cards.length} card${game.currentPlay.cards.length === 1 ? "" : "s"}</span><span class="pill">${game.passes.size} passed</span>` : "";
+    const task = game.currentExchangeTask();
+    const currentPlayer = activePlayer();
+    const currentPlayerName = currentPlayer?.name || "Player";
+    $("gameName").textContent = `President · Round ${game.roundNumber}`;
+    $("variantName").textContent = `Classic President · 3 is low, 2 is high${game.roundUsesJokers ? ", Jokers are highest" : ""}`;
+    if (game.phase === "exchange") {
+      $("trickCaption").textContent = `Card exchange before Round ${game.roundNumber}`;
+      $("tableCards").innerHTML = '<div class="muted">Cards are exchanged by the previous round’s finishing positions.</div>';
+      $("trickMeta").innerHTML = `<span class="pill">${game.exchangeTaskIndex + 1} of ${game.exchangeTasks.length} exchanges</span>`;
+    } else {
+      $("trickCaption").textContent = game.over ? "Round complete" : game.currentPlay ? `${game.players[game.currentPlay.player].name} played ${game.currentPlay.cards.length} card${game.currentPlay.cards.length === 1 ? "" : "s"} · rank ${rankLabel(game.currentPlay.rank)}` : game.openingPending ? "The player with 3♣ starts; the opening play must include 3♣." : `${game.players[game.turn].name} leads the next trick.`;
+      $("tableCards").innerHTML = game.currentPlay ? game.currentPlay.cards.map(card => cardHtml(card, false, true, true)).join("") : '<div class="muted">No active play · lead any rank</div>';
+      $("trickMeta").innerHTML = game.currentPlay ? `<span class="pill">${game.currentPlay.cards.length} card${game.currentPlay.cards.length === 1 ? "" : "s"}</span><span class="pill">${game.passes.size} passed</span>` : "";
+    }
 
     const humanTurn = isHumanTurn();
-    const hand = humanTurn ? game.hands[game.turn] : [];
-    $("handTitle").textContent = humanTurn ? `${game.current().name}'s hand` : game.over ? "Round complete" : `${game.current().name}'s turn`;
-    $("hand").innerHTML = hand.length ? hand.map(card => cardHtml(card, selected.has(card.id))).join("") : game.over ? '<div class="muted">All hands have been ranked.</div>' : '<div class="muted">Computer hand hidden while it thinks.</div>';
+    const activeIndex = activePlayerIndex();
+    const hand = humanTurn ? game.hands[activeIndex] : [];
+    $("handTitle").textContent = game.phase === "exchange"
+      ? (humanTurn ? `${currentPlayerName}'s hand · card exchange` : `${currentPlayerName}'s exchange`)
+      : humanTurn ? `${currentPlayerName}'s hand` : game.over ? "Round complete" : `${currentPlayerName}'s turn`;
+    $("hand").innerHTML = hand.length ? hand.map(card => cardHtml(card, selected.has(card.id))).join("") : game.over && game.phase !== "exchange" ? '<div class="muted">All hands have been ranked.</div>' : '<div class="muted">Computer hand hidden while it thinks.</div>';
     $("hand").querySelectorAll("[data-card-id]").forEach(element => {
       element.onclick = () => {
         if (!isHumanTurn()) return;
@@ -285,15 +419,27 @@
         render();
       };
     });
-    const selectionLegal = humanTurn && selected.size > 0 && game.isValidSelection([...selected]);
+    const selectionLegal = game.phase === "exchange"
+      ? Boolean(humanTurn && task && selected.size === task.count && [...selected].every(id => game.hands[activeIndex].some(card => card.id === id)))
+      : Boolean(humanTurn && selected.size > 0 && game.isValidSelection([...selected]));
+    $("playBtn").textContent = game.phase === "exchange" ? "Confirm Card Swap" : "Play Selected Cards";
     $("playBtn").disabled = !selectionLegal;
-    $("passBtn").disabled = !humanTurn || !game.canPass();
+    $("passBtn").disabled = game.phase === "exchange" || !humanTurn || !game.canPass();
     $("clearBtn").disabled = !humanTurn || selected.size === 0;
-    $("undoBtn").disabled = game.history.length === 0;
+    $("undoBtn").disabled = game.history.length === 0 || game.phase === "exchange";
+    $("nextRoundBtn").disabled = !game.over;
+    $("newGameBtn").textContent = "New Game";
 
-    if (game.over) {
+    if (game.phase === "exchange" && task) {
+      const label = task.kind === "low" ? "low" : "high";
+      if (currentPlayer?.type === "computer") {
+        setStatus(`${currentPlayerName} (${task.title}) is choosing ${task.count} ${label} card${task.count === 1 ? "" : "s"} to exchange with ${game.players[task.partner].name}…`);
+      } else {
+        setStatus(`${currentPlayerName} (${task.title}): choose ${task.count} ${label} card${task.count === 1 ? "" : "s"} to give to ${game.players[task.partner].name}, then confirm. Previous standings determine who exchanges; AI players choose automatically.`);
+      }
+    } else if (game.over) {
       const rankings = game.finishOrder.map((playerIndex, place) => `${placeName(place, game.players.length)}: ${game.players[playerIndex].name}`).join(" · ");
-      setStatus(`Round complete. ${game.players[game.winner]?.name || "A player"} is President. ${rankings}`);
+      setStatus(`Round ${game.roundNumber} complete. ${game.players[game.winner]?.name || "A player"} is President. ${rankings} Click Next Round to deal again and exchange cards based on these standings.`);
     } else if (game.current()?.type === "computer") {
       setStatus(`${game.current().name} is thinking…`);
     } else if (game.openingPending) {
@@ -305,22 +451,32 @@
     }
 
     $("history").innerHTML = game.moveHistory.slice(-80).reverse().map(move => {
-      const content = move.type === "pass" ? "passed" : `played ${move.cards.join(" ")}`;
+      const content = move.type === "pass" ? "passed"
+        : move.type === "clear" ? `cleared the pile with ${move.cards.join(" ")}`
+        : move.type === "exchange" ? `exchanged ${move.cards.join(" ")} with ${esc(move.target)}`
+        : `played ${move.cards.join(" ")}`;
       return `<div><strong>${esc(move.name)}</strong> ${content}</div>`;
     }).join("") || '<div class="muted">Moves will appear here.</div>';
-    if (humanTurn && selected.size) {
-      const chosen = [...selected].map(id => game.hands[game.turn].find(card => card.id === id)).filter(Boolean);
+    if (game.phase === "exchange" && humanTurn && task) {
+      const chosen = [...selected].map(id => game.hands[activeIndex].find(card => card.id === id)).filter(Boolean);
+      $("handHint").textContent = selectionLegal
+        ? `Ready to exchange: ${chosen.map(suitCard).join(" ")}`
+        : `Select exactly ${task.count} ${task.kind} card${task.count === 1 ? "" : "s"}.`;
+    } else if (humanTurn && selected.size) {
+      const chosen = [...selected].map(id => game.hands[activeIndex].find(card => card.id === id)).filter(Boolean);
       $("handHint").textContent = selectionLegal ? `Ready to play: ${chosen.map(suitCard).join(" ")}` : "Choose one to four cards of the same rank that legally beat the current play.";
     } else {
-      $("handHint").textContent = humanTurn ? `${game.hands[game.turn].length} cards · select a matching set, then press Play Selected Cards.` : game.over ? "Start a new game to play again." : "The current player's hand is hidden.";
+      $("handHint").textContent = humanTurn ? `${game.hands[activeIndex].length} cards · select a matching set, then press Play Selected Cards.` : game.over ? "Start the next round or start a new game." : "The current player's hand is hidden.";
     }
     scheduleAI();
   }
 
   function apply(action) {
-    if (!action || game.over || !isHumanTurn()) return false;
+    if (!action || game.over) return false;
     let ok = false;
-    if (action.type === "play") ok = game.play(action.cardIds);
+    if (game.phase === "exchange" && action.type === "exchange") ok = game.submitExchange(action.cardIds);
+    else if (game.phase !== "exchange" && !isHumanTurn()) return false;
+    else if (action.type === "play") ok = game.play(action.cardIds);
     else if (action.type === "pass") ok = game.pass();
     if (ok) { selected.clear(); render(); }
     return ok;
@@ -328,23 +484,57 @@
 
   function scheduleAI() {
     if (aiTimer !== null) { clearTimeout(aiTimer); aiTimer = null; }
-    if (game.over || game.current()?.type !== "computer") return;
+    if (game.over) return;
+    const task = game.currentExchangeTask();
+    const activeIndex = game.phase === "exchange" && task ? task.player : game.turn;
+    if (game.players[activeIndex]?.type !== "computer") return;
     aiTimer = setTimeout(() => {
       aiTimer = null;
-      if (game.over || game.current()?.type !== "computer") return;
-      const action = window.PresidentAI?.chooseAction(game, game.turn);
-      if (!action) { setStatus("Computer could not find a move; start a new game or undo."); return; }
-      const ok = action.type === "play" ? game.play(action.cardIds) : action.type === "pass" ? game.pass() : false;
-      if (!ok) { setStatus("Computer produced an invalid move. Please undo or start a new game."); return; }
+      if (game.over) return;
+      if (game.phase === "exchange") {
+        const currentTask = game.currentExchangeTask();
+        if (!currentTask || game.players[currentTask.player]?.type !== "computer") return;
+        const action = window.PresidentAI?.chooseExchange(game, currentTask);
+        if (!action || action.type !== "exchange" || !game.submitExchange(action.cardIds)) {
+          setStatus("Computer could not complete the card exchange. Please start a new game.");
+          return;
+        }
+      } else {
+        if (game.current()?.type !== "computer") return;
+        const action = window.PresidentAI?.chooseAction(game, game.turn);
+        if (!action) { setStatus("Computer could not find a move; start a new game or undo."); return; }
+        const ok = action.type === "play" ? game.play(action.cardIds) : action.type === "pass" ? game.pass() : false;
+        if (!ok) { setStatus("Computer produced an invalid move. Please undo or start a new game."); return; }
+      }
       selected.clear();
       render();
     }, 500);
   }
 
-  $("playBtn").onclick = () => apply({ type: "play", cardIds: [...selected] });
+  $("playBtn").onclick = () => apply({ type: game.phase === "exchange" ? "exchange" : "play", cardIds: [...selected] });
   $("passBtn").onclick = () => apply({ type: "pass" });
   $("clearBtn").onclick = () => { selected.clear(); render(); };
-  $("newGameBtn").onclick = () => { if (aiTimer !== null) clearTimeout(aiTimer); game = new PresidentGame(launchConfig); selected.clear(); render(); };
+  $("newGameBtn").onclick = () => {
+    if (aiTimer !== null) clearTimeout(aiTimer);
+    game = new PresidentGame({ ...launchConfig, eightClearsPile: $("eightClearToggle").checked });
+    selected.clear(); render();
+  };
+  $("nextRoundBtn").onclick = () => {
+    if (aiTimer !== null) clearTimeout(aiTimer);
+    if (game.startNextRound()) { selected.clear(); render(); }
+  };
+  $("eightClearToggle").checked = game.config.eightClearsPile === true;
+  $("eightClearToggle").addEventListener("change", event => {
+    game.config.eightClearsPile = event.target.checked;
+    selected.clear();
+    render();
+  });
+  $("jokerToggle").checked = game.config.jokers === true;
+  $("jokerToggle").addEventListener("change", event => {
+    game.config.jokers = event.target.checked;
+    selected.clear();
+    render();
+  });
   $("undoBtn").onclick = () => { if (aiTimer !== null) clearTimeout(aiTimer); if (game.undo()) { selected.clear(); render(); } };
   $("backBtn").onclick = () => { location.href = "../index.html"; };
 
