@@ -18,7 +18,9 @@ class HexGame {
 
   clone() {
     return {
-      board: this.board.map((row) => row.map((p) => (p ? { ...p } : null))),
+      board: this.board.map((row) =>
+        row.map((p) => (p ? { ...p } : null)),
+      ),
       turn: this.turn,
       san: [...this.sanHistory],
       lastMove: this.lastMove
@@ -116,7 +118,10 @@ class HexGame {
         const { r, c } = queue.shift();
         if (r === this.size - 1) return true;
         for (const [nr, nc] of this.neighbors(r, c)) {
-          if (!visited[nr][nc] && this.board[nr][nc]?.color === "blue") {
+          if (
+            !visited[nr][nc] &&
+            this.board[nr][nc]?.color === "blue"
+          ) {
             visited[nr][nc] = true;
             queue.push({ r: nr, c: nc });
           }
@@ -133,7 +138,10 @@ class HexGame {
         const { r, c } = queue.shift();
         if (c === this.size - 1) return true;
         for (const [nr, nc] of this.neighbors(r, c)) {
-          if (!visited[nr][nc] && this.board[nr][nc]?.color === "red") {
+          if (
+            !visited[nr][nc] &&
+            this.board[nr][nc]?.color === "red"
+          ) {
             visited[nr][nc] = true;
             queue.push({ r: nr, c: nc });
           }
@@ -163,5 +171,4 @@ class HexGame {
 }
 
 if (typeof window !== "undefined") window.HexGame = HexGame;
-if (typeof module !== "undefined" && module.exports)
-  module.exports = { HexGame };
+if (typeof module !== "undefined" && module.exports) module.exports = { HexGame };
