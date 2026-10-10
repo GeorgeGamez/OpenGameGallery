@@ -83,16 +83,6 @@
           "id": "american",
           "name": "American Checkers",
           "release": "normal"
-        },
-        {
-          "id": "russian",
-          "name": "Russian Draughts",
-          "release": "normal"
-        },
-        {
-          "id": "canadian",
-          "name": "Canadian Draughts",
-          "release": "normal"
         }
       ],
       "capabilities": {
@@ -109,6 +99,88 @@
         }
       },
       "release": "normal"
+    },
+    {
+      "id": "hex",
+      "name": "Hex",
+      "type": "board",
+      "page": "hex/hex.html",
+      "description": "A connection game where players race to build an unbroken path between their opposing borders.",
+      "image": "images/cover/hex.png",
+      "categories": [
+        "board",
+        "strategy",
+        "connection"
+      ],
+      "searchTerms": [
+        "hex",
+        "connection game"
+      ],
+      "players": {
+        "min": 2,
+        "max": 2
+      },
+      "variants": [
+        {
+          "id": "mini",
+          "name": "Mini 6x6",
+          "release": "beta"
+        },
+        {
+          "id": "standard",
+          "name": "Standard 11x11",
+          "release": "beta"
+        },
+        {
+          "id": "nash",
+          "name": "Nash 14x14",
+          "release": "beta"
+        }
+      ],
+      "capabilities": {
+        "local": true,
+        "online": false,
+        "computer": true
+      },
+      "options": {},
+      "release": "beta"
+    },
+    {
+      "id": "president",
+      "name": "President",
+      "type": "card",
+      "page": "president/president.html",
+      "description": "A shedding card game where players beat the current play with higher cards of the same rank and race to empty their hands.",
+      "image": "images/cover/president.jpg",
+      "categories": [
+        "cards",
+        "party",
+        "strategy"
+      ],
+      "searchTerms": [
+        "president",
+        "asshole",
+        "scum",
+        "climbing card game"
+      ],
+      "players": {
+        "min": 3,
+        "max": 8
+      },
+      "variants": [
+        {
+          "id": "standard",
+          "name": "Classic President",
+          "release": "alpha"
+        }
+      ],
+      "capabilities": {
+        "local": true,
+        "online": false,
+        "computer": true
+      },
+      "options": {},
+      "release": "alpha"
     },
     {
       "id": "eins",
@@ -163,51 +235,6 @@
           "release": "normal"
         }
       },
-      "release": "alpha"
-    },
-        {
-      "id": "hex",
-      "name": "Hex",
-      "type": "board",
-      "page": "hex/hex.html",
-      "description": "A connection game where players race to build an unbroken path between their opposing borders.",
-      "image": "images/cover/hex.png",
-      "categories": [
-        "board",
-        "strategy",
-        "connection"
-      ],
-      "searchTerms": [
-        "hex",
-        "connection game"
-      ],
-      "players": {
-        "min": 2,
-        "max": 2
-      },
-      "variants": [
-        {
-          "id": "mini",
-          "name": "Mini 6x6",
-          "release": "alpha"
-        },
-        {
-          "id": "standard",
-          "name": "Standard 11x11",
-          "release": "alpha"
-        },
-        {
-          "id": "nash",
-          "name": "Nash 14x14",
-          "release": "alpha"
-        }
-      ],
-      "capabilities": {
-        "local": true,
-        "online": false,
-        "computer": true
-      },
-      "options": {},
       "release": "alpha"
     },
     {
