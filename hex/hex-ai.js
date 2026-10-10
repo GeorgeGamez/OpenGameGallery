@@ -7,10 +7,19 @@
  */
 
 const HEX_DIRECTIONS = [
-  [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0],
+  [-1, 0],
+  [-1, 1],
+  [0, -1],
+  [0, 1],
+  [1, -1],
+  [1, 0],
 ];
 // Positive half of the six directions, so each friendly connection is counted once.
-const HEX_UNIQUE_DIRECTIONS = [[0, 1], [1, -1], [1, 0]];
+const HEX_UNIQUE_DIRECTIONS = [
+  [0, 1],
+  [1, -1],
+  [1, 0],
+];
 const HEX_WIN_SCORE = 1e8;
 
 function hexOtherColor(color) {
@@ -96,8 +105,8 @@ function hexShortestPathCost(game, player) {
     if (!current || current.d !== dist[current.idx]) continue;
     const r = Math.floor(current.idx / n);
     const c = current.idx % n;
-    if ((player === "blue" && r === n - 1) ||
-        (player === "red" && c === n - 1)) return current.d;
+    if ((player === "blue" && r === n - 1) || (player === "red" && c === n - 1))
+      return current.d;
 
     for (const [dr, dc] of HEX_DIRECTIONS) {
       const nr = r + dr;
@@ -155,7 +164,9 @@ function hexEvaluate(game, perspective) {
   const opponentPath = hexShortestPathCost(game, opponent);
   if (ownPath === 0) return HEX_WIN_SCORE;
   if (opponentPath === 0) return -HEX_WIN_SCORE;
-  return (opponentPath - ownPath) * 40 + hexConnectedPairScore(game, perspective);
+  return (
+    (opponentPath - ownPath) * 40 + hexConnectedPairScore(game, perspective)
+  );
 }
 
 function hexWinningMoves(game, player, candidates) {
@@ -272,4 +283,5 @@ function findBestMove(game, difficulty = "normal") {
 }
 
 if (typeof window !== "undefined") window.HexAI = { findBestMove };
-if (typeof module !== "undefined" && module.exports) module.exports = { findBestMove };
+if (typeof module !== "undefined" && module.exports)
+  module.exports = { findBestMove };
