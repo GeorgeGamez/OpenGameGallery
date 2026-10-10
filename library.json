@@ -83,6 +83,16 @@
           "id": "american",
           "name": "American Checkers",
           "release": "normal"
+        },
+        {
+          "id": "russian",
+          "name": "Russian Draughts",
+          "release": "normal"
+        },
+        {
+          "id": "canadian",
+          "name": "Canadian Draughts",
+          "release": "normal"
         }
       ],
       "capabilities": {
@@ -179,7 +189,22 @@
         "online": false,
         "computer": true
       },
-      "options": {},
+      "options": {
+        "eightClearsPile": {
+          "type": "toggle",
+          "name": "Eight clears the pile",
+          "help": "When a player plays an eight, it clears the current trick and that player leads again.",
+          "default": false,
+          "release": "alpha"
+        },
+        "jokers": {
+          "type": "toggle",
+          "name": "Include Jokers",
+          "help": "Add two Jokers to the deck. Jokers rank above twos and can beat them.",
+          "default": false,
+          "release": "alpha"
+        }
+      },
       "release": "alpha"
     },
     {
