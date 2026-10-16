@@ -48,7 +48,16 @@ function shuffle(array) {
   return array;
 }
 
-function buildDeck(packCount) {
+function isJokerCard(card) {
+  return Boolean(
+    card &&
+    (card.joker === true ||
+      card.isJoker === true ||
+      (card.rank === 0 && card.suit === "★")),
+  );
+}
+
+function buildDeck(packCount, includeJokers = false) {
   const deck = [];
   for (let pack = 0; pack < packCount; pack++) {
     for (const suit of ["♣", "♦", "♥", "♠"]) {
@@ -61,6 +70,17 @@ function buildDeck(packCount) {
         });
       }
     }
+    if (includeJokers) {
+      for (let joker = 1; joker <= 2; joker++) {
+        deck.push({
+          id: `${pack}-joker-${joker}`,
+          suit: "★",
+          rank: 0,
+          joker: true,
+          label: "Joker",
+        });
+      }
+    }
   }
   return shuffle(deck);
 }
@@ -70,6 +90,12 @@ function rankName(rank) {
 }
 
 function cardInner(card) {
+  if (isJokerCard(card)) {
+    return `
+      <span class="corner"><span class="corner-rank">★</span><span class="corner-suit">Jkr</span></span>
+      <span class="face"><span class="center-rank">JOKER</span><span class="center-suit">★</span></span>
+      <span class="bottom"><span class="corner-rank">★</span><span class="corner-suit">Jkr</span></span>`;
+  }
   const rank = rankName(card.rank);
   return `
     <span class="corner"><span class="corner-rank">${rank}</span><span class="corner-suit">${card.suit}</span></span>
@@ -78,8 +104,9 @@ function cardInner(card) {
 }
 
 function cardHtml(card, selected = false, mini = false, extraClass = "") {
+  const joker = isJokerCard(card);
   const red = ["♥", "♦"].includes(card.suit);
-  return `<div class="card ${red ? "red" : "black"} ${selected ? "selected" : ""} ${mini ? "mini" : ""} ${extraClass}" data-card="${card.id}">${cardInner(card)}</div>`;
+  return `<div class="card ${joker ? "joker" : red ? "red" : "black"} ${selected ? "selected" : ""} ${mini ? "mini" : ""} ${extraClass}" data-card="${card.id}"${joker ? ' title="Joker — wild card"' : ""}>${cardInner(card)}</div>`;
 }
 
 function sameCardId(a, b) {
@@ -91,8 +118,13 @@ class RummyGame {
     this.options = {
       topToBottomMeld: false,
       scoring: "firstOut",
+      startingCards: "auto",
+      jokers: false,
       ...(config.options || {}),
     };
+    this.options.jokers =
+      this.options.jokers === true || this.options.jokers === "true";
+    this.options.startingCards = this.options.startingCards ?? "auto";
     this.players = [];
     this.hands = [];
     this.stock = [];
@@ -129,7 +161,10 @@ class RummyGame {
     const source = players.length ? players : defaultPlayers;
     this.players = source.map((player, index) => ({ ...player, seat: index }));
     this.hands = this.players.map(() => []);
-    this.stock = buildDeck(this.players.length > 4 ? 2 : 1);
+    this.stock = buildDeck(
+      this.players.length > 4 ? 2 : 1,
+      this.options.jokers,
+    );
     this.discard = [];
     this.melds = [];
     this.turn = 0;
@@ -142,7 +177,16 @@ class RummyGame {
     this.roundScores = [];
     this.requiredDiscardUse = null;
 
-    const dealCount = this.players.length === 2 ? 10 : 7;
+    const requestedDeal = this.options.startingCards;
+    const automaticDeal = this.players.length === 2 ? 10 : 7;
+    const configuredDeal = Number(requestedDeal);
+    const dealCount =
+      requestedDeal === "auto" || !Number.isFinite(configuredDeal)
+        ? automaticDeal
+        : [6, 7, 10].includes(configuredDeal)
+          ? configuredDeal
+          : automaticDeal;
+    this.startingHandSize = dealCount;
     for (let n = 0; n < dealCount; n++) {
       for (let player = 0; player < this.players.length; player++) {
         this.hands[player].push(this.stock.pop());
@@ -193,90 +237,135 @@ class RummyGame {
   }
 
   scoreValue(card) {
-    if (card.rank === 1) return 15;
+    if (isJokerCard(card) || card.rank === 1) return 15;
     if (card.rank >= 11) return 10;
-    return this.options.scoring === "flatFive" ? 5 : card.rank;
+    if (this.options.scoring === "flatFive") return 5;
+    if (this.options.scoring === "lowFiveTen") return card.rank <= 9 ? 5 : 10;
+    return card.rank;
   }
 
   isSet(cards) {
-    return (
-      cards.length >= 3 &&
-      cards.length <= 4 &&
-      cards.every((card) => card.rank === cards[0].rank) &&
-      new Set(cards.map((card) => card.suit)).size === cards.length
-    );
+    if (cards.length < 3 || cards.length > 4) return false;
+    const natural = cards.filter((card) => !isJokerCard(card));
+    if (!natural.length) return false;
+    if (!natural.every((card) => card.rank === natural[0].rank)) return false;
+    // Natural cards in a set must represent different suits. Jokers fill any
+    // remaining suits/ranks needed to complete the set.
+    return new Set(natural.map((card) => card.suit)).size === natural.length;
   }
 
   isRun(cards) {
     if (cards.length < 3 || cards.length > 13) return false;
-    if (!cards.every((card) => card.suit === cards[0].suit)) return false;
+    const natural = cards.filter((card) => !isJokerCard(card));
+    if (!natural.length) return false;
+    if (!natural.every((card) => card.suit === natural[0].suit)) return false;
 
-    const ranks = [...new Set(cards.map((card) => card.rank))];
-    if (ranks.length !== cards.length) return false;
+    const ranks = natural.map((card) => card.rank);
+    if (new Set(ranks).size !== ranks.length) return false;
 
-    if (!this.options.topToBottomMeld) {
-      const sorted = [...ranks].sort((a, b) => a - b);
-      return sorted.every(
-        (rank, index) => index === 0 || rank === sorted[index - 1] + 1,
-      );
-    }
-
-    const rankSet = new Set(ranks);
-    for (const start of ranks) {
-      let matches = true;
-      for (let offset = 0; offset < ranks.length; offset++) {
-        const rank = ((start - 1 + offset) % 13) + 1;
-        if (!rankSet.has(rank)) {
-          matches = false;
-          break;
-        }
+    const length = cards.length;
+    const lastStart = this.options.topToBottomMeld ? 13 : 14 - length;
+    for (let start = 1; start <= lastStart; start++) {
+      const sequence = [];
+      for (let offset = 0; offset < length; offset++) {
+        sequence.push(
+          this.options.topToBottomMeld
+            ? ((start - 1 + offset) % 13) + 1
+            : start + offset,
+        );
       }
-      if (matches) return true;
+      if (natural.every((card) => sequence.includes(card.rank))) return true;
     }
     return false;
   }
 
   canMakeNewMeldWithCard(card, pool) {
-    if (!card) return false;
+    if (!card || !Array.isArray(pool)) return false;
+    const candidates = [
+      ...new Map(pool.map((candidate) => [candidate.id, candidate])).values(),
+    ];
+    if (!candidates.some((candidate) => candidate.id === card.id))
+      candidates.push(card);
+    const targetIsJoker = isJokerCard(card);
 
-    const sameRank = pool.filter((candidate) => candidate.rank === card.rank);
-    if (new Set(sameRank.map((candidate) => candidate.suit)).size >= 3) {
-      return true;
-    }
-
-    const sameSuitRanks = new Set(
-      pool
-        .filter((candidate) => candidate.suit === card.suit)
-        .map((candidate) => candidate.rank),
-    );
-    if (!sameSuitRanks.has(card.rank)) return false;
-
-    if (!this.options.topToBottomMeld) {
-      const sorted = [...sameSuitRanks].sort((a, b) => a - b);
-      for (let start = 0; start < sorted.length; start++) {
-        let end = start;
-        while (end + 1 < sorted.length && sorted[end + 1] === sorted[end] + 1) {
-          end++;
-        }
-        if (end - start + 1 >= 3) {
-          const run = sorted.slice(start, end + 1);
-          if (run.includes(card.rank)) return true;
-        }
+    // Sets: test small subsets of the cards which can represent a given rank.
+    const targetRanks = targetIsJoker
+      ? Array.from({ length: 13 }, (_, i) => i + 1)
+      : [card.rank];
+    for (const rank of targetRanks) {
+      const naturalsBySuit = new Map();
+      for (const candidate of candidates) {
+        if (isJokerCard(candidate) || candidate.rank !== rank) continue;
+        const current = naturalsBySuit.get(candidate.suit);
+        if (!current || candidate.id === card.id)
+          naturalsBySuit.set(candidate.suit, candidate);
       }
-      return false;
+      const setCandidates = [
+        ...naturalsBySuit.values(),
+        ...candidates.filter(isJokerCard),
+      ];
+      for (let size = 3; size <= 4; size++) {
+        let found = false;
+        const visit = (start, chosen) => {
+          if (found) return;
+          if (chosen.length === size) {
+            if (
+              chosen.some((candidate) => candidate.id === card.id) &&
+              this.isSet(chosen)
+            )
+              found = true;
+            return;
+          }
+          for (
+            let i = start;
+            i <= setCandidates.length - (size - chosen.length);
+            i++
+          ) {
+            visit(i + 1, [...chosen, setCandidates[i]]);
+            if (found) return;
+          }
+        };
+        visit(0, []);
+        if (found) return true;
+      }
     }
 
-    for (const start of sameSuitRanks) {
+    // Runs: enumerate possible rank windows and check whether the available
+    // natural cards plus Jokers can fill the window while including this card.
+    const suits = targetIsJoker ? ["♣", "♦", "♥", "♠"] : [card.suit];
+    const jokerCount = candidates.filter(isJokerCard).length;
+    for (const suit of suits) {
       for (let length = 3; length <= 13; length++) {
-        const ranks = [];
-        for (let offset = 0; offset < length; offset++) {
-          ranks.push(((start - 1 + offset) % 13) + 1);
-        }
-        if (
-          ranks.includes(card.rank) &&
-          ranks.every((rank) => sameSuitRanks.has(rank))
-        ) {
-          return true;
+        const lastStart = this.options.topToBottomMeld ? 13 : 14 - length;
+        for (let start = 1; start <= lastStart; start++) {
+          const sequence = [];
+          for (let offset = 0; offset < length; offset++) {
+            sequence.push(
+              this.options.topToBottomMeld
+                ? ((start - 1 + offset) % 13) + 1
+                : start + offset,
+            );
+          }
+          if (
+            !targetIsJoker &&
+            (card.suit !== suit || !sequence.includes(card.rank))
+          )
+            continue;
+          const availableRanks = new Set(
+            candidates
+              .filter(
+                (candidate) =>
+                  !isJokerCard(candidate) &&
+                  candidate.suit === suit &&
+                  sequence.includes(candidate.rank),
+              )
+              .map((candidate) => candidate.rank),
+          );
+          if (
+            availableRanks.size > 0 &&
+            availableRanks.size + jokerCount >= length
+          )
+            return true;
         }
       }
     }
@@ -296,18 +385,25 @@ class RummyGame {
 
   drawStock() {
     if (this.over || this.phase !== "draw") return false;
+    if (!this.stock.length && !this.discard.length) return false;
 
+    // Save before recycling cards so Undo restores both piles exactly.
+    this.save();
     if (!this.stock.length) {
-      if (this.discard.length <= 1) return false;
-      const top = this.discard[this.discard.length - 1];
-      const reusable = this.discard.slice(0, -1);
-      this.stock = shuffle(reusable);
-      this.discard = [top];
+      if (this.discard.length <= 1) {
+        // With only one card left in the discard pile, recycle that card too;
+        // otherwise the game could deadlock when it cannot legally be picked up.
+        this.stock = this.discard.splice(0);
+      } else {
+        const top = this.discard[this.discard.length - 1];
+        const reusable = this.discard.slice(0, -1);
+        this.stock = shuffle(reusable);
+        this.discard = [top];
+      }
     }
 
     if (!this.stock.length) return false;
 
-    this.save();
     this.hands[this.turn].push(this.stock.pop());
     this.phase = "play";
     this.requiredDiscardUse = null;
@@ -929,6 +1025,7 @@ function render() {
 
   $("rules").innerHTML = `
     <strong>Classic Rummy</strong><br>
+    Each player starts with ${game.startingHandSize} cards. ${game.options.jokers ? "Jokers are included and may stand in for any card when making a set or run." : "Jokers are not included."}<br><br>
     Draw one card from the stock, or choose a discard card in the line. Taking a discard card also takes every newer card to its right; older cards to its left stay on the table.<br><br>
     A pickup is legal when the first card you take can be used in a new meld, or when the newest card taken can be added to an existing meld. When the newest-card rule is used, that card must be laid off before you can discard. Meld sets (same rank) or runs (same suit).${
       game.options.topToBottomMeld
@@ -938,10 +1035,12 @@ function render() {
     Click a table meld to select it, select cards from your hand, then click <strong>Lay off selected</strong> to add them.<br><br>
     <strong>Scoring:</strong> ${
       game.options.scoring === "firstOut"
-        ? "first player to empty their hand wins."
+        ? "first player to empty their hand wins; card point values are not used."
         : game.options.scoring === "flatFive"
-          ? "melded cards minus hand; number cards are 5 points, face cards 10, aces 15."
-          : "melded cards minus hand; number cards use face value, face cards 10, aces 15."
+          ? "melded cards minus hand; number cards (2–10) are 5 points, face cards 10, aces and Jokers 15."
+          : game.options.scoring === "lowFiveTen"
+            ? "melded cards minus hand; 2–9 are 5 points, 10 and face cards are 10, aces and Jokers 15."
+            : "melded cards minus hand; number cards use face value, face cards 10, aces and Jokers 15."
     }`;
 
   scheduleAI();
