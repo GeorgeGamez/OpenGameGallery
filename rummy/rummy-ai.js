@@ -1,10 +1,17 @@
 "use strict";
 
 (function () {
+  function isJoker(card) {
+    return Boolean(card && (card.joker === true || card.isJoker === true || (card.rank === 0 && card.suit === "★")));
+  }
+
   function usefulness(card, hand) {
+    // Keep wild Jokers unless they are the only sensible discard.
+    if (isJoker(card)) return 100;
     let score = 0;
     for (const other of hand) {
       if (other.id === card.id) continue;
+      if (isJoker(other)) score += 1;
       if (other.rank === card.rank) score += 3;
       if (other.suit === card.suit && Math.abs(other.rank - card.rank) <= 2) {
         score += Math.abs(other.rank - card.rank) === 1 ? 3 : 1;
@@ -41,16 +48,37 @@
     return false;
   }
 
-  function canMakeNewMeldWithCard(card, pool, options = {}) {
+  function canMakeNewMeldWithCard(card, pool, options = {}, game = null) {
+    if (game && typeof game.canMakeNewMeldWithCard === "function") {
+      return game.canMakeNewMeldWithCard(card, pool);
+    }
     if (!card) return false;
 
-    const sameRank = pool.filter((candidate) => candidate.rank === card.rank);
-    if (new Set(sameRank.map((candidate) => candidate.suit)).size >= 3) return true;
+    const isWild = isJoker(card);
+    const sameRank = pool.filter((candidate) => !isJoker(candidate) && (isWild || candidate.rank === card.rank));
+    const jokerCount = pool.filter(isJoker).length;
+    if (sameRank.length + jokerCount >= 3) {
+      for (let rank = 1; rank <= 13; rank++) {
+        const naturals = pool.filter((candidate) => !isJoker(candidate) && candidate.rank === rank);
+        const suits = new Set(naturals.map((candidate) => candidate.suit));
+        if ((isWild || card.rank === rank) && suits.size + jokerCount >= 3) return true;
+      }
+    }
 
-    const ranks = new Set(
-      pool.filter((candidate) => candidate.suit === card.suit).map((candidate) => candidate.rank),
-    );
-    return cardCanJoinRun(card, ranks, Boolean(options.topToBottomMeld));
+    const runSuits = isWild ? ["♣", "♦", "♥", "♠"] : [card.suit];
+    for (const suit of runSuits) {
+      for (let length = 3; length <= 13; length++) {
+        const lastStart = options.topToBottomMeld ? 13 : 14 - length;
+        for (let start = 1; start <= lastStart; start++) {
+          const sequence = [];
+          for (let i = 0; i < length; i++) sequence.push(options.topToBottomMeld ? ((start - 1 + i) % 13) + 1 : start + i);
+          if (!isWild && (card.suit !== suit || !sequence.includes(card.rank))) continue;
+          const ranks = new Set(pool.filter((candidate) => !isJoker(candidate) && candidate.suit === suit && sequence.includes(candidate.rank)).map((candidate) => candidate.rank));
+          if (ranks.size + jokerCount >= length) return true;
+        }
+      }
+    }
+    return false;
   }
 
   function canAddToExistingMeld(card, melds, game) {
@@ -67,7 +95,7 @@
       const lastTaken = taken[taken.length - 1];
       const pool = [...hand, ...taken];
 
-      if (canMakeNewMeldWithCard(firstTaken, pool, options)) {
+      if (canMakeNewMeldWithCard(firstTaken, pool, options, game)) {
         return { index, mode: "newMeld" };
       }
 
