@@ -181,7 +181,7 @@
         {
           "id": "standard",
           "name": "Classic President",
-          "release": "alpha"
+          "release": "beta"
         }
       ],
       "capabilities": {
@@ -195,17 +195,17 @@
           "name": "Eight clears the pile",
           "help": "When a player plays an eight, it clears the current trick and that player leads again.",
           "default": false,
-          "release": "alpha"
+          "release": "beta"
         },
         "jokers": {
           "type": "toggle",
           "name": "Include Jokers",
           "help": "Add two Jokers to the deck. Jokers rank above twos and can beat them.",
           "default": false,
-          "release": "alpha"
+          "release": "beta"
         }
       },
-      "release": "alpha"
+      "release": "beta"
     },
     {
       "id": "eins",
@@ -396,7 +396,7 @@
           "release": "normal"
         }
       },
-      "release": "beta"
+      "release": "normal"
     }
   ]
 }
