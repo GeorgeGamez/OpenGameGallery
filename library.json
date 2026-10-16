@@ -343,15 +343,56 @@
             },
             {
               "value": "standard",
-              "name": "Melded cards − hand (numbers face value, face cards 10, aces 15)",
+              "name": "Melded cards − hand (numbers face value, face cards 10, aces/Jokers 15)",
               "release": "normal"
             },
             {
               "value": "flatFive",
-              "name": "Melded cards − hand (number cards 5, face cards 10, aces 15)",
+              "name": "Melded cards − hand (number cards 5, face cards 10, aces/Jokers 15)",
+              "release": "normal"
+            },
+            {
+              "value": "lowFiveTen",
+              "name": "Melded cards − hand (2–9 = 5, 10/face cards = 10, aces/Jokers = 15)",
               "release": "normal"
             }
           ],
+          "release": "normal"
+        },
+        "startingCards": {
+          "type": "select",
+          "name": "Starting hand size",
+          "help": "Choose how many cards each player receives. Automatic keeps the current rule: 10 cards for two players, 7 for more players.",
+          "default": "auto",
+          "choices": [
+            {
+              "value": "auto",
+              "name": "Automatic (10 for 2 players, 7 otherwise)",
+              "release": "normal"
+            },
+            {
+              "value": "10",
+              "name": "10 cards",
+              "release": "normal"
+            },
+            {
+              "value": "7",
+              "name": "7 cards",
+              "release": "normal"
+            },
+            {
+              "value": "6",
+              "name": "6 cards",
+              "release": "normal"
+            }
+          ],
+          "release": "normal"
+        },
+        "jokers": {
+          "type": "toggle",
+          "name": "Include Jokers",
+          "help": "Adds two wild Jokers per deck. A Joker can stand in for a card in a set or run; in point-scoring modes, each Joker is worth 15 points.",
+          "default": false,
           "release": "normal"
         }
       },
