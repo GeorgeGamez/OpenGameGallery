@@ -38,9 +38,12 @@ Nash 14x14
 Toggleable Eight Clear  
 Toggleable Jokers  
 
-## Future Games/Not Public Yet
-
-### Eins
-Standard  
+## Coming Soon: Family Card Games Pack 1
+Contract Bridge  
+Crazy Eights  
+Eins  
 Eins Flip  
-
+Eins Party  
+Hearts  
+Spades  
+Upgrades to Existing Rummy and President  
