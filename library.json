@@ -208,6 +208,44 @@
       "release": "beta"
     },
     {
+      "id": "hearts",
+      "name": "Hearts",
+      "type": "card",
+      "page": "hearts/hearts.html",
+      "description": "A four-player trick-taking card game where players avoid hearts and the queen of spades, unless they can shoot the moon.",
+      "image": "images/cover/hearts.jpg",
+      "categories": [
+        "cards",
+        "trick-taking",
+        "strategy"
+      ],
+      "searchTerms": [
+        "hearts",
+        "card game",
+        "trick taking",
+        "queen of spades",
+        "shoot the moon"
+      ],
+      "players": {
+        "min": 4,
+        "max": 4
+      },
+      "variants": [
+        {
+          "id": "standard",
+          "name": "Classic Hearts",
+          "release": "alpha"
+        }
+      ],
+      "capabilities": {
+        "local": true,
+        "online": false,
+        "computer": true
+      },
+      "options": {},
+      "release": "alpha"
+    },
+    {
       "id": "eins",
       "name": "Eins",
       "type": "card",
