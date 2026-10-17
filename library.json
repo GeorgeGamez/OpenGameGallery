@@ -246,6 +246,45 @@
       "release": "alpha"
     },
     {
+      "id": "bridge",
+      "name": "Contract Bridge",
+      "type": "card",
+      "page": "bridge/bridge.html",
+      "description": "A four-player partnership trick-taking game with bidding, contracts, dummy play, and duplicate-style scoring.",
+      "image": "images/cover/bridge.jpg",
+      "categories": [
+        "cards",
+        "trick-taking",
+        "strategy"
+      ],
+      "searchTerms": [
+        "bridge",
+        "contract bridge",
+        "duplicate bridge",
+        "bidding",
+        "trick taking",
+        "partnership card game"
+      ],
+      "players": {
+        "min": 4,
+        "max": 4
+      },
+      "variants": [
+        {
+          "id": "standard",
+          "name": "Classic Contract Bridge",
+          "release": "alpha"
+        }
+      ],
+      "capabilities": {
+        "local": true,
+        "online": false,
+        "computer": true
+      },
+      "options": {},
+      "release": "alpha"
+    },
+    {
       "id": "eins",
       "name": "Eins",
       "type": "card",
