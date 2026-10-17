@@ -454,7 +454,10 @@
         ? pendingHandoff ? `Pass the device to ${game.players[actor].name}, then show their hand.` : activeHuman ? (game.turn === game.dummy ? `${game.players[actor].compass} is playing dummy.` : `${game.players[game.turn].compass} to play.`) : `${game.players[actor].compass} is playing…`
         : game.passedOut ? "The auction was passed out. No score on this board." : game.result?.explanation || "Board complete.";
     $("status").textContent = messageText || status;
-    $("scoreboard").innerHTML = `<table class="score-table"><thead><tr><th>Partnership</th><th>Total</th></tr></thead><tbody><tr><td>North–South</td><td>${game.totalScores[0]}</td></tr><tr><td>East–West</td><td>${game.totalScores[1]}</td></tr></tbody></table>`;
+    const nsTricks = game.sideTricks(0);
+    const ewTricks = game.sideTricks(1);
+    $("scoreboard").innerHTML = `<table class="score-table"><thead><tr><th>Team</th><th>Tricks</th></tr></thead><tbody><tr><td>North–South</td><td>${nsTricks}</td></tr><tr><td>East–West</td><td>${ewTricks}</td></tr></tbody></table>`;
+    $("trickScoreHint").textContent = `${nsTricks + ewTricks} of 13 tricks completed. Counts update when a trick finishes.`;
     $("history").innerHTML = game.history.slice(0, 100).map((entry) => `<div>${escapeHtml(entry)}</div>`).join("");
     $("resultBox").classList.toggle("hidden", !game.result || !game.over);
     if (game.result && !game.passedOut) {
