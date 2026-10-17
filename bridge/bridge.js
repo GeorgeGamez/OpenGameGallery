@@ -335,6 +335,32 @@
   let lastShownSeat = -1;
   let messageText = "";
   const localHumanCount = game.players.filter((player) => player.type === "human").length;
+  let privacyBlackout = false;
+  let blackoutUntil = 0;
+  let blackoutTimer = null;
+
+  function beginPrivacyBlackout() {
+    if (localHumanCount < 2) return;
+    privacyBlackout = true;
+    blackoutUntil = Date.now() + 2000;
+    lastShownSeat = -1;
+    if (blackoutTimer !== null) clearTimeout(blackoutTimer);
+    blackoutTimer = setTimeout(() => {
+      blackoutTimer = null;
+      render();
+      runAI();
+    }, 2000);
+    $("turnBlackout").classList.remove("hidden");
+  }
+
+  function refreshPrivacyBlackout() {
+    if (privacyBlackout && Date.now() >= blackoutUntil && (game.over || currentActorIsHuman())) {
+      privacyBlackout = false;
+      const seat = actorSeat();
+      lastShownSeat = seat >= 0 && currentActorIsHuman() ? seat : -1;
+    }
+    $("turnBlackout").classList.toggle("hidden", !privacyBlackout);
+  }
 
   function actorSeat() {
     if (game.phase === "auction") return game.turn;
@@ -363,7 +389,7 @@
     const disabled = Boolean(options.disabled);
     const suit = suitSymbol(card.suit);
     const red = card.suit === "H" || card.suit === "D";
-    return `<button type="button" class="card ${red ? "red" : "black"} ${selected ? "selected" : ""} ${small ? "small-card" : ""}" data-card="${card.id}" ${options.source ? `data-source="${options.source}"` : ""} aria-label="${cardRankName(card.rank)} of ${({ C: "clubs", D: "diamonds", H: "hearts", S: "spades" })[card.suit]}" ${disabled ? "disabled" : ""}><span class="corner"><b>${cardRankName(card.rank)}</b><span>${suit}</span></span><span class="face"><span class="center-rank">${cardRankName(card.rank)}</span><span class="center-suit">${suit}</span></span><span class="bottom"><b>${cardRankName(card.rank)}</b><span>${suit}</span></span></button>`;
+    return `<button type="button" class="card ${red ? "red" : "black"} ${selected ? "selected" : ""} ${small ? "small-card" : ""}" data-card="${card.id}" ${options.source ? `data-source="${options.source}"` : ""} aria-label="${cardRankName(card.rank)} of ${({ C: "clubs", D: "diamonds", H: "hearts", S: "spades" })[card.suit]}" ${disabled ? "disabled" : ""}><span class="corner"><span>${cardRankName(card.rank)}</span><span class="corner-suit">${suit}</span></span><span class="face"><span class="center-rank">${cardRankName(card.rank)}</span><span class="center-suit">${suit}</span></span><span class="bottom"><span>${cardRankName(card.rank)}</span><span class="corner-suit">${suit}</span></span></button>`;
   }
 
   function renderPlayers() {
@@ -405,10 +431,10 @@
   }
 
   function render() {
+    refreshPrivacyBlackout();
     renderPlayers();
     const actor = actorSeat();
     const ready = handReady();
-    const pendingHandoff = localHumanCount > 1 && currentActorIsHuman() && !ready && !game.over;
     const handSeat = actor;
     const hand = ready && handSeat >= 0 ? (game.hands[handSeat] || []) : [];
     $("boardInfo").textContent = `Board ${game.dealNumber} · Dealer ${game.players[game.dealer].compass} · ${game.vulnerability.label}`;
@@ -421,12 +447,10 @@
     renderDummy(ready);
 
     const phaseAuction = game.phase === "auction";
-    const activeHuman = currentActorIsHuman() && ready && !game.over;
-    $("handTitle").textContent = pendingHandoff ? `Private handoff · ${game.players[actor].compass}` : actor >= 0 ? `${game.players[actor].compass} · ${game.players[actor].name}${phaseAuction ? " — bidding hand" : game.phase === "play" && game.turn === game.dummy ? " — declarer controls dummy" : " — your hand"}` : "No active hand";
-    if (pendingHandoff) {
-      $("hand").innerHTML = '<div class="note">Pass the device to the next player, then reveal their cards.</div>';
-    } else if (!ready && currentActorIsHuman() && localHumanCount > 1 && !game.over) {
-      $("hand").innerHTML = '<div class="note">Press “Show Hand” when the correct player is ready.</div>';
+    const activeHuman = currentActorIsHuman() && ready && !privacyBlackout && !game.over;
+    $("handTitle").textContent = actor >= 0 ? `${game.players[actor].compass} · ${game.players[actor].name}${phaseAuction ? " — bidding hand" : game.phase === "play" && game.turn === game.dummy ? " — declarer controls dummy" : " — your hand"}` : "No active hand";
+    if (privacyBlackout) {
+      $("hand").innerHTML = '<div class="note">Changing local player…</div>';
     } else if (game.phase === "complete") {
       $("hand").innerHTML = '<div class="note">Deal complete. Start the next board to continue.</div>';
     } else if (ready && hand.length) {
@@ -443,15 +467,13 @@
     $("passBtn").disabled = !phaseAuction || !activeHuman || !game.canCall(actor, { type: "pass" });
     $("doubleBtn").disabled = !phaseAuction || !activeHuman || !game.canCall(actor, { type: "double" });
     $("redoubleBtn").disabled = !phaseAuction || !activeHuman || !game.canCall(actor, { type: "redouble" });
-    $("showHandBtn").classList.toggle("hidden", !pendingHandoff);
-    $("showHandBtn").disabled = !pendingHandoff;
     $("nextBoardBtn").disabled = !game.over;
     $("newMatchBtn").disabled = false;
 
     const status = game.phase === "auction"
-      ? pendingHandoff ? `Pass the device to ${game.players[actor].name}, then show their hand.` : activeHuman ? `${game.players[actor].compass} to bid.` : `${game.players[actor].compass} (${game.players[actor].name}) is bidding…`
+      ? activeHuman ? `${game.players[actor].compass} to bid.` : `${game.players[actor].compass} (${game.players[actor].name}) is bidding…`
       : game.phase === "play"
-        ? pendingHandoff ? `Pass the device to ${game.players[actor].name}, then show their hand.` : activeHuman ? (game.turn === game.dummy ? `${game.players[actor].compass} is playing dummy.` : `${game.players[game.turn].compass} to play.`) : `${game.players[actor].compass} is playing…`
+        ? activeHuman ? (game.turn === game.dummy ? `${game.players[actor].compass} is playing dummy.` : `${game.players[game.turn].compass} to play.`) : `${game.players[actor].compass} is playing…`
         : game.passedOut ? "The auction was passed out. No score on this board." : game.result?.explanation || "Board complete.";
     $("status").textContent = messageText || status;
     const nsTricks = game.sideTricks(0);
@@ -499,7 +521,7 @@
 
   function makeHumanCall(call) {
     const seat = actorSeat();
-    if (!currentActorIsHuman() || !handReady()) return;
+    if (privacyBlackout || !currentActorIsHuman() || !handReady()) return;
     if (!game.canCall(seat, call)) {
       messageText = "That call is not legal in the current auction.";
       render();
@@ -507,12 +529,13 @@
     }
     messageText = "";
     game.makeCall(seat, call);
+    if (localHumanCount > 1 && actorSeat() !== seat) beginPrivacyBlackout();
     render();
     runAI();
   }
 
   function playSelectedCard(cardId, source) {
-    if (game.phase !== "play" || !handReady() || !currentActorIsHuman() || game.over) return;
+    if (privacyBlackout || game.phase !== "play" || !handReady() || !currentActorIsHuman() || game.over) return;
     const seat = source === "dummy" ? game.dummy : game.turn;
     if (source === "dummy" && !(game.turn === game.dummy && actorSeat() === game.declarer)) return;
     if (source !== "dummy" && game.turn === game.dummy) return;
@@ -523,7 +546,9 @@
       return;
     }
     messageText = "";
+    const previousActor = actorSeat();
     game.playCard(seat, cardId);
+    if (localHumanCount > 1 && (game.over || actorSeat() !== previousActor)) beginPrivacyBlackout();
     render();
     runAI();
   }
@@ -532,15 +557,6 @@
   $("passBtn").addEventListener("click", () => makeHumanCall({ type: "pass" }));
   $("doubleBtn").addEventListener("click", () => makeHumanCall({ type: "double" }));
   $("redoubleBtn").addEventListener("click", () => makeHumanCall({ type: "redouble" }));
-  $("showHandBtn").addEventListener("click", () => {
-    const seat = actorSeat();
-    if (seat >= 0 && game.players[seat].type === "human") {
-      lastShownSeat = seat;
-      messageText = "";
-      render();
-      runAI();
-    }
-  });
   $("hand").addEventListener("click", (event) => {
     const card = event.target.closest("[data-card]");
     if (card) playSelectedCard(card.dataset.card, card.dataset.source || "main");
@@ -550,24 +566,32 @@
     if (card) playSelectedCard(card.dataset.card, "dummy");
   });
   $("nextBoardBtn").addEventListener("click", () => {
-    if (!game.over) return;
+    if (!game.over || privacyBlackout) return;
     clearTimeout(aiTimer);
     game.newDeal();
     lastShownSeat = -1;
     messageText = "";
+    if (blackoutTimer !== null) clearTimeout(blackoutTimer);
+    privacyBlackout = false;
+    if (localHumanCount > 1) beginPrivacyBlackout();
     render();
     runAI();
   });
   $("newMatchBtn").addEventListener("click", () => {
+    if (privacyBlackout) return;
     clearTimeout(aiTimer);
     game = new BridgeGame(launchConfig);
     lastShownSeat = -1;
     messageText = "";
+    if (blackoutTimer !== null) clearTimeout(blackoutTimer);
+    privacyBlackout = false;
+    if (localHumanCount > 1) beginPrivacyBlackout();
     render();
     runAI();
   });
   $("backBtn").addEventListener("click", () => { location.href = "../index.html"; });
 
+  if (localHumanCount > 1) beginPrivacyBlackout();
   render();
   runAI();
 })(typeof window !== "undefined" ? window : globalThis);
