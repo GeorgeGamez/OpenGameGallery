@@ -246,6 +246,44 @@
       "release": "alpha"
     },
     {
+      "id": "crazy-eights",
+      "name": "Crazy Eights",
+      "type": "card",
+      "page": "crazy-eights/crazy-eights.html",
+      "description": "A classic shedding card game: match the discard's rank or suit, or play an eight to change the suit.",
+      "image": "images/cover/crazy-eights.jpg",
+      "categories": [
+        "cards",
+        "family",
+        "party"
+      ],
+      "searchTerms": [
+        "crazy eights",
+        "crazy 8s",
+        "shedding card game",
+        "eight wild",
+        "family card game"
+      ],
+      "players": {
+        "min": 2,
+        "max": 8
+      },
+      "variants": [
+        {
+          "id": "standard",
+          "name": "Classic Crazy Eights",
+          "release": "alpha"
+        }
+      ],
+      "capabilities": {
+        "local": true,
+        "online": false,
+        "computer": true
+      },
+      "options": {},
+      "release": "alpha"
+    },
+    {
       "id": "bridge",
       "name": "Contract Bridge",
       "type": "card",
