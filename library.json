@@ -272,13 +272,13 @@
       "variants": [
         {
           "id": "standard",
-          "name": "Classic Contract Bridge",
+          "name": "Standard Contract Bridge",
           "release": "alpha"
         }
       ],
       "capabilities": {
         "local": true,
-        "online": false,
+        "online": true,
         "computer": true
       },
       "options": {},
