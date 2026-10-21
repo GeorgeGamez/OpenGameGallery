@@ -335,6 +335,7 @@
   let onlineParticipants = [];
   let onlineMatchId = "";
   let pendingOnlineAction = false;
+  const ONLINE_HOST_STATE_KEY = `openGameGalleryBridgeHostState:${ONLINE_CODE}`;
 
   const profiles = (() => { try { return JSON.parse(localStorage.getItem("gameLibraryProfiles") || "[]"); } catch { return []; } })();
   if (!launchConfig.players?.length && profiles.length) {
@@ -367,8 +368,19 @@
     return player.controllerClientId === ONLINE_CLIENT_ID;
   }
 
+  function localHumanSeats() {
+    return game.players.map((player, seat) => seatIsLocalHuman(seat) ? seat : -1).filter((seat) => seat >= 0);
+  }
+
   function localHumanCount() {
-    return game.players.filter((player, seat) => player.type === "human" && seatIsLocalHuman(seat)).length;
+    return localHumanSeats().length;
+  }
+
+  function hasPrivateHand(seat) {
+    if (seat < 0 || !Array.isArray(game.hands?.[seat])) return false;
+    if (!ONLINE_MODE || IS_ONLINE_HOST) return true;
+    const hand = game.hands[seat];
+    return hand.every((card) => ["C", "D", "H", "S"].includes(card?.suit) && Number(card?.rank) >= 2 && Number(card?.rank) <= 14 && !String(card?.id || "").startsWith("hidden-"));
   }
 
   function currentActorIsHuman() {
@@ -379,6 +391,7 @@
   function handReady() {
     const seat = actorSeat();
     if (seat < 0 || !currentActorIsHuman()) return false;
+    if (ONLINE_MODE && !hasPrivateHand(seat)) return false;
     if (localHumanCount() <= 1) {
       lastShownSeat = seat;
       return true;
@@ -449,23 +462,83 @@
   }
 
   function assignOnlineSeats() {
-    if (!ONLINE_MODE || !Array.isArray(game.players)) return;
-    const used = new Set(game.players.map((p) => p.controllerClientId).filter(Boolean));
-    const candidates = onlineParticipants.filter((p) => p && p.clientId && !used.has(p.clientId));
+    // Seat ownership is decided only by the host. Guests must consume the
+    // controllerClientId values embedded in the host's authoritative state;
+    // independently assigning seats on each browser made the first bidder's
+    // controls disagree between host and guest.
+    if (!ONLINE_MODE || !IS_ONLINE_HOST || !Array.isArray(game.players)) return;
+
+    const participants = onlineParticipants.filter((participant) =>
+      participant && participant.clientId && participant.spectator !== true
+    );
+    const participantIds = new Set(participants.map((participant) => participant.clientId));
+    const idOf = (value) => String(value || "");
+    const participantOwnsProfile = (participant, profileId) => {
+      if (!profileId) return false;
+      if (idOf(participant.profileId) === idOf(profileId)) return true;
+      return (participant.party || []).some((member) => idOf(member.id) === idOf(profileId));
+    };
+
+    // Clear stale controller IDs before rebuilding the map from the current
+    // room participants. Keep all valid seat assignments unchanged.
     for (const player of game.players) {
-      if (player.type !== "human" || player.controllerClientId) continue;
-      let index = candidates.findIndex((participant) =>
-        participant.profileId && participant.profileId === player.profileId ||
-        (participant.party || []).some((member) => member.id && member.id === player.profileId)
-      );
-      if (index < 0) index = candidates.findIndex((participant) => (participant.role === "host") === IS_ONLINE_HOST);
-      if (index < 0) index = 0;
-      const participant = candidates.splice(index, 1)[0];
-      if (participant) {
-        player.controllerClientId = participant.clientId;
-        used.add(participant.clientId);
+      if (player.type !== "human" || !player.controllerClientId) continue;
+      if (!participantIds.has(player.controllerClientId)) {
+        player.controllerClientId = "";
+        continue;
+      }
+      // If the host rejoined in a fresh tab/session, the host token proves
+      // this browser is the host even if an older host client ID remains in
+      // the saved player config.
+      const assignedParticipant = participants.find((candidate) => candidate.clientId === player.controllerClientId);
+      if (assignedParticipant?.role === "host" && player.controllerClientId !== ONLINE_CLIENT_ID) {
+        player.controllerClientId = ONLINE_CLIENT_ID;
       }
     }
+
+    // First use the explicit profile/party identity already supplied by the
+    // game's setup. A client can own several seats when their party configured
+    // several local players.
+    for (const player of game.players) {
+      if (player.type !== "human" || player.controllerClientId) continue;
+      const participant = participants.find((candidate) =>
+        participantOwnsProfile(candidate, player.profileId) ||
+        participantOwnsProfile(candidate, idOf(player.id).replace(/^local:/, ""))
+      );
+      if (participant) player.controllerClientId = participant.clientId;
+    }
+
+    const host = participants.find((participant) => participant.clientId === ONLINE_CLIENT_ID) ||
+      participants.find((participant) => participant.role === "host");
+    if (host) {
+      // The host's party/profile match takes priority. If setup data has no
+      // profile IDs, reserve the first free human seat for the host.
+      for (const player of game.players) {
+        if (player.type !== "human" || player.controllerClientId) continue;
+        if (participantOwnsProfile(host, player.profileId) ||
+            participantOwnsProfile(host, idOf(player.id).replace(/^local:/, ""))) {
+          player.controllerClientId = host.clientId;
+        }
+      }
+      if (!game.players.some((player) => player.type === "human" && player.controllerClientId === host.clientId)) {
+        const firstUnassigned = game.players.find((player) => player.type === "human" && !player.controllerClientId);
+        if (firstUnassigned) firstUnassigned.controllerClientId = host.clientId;
+      }
+    }
+
+    // Assign remaining seats to participants who do not yet own a seat. This
+    // is a fallback for older configurations without profile IDs.
+    const assignedClientIds = new Set(game.players
+      .filter((player) => player.type === "human" && player.controllerClientId)
+      .map((player) => player.controllerClientId));
+    for (const player of game.players) {
+      if (player.type !== "human" || player.controllerClientId) continue;
+      const participant = participants.find((candidate) => !assignedClientIds.has(candidate.clientId));
+      if (!participant) break;
+      player.controllerClientId = participant.clientId;
+      assignedClientIds.add(participant.clientId);
+    }
+
     launchConfig.players = game.players.map((player) => ({ ...player }));
     game.config = launchConfig;
   }
@@ -473,6 +546,9 @@
   function publishOnlineState() {
     if (!ONLINE_MODE || !IS_ONLINE_HOST || !onlineSocket || onlineSocket.readyState !== WebSocket.OPEN) return;
     try {
+      try {
+        sessionStorage.setItem(ONLINE_HOST_STATE_KEY, JSON.stringify({ matchId: onlineMatchId, game: cloneJson(game) }));
+      } catch {}
       onlineSocket.send(JSON.stringify({ type: "game:state", state: publicGameState() }));
       const byClient = new Map();
       for (let seat = 0; seat < game.players.length; seat++) {
@@ -497,13 +573,16 @@
     const incoming = state?.game;
     if (!incoming || !Array.isArray(incoming.hands)) return false;
     try {
+      const previousActor = actorSeat();
       const restored = new BridgeGame(launchConfig);
       Object.assign(restored, incoming);
       game = restored;
-      assignOnlineSeats();
+      // Never derive seat ownership independently on a guest. The host's
+      // controller map travels with the snapshot.
       pendingOnlineAction = false;
-      lastShownSeat = -1;
-      clearHandoff();
+      const nextActor = actorSeat();
+      if (nextActor !== previousActor) lastShownSeat = -1;
+      if (handoffTargetSeat !== -1 && handoffTargetSeat !== nextActor) clearHandoff();
       messageText = "";
       render();
       return true;
@@ -515,12 +594,28 @@
 
   function applyPrivateHands(payload) {
     if (!payload || !Array.isArray(payload.hands)) return;
+    let changed = false;
     for (const entry of payload.hands) {
       if (Number.isInteger(entry.seat) && entry.seat >= 0 && entry.seat < game.hands.length && Array.isArray(entry.cards)) {
         game.hands[entry.seat] = entry.cards;
+        changed = true;
       }
     }
-    render();
+    if (changed) render();
+  }
+
+  function restoreCachedHostState() {
+    if (!IS_ONLINE_HOST || !onlineMatchId) return false;
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(ONLINE_HOST_STATE_KEY) || "null");
+      if (!cached || cached.matchId !== onlineMatchId || !cached.game || !Array.isArray(cached.game.hands)) return false;
+      const restored = new BridgeGame(launchConfig);
+      Object.assign(restored, cached.game);
+      game = restored;
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   function sendOnlineAction(action) {
@@ -577,33 +672,49 @@
       if (message.type === "room:hello") {
         onlineParticipants = message.room?.participants || [];
         onlineMatchId = message.room?.matchId || onlineMatchId;
-        if (message.room?.config) {
-          launchConfig = message.room.config;
-          game = new BridgeGame(launchConfig);
+        const roomConfig = message.room?.config;
+        if (roomConfig && Object.keys(roomConfig).length) {
+          launchConfig = { ...launchConfig, ...roomConfig };
+          if (Array.isArray(roomConfig.players) && roomConfig.players.length) launchConfig.players = roomConfig.players;
         }
+        game = new BridgeGame(launchConfig);
+        if (IS_ONLINE_HOST) restoreCachedHostState();
         assignOnlineSeats();
         if (!IS_ONLINE_HOST && message.state?.game) {
           applySnapshot(message.state);
-        } else if (IS_ONLINE_HOST && !message.room?.started) {
-          publishOnlineState();
         }
         render();
-        if (IS_ONLINE_HOST && message.room?.started) runAI();
+        if (IS_ONLINE_HOST) {
+          // A match is usually started by index.html before this page opens,
+          // so the host may not receive game:start. Publish a host snapshot
+          // here instead of waiting for a later participant event.
+          setTimeout(() => {
+            assignOnlineSeats();
+            publishOnlineState();
+            render();
+            runAI();
+          }, 100);
+        } else if (message.room?.started && !message.state?.game) {
+          setOnlineStatus("Connected · waiting for host to synchronize the deal…");
+        }
         return;
       }
       if (message.type === "room:participants") {
         onlineParticipants = Array.isArray(message.participants) ? message.participants : [];
-        assignOnlineSeats();
+        if (IS_ONLINE_HOST) {
+          assignOnlineSeats();
+          publishOnlineState();
+        }
         setOnlineStatus(`Connected · ${onlineParticipants.length} participant${onlineParticipants.length === 1 ? "" : "s"}`);
-        if (IS_ONLINE_HOST) publishOnlineState();
         render();
         return;
       }
       if (message.type === "room:config") {
-        if (!game.over) return;
+        if (!game.over || !IS_ONLINE_HOST) return;
         launchConfig = message.config || launchConfig;
         game = new BridgeGame(launchConfig);
         assignOnlineSeats();
+        publishOnlineState();
         render();
         return;
       }
@@ -618,6 +729,8 @@
           runAI();
         } else if (message.state?.game) {
           applySnapshot(message.state);
+        } else {
+          setOnlineStatus("Connected · waiting for host to synchronize the deal…");
         }
         return;
       }
@@ -636,15 +749,26 @@
       if (message.type === "game:move") {
         if (!IS_ONLINE_HOST || message.sender?.clientId === ONLINE_CLIENT_ID) return;
         const action = message.payload;
-        if (!action || action.matchId && onlineMatchId && action.matchId !== onlineMatchId) return;
+        if (!action || (action.matchId && onlineMatchId && action.matchId !== onlineMatchId)) {
+          publishOnlineState();
+          return;
+        }
         const actingSeat = actorSeat();
-        if (actingSeat < 0 || game.players[actingSeat]?.type !== "human" || game.players[actingSeat]?.controllerClientId !== message.sender?.clientId) return;
+        if (actingSeat < 0 || game.players[actingSeat]?.type !== "human" || game.players[actingSeat]?.controllerClientId !== message.sender?.clientId) {
+          // A stale or mismatched seat map must not leave the guest controls
+          // stuck in their waiting-for-host state.
+          publishOnlineState();
+          return;
+        }
         let accepted = false;
         if (action.kind === "call" && game.phase === "auction" && action.seat === actingSeat && game.canCall(actingSeat, action.call)) {
           accepted = game.makeCall(actingSeat, action.call);
-        } else if (action.kind === "card" && game.phase === "play" && action.seat === game.turn && typeof action.cardId === "string") {
-          const sourceSeat = action.source === "dummy" ? game.dummy : game.turn;
-          if (sourceSeat === game.turn && game.legalCards(sourceSeat).some((card) => card.id === action.cardId)) {
+        } else if (action.kind === "card" && game.phase === "play" && typeof action.cardId === "string") {
+          const dummyIsActing = game.turn === game.dummy;
+          const expectedSource = dummyIsActing ? "dummy" : "main";
+          const sourceSeat = dummyIsActing ? game.dummy : game.turn;
+          if (action.seat === sourceSeat && action.source === expectedSource &&
+              game.legalCards(sourceSeat).some((card) => card.id === action.cardId)) {
             accepted = game.playCard(sourceSeat, action.cardId);
           }
         }
@@ -733,8 +857,6 @@
     const pendingHandoff = localHumanCount() > 1 && currentActorIsHuman() && !ready && !game.over;
     if (pendingHandoff) beginHandoff(actor);
     else if (handoffTargetSeat !== -1 && handoffTargetSeat !== actor) clearHandoff();
-    const handSeat = actor;
-    const hand = ready && handSeat >= 0 ? (game.hands[handSeat] || []) : [];
     $("boardInfo").textContent = `Board ${game.dealNumber} · Dealer ${game.players[game.dealer].compass} · ${game.vulnerability.label}`;
     $("phaseTitle").textContent = game.phase === "auction" ? "Auction" : game.phase === "play" ? `Play · Trick ${Math.min(13, game.trickNumber + 1)} of 13` : "Deal complete";
     $("contractInfo").textContent = game.contract ? `${game.contract.level}${suitSymbol(game.contract.strain)}${game.contract.multiplier === 2 ? " ×2 (doubled)" : game.contract.multiplier === 4 ? " ×4 (redoubled)" : ""} · Declarer ${game.players[game.declarer].compass} · ${game.tricksWon.reduce((n, v, i) => n + (sideOf(i) === sideOf(game.declarer) ? v : 0), 0)} tricks for declarer` : game.passedOut ? "Passed out" : "No contract yet";
@@ -746,24 +868,47 @@
 
     const phaseAuction = game.phase === "auction";
     const activeHuman = currentActorIsHuman() && ready && !game.over && !pendingOnlineAction;
-    $("handTitle").textContent = pendingHandoff ? `Private handoff · ${game.players[actor].compass}` : actor >= 0 ? `${game.players[actor].compass} · ${game.players[actor].name}${phaseAuction ? " — bidding hand" : game.phase === "play" && game.turn === game.dummy ? " — declarer controls dummy" : " — your hand"}` : "No active hand";
+    const ownedSeats = ONLINE_MODE ? localHumanSeats() : [];
+    let handSeat = actor;
+    if (ONLINE_MODE && !(currentActorIsHuman() && ready)) {
+      // Chess-style fog of war: online players keep seeing their own private
+      // hand while opponents act; only actions for the current seat are enabled.
+      handSeat = ownedSeats.find((seat) => hasPrivateHand(seat)) ?? -1;
+    }
+    const displayHandReady = handSeat >= 0 && (ONLINE_MODE ? hasPrivateHand(handSeat) : ready);
+    const hand = displayHandReady ? (game.hands[handSeat] || []) : [];
+    const isOwnedOnlineHand = ONLINE_MODE && handSeat >= 0 && seatIsLocalHuman(handSeat);
+    $("handTitle").textContent = pendingHandoff
+      ? `Private handoff · ${game.players[actor].compass}`
+      : isOwnedOnlineHand
+        ? `${game.players[handSeat].compass} · ${game.players[handSeat].name} — your hand${handSeat === actor && activeHuman ? " · your turn" : ""}`
+        : actor >= 0
+          ? `${game.players[actor].compass} · ${game.players[actor].name}${phaseAuction ? " — bidding hand" : game.phase === "play" && game.turn === game.dummy ? " — declarer controls dummy" : " — your hand"}`
+          : "No active hand";
     if (pendingHandoff) {
       $("hand").innerHTML = '<div class="note">Pass the device to the next player, then reveal their cards.</div>';
-    } else if (!ready && currentActorIsHuman() && localHumanCount() > 1 && !game.over) {
-      $("hand").innerHTML = '<div class="note">The next hand will appear when the two-second handoff timer finishes.</div>';
+    } else if (pendingOnlineAction && ONLINE_MODE && hand.length) {
+      $("hand").innerHTML = hand.map((card) => cardHtml(card, { disabled: true })).join("");
     } else if (game.phase === "complete") {
       $("hand").innerHTML = '<div class="note">Deal complete. Start the next board to continue.</div>';
-    } else if (ready && hand.length) {
-      const legalIds = game.phase === "play" && actor === game.turn && activeHuman
-        ? new Set(game.legalCards(game.turn).map((card) => card.id))
-        : new Set();
-      $("hand").innerHTML = hand.map((card) => cardHtml(card, { disabled: phaseAuction || game.phase !== "play" || actor !== game.turn || !activeHuman || !legalIds.has(card.id) })).join("");
+    } else if (displayHandReady && hand.length) {
+      const canPlayThisHand = game.phase === "play" && handSeat === game.turn && activeHuman && game.turn !== game.dummy;
+      const legalIds = canPlayThisHand ? new Set(game.legalCards(game.turn).map((card) => card.id)) : new Set();
+      $("hand").innerHTML = hand.map((card) => cardHtml(card, {
+        disabled: phaseAuction || game.phase !== "play" || !canPlayThisHand || !legalIds.has(card.id)
+      })).join("");
+    } else if (ONLINE_MODE && ownedSeats.length) {
+      $("hand").innerHTML = '<div class="note">Your hand is being synchronized…</div>';
     } else if (ONLINE_MODE && actor >= 0 && game.players[actor]?.type === "human") {
       $("hand").innerHTML = '<div class="note">Waiting for the remote player to act.</div>';
     } else {
       $("hand").innerHTML = '<div class="note">Computer hands are hidden.</div>';
     }
-    $("handHint").textContent = phaseAuction ? (activeHuman ? "Choose a call above." : ONLINE_MODE && actor >= 0 && game.players[actor]?.type === "human" ? `Waiting for ${game.players[actor].name} to bid.` : "Waiting for the computer auction…") : game.phase === "play" ? (activeHuman ? "Follow suit whenever possible." : ONLINE_MODE && actor >= 0 && game.players[actor]?.type === "human" ? `Waiting for ${game.players[actor].name} to play.` : "Waiting for computer play…") : "";
+    $("handHint").textContent = phaseAuction
+      ? (activeHuman ? "Choose a call above." : isOwnedOnlineHand ? "Your hand stays visible; bidding controls unlock on your turn." : ONLINE_MODE && actor >= 0 && game.players[actor]?.type === "human" ? `Waiting for ${game.players[actor].name} to bid.` : "Waiting for the computer auction…")
+      : game.phase === "play"
+        ? (activeHuman ? (game.turn === game.dummy ? "Declarer: select a legal card from dummy." : "Follow suit whenever possible.") : isOwnedOnlineHand ? "Your hand stays visible; cards unlock on your turn." : ONLINE_MODE && actor >= 0 && game.players[actor]?.type === "human" ? `Waiting for ${game.players[actor].name} to play.` : "Waiting for computer play…")
+        : "";
 
     $("auctionBidBtn").disabled = !phaseAuction || !activeHuman;
     $("passBtn").disabled = !phaseAuction || !activeHuman || !game.canCall(actor, { type: "pass" });
