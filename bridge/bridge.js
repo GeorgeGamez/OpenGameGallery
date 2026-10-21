@@ -349,7 +349,10 @@
 
   let game = new BridgeGame(launchConfig);
   let aiTimer = null;
-  let lastShownSeat = -1;
+  // The first actor sees their hand immediately. Later actor changes are
+  // gated by the two-second full-screen handoff, like Chess Fog of War.
+  let lastShownSeat = actorSeat();
+  let lastObservedActor = actorSeat();
   let messageText = "";
   let handoffTimer = null;
   let handoffUntil = 0;
@@ -388,11 +391,18 @@
     return seat >= 0 && seatIsLocalHuman(seat);
   }
 
+  function handoffEnabled() {
+    // Local hot-seat games need a pass-device screen. In online multiplayer,
+    // show the same black countdown on the current player's own device when
+    // their turn arrives, even though only one seat belongs to that client.
+    return ONLINE_MODE || localHumanCount() > 1;
+  }
+
   function handReady() {
     const seat = actorSeat();
     if (seat < 0 || !currentActorIsHuman()) return false;
     if (ONLINE_MODE && !hasPrivateHand(seat)) return false;
-    if (localHumanCount() <= 1) {
+    if (!ONLINE_MODE && localHumanCount() <= 1) {
       lastShownSeat = seat;
       return true;
     }
@@ -412,22 +422,31 @@
   }
 
   function beginHandoff(seat) {
-    if (seat < 0 || seat !== actorSeat() || !seatIsLocalHuman(seat) || localHumanCount() <= 1 || game.over) return;
+    if (seat < 0 || seat !== actorSeat() || !seatIsLocalHuman(seat) || !handoffEnabled() || game.over) return;
     if (handoffTimer && handoffTargetSeat === seat) return;
     clearHandoff();
     handoffTargetSeat = seat;
     handoffUntil = Date.now() + 2000;
     const overlay = $("handoffOverlay");
-    $("handoffTitle").textContent = `Pass the device to ${game.players[seat].name || game.players[seat].compass}`;
+    const title = $("handoffTitle");
+    const note = $("handoffNote");
+    const countdown = $("handoffCountdown");
+    if (!overlay || !title || !countdown) return;
+    title.textContent = ONLINE_MODE
+      ? "Your turn is starting"
+      : `Pass the device to ${game.players[seat].name || game.players[seat].compass}`;
+    if (note) note.textContent = ONLINE_MODE
+      ? "Your hand and controls will be available when the timer reaches zero."
+      : "The next player's hand will appear when the timer reaches zero.";
     overlay.classList.add("open");
     overlay.setAttribute("aria-hidden", "false");
     const update = () => {
       const remaining = Math.max(0, handoffUntil - Date.now());
-      $("handoffCountdown").textContent = (remaining / 1000).toFixed(1);
+      countdown.textContent = (remaining / 1000).toFixed(1);
       if (remaining <= 0) {
         const target = handoffTargetSeat;
         clearHandoff();
-        if (target === actorSeat()) lastShownSeat = target;
+        if (target === actorSeat() && currentActorIsHuman()) lastShownSeat = target;
         render();
         runAI();
       }
@@ -581,7 +600,10 @@
       // controller map travels with the snapshot.
       pendingOnlineAction = false;
       const nextActor = actorSeat();
-      if (nextActor !== previousActor) lastShownSeat = -1;
+      if (nextActor !== previousActor) {
+        lastShownSeat = -1;
+        lastObservedActor = nextActor;
+      }
       if (handoffTargetSeat !== -1 && handoffTargetSeat !== nextActor) clearHandoff();
       messageText = "";
       render();
@@ -853,8 +875,15 @@
   function render() {
     renderPlayers();
     const actor = actorSeat();
+    // Also detect host-side/local actions, which do not pass through
+    // applySnapshot(). Reset the reveal gate exactly once per turn change.
+    if (actor !== lastObservedActor) {
+      lastObservedActor = actor;
+      lastShownSeat = -1;
+      if (handoffTargetSeat !== -1 && handoffTargetSeat !== actor) clearHandoff();
+    }
     const ready = handReady();
-    const pendingHandoff = localHumanCount() > 1 && currentActorIsHuman() && !ready && !game.over;
+    const pendingHandoff = handoffEnabled() && currentActorIsHuman() && !ready && !game.over;
     if (pendingHandoff) beginHandoff(actor);
     else if (handoffTargetSeat !== -1 && handoffTargetSeat !== actor) clearHandoff();
     $("boardInfo").textContent = `Board ${game.dealNumber} · Dealer ${game.players[game.dealer].compass} · ${game.vulnerability.label}`;
@@ -1025,7 +1054,9 @@
     if (!game.over) return;
     clearTimeout(aiTimer);
     game.newDeal();
-    lastShownSeat = -1;
+    clearHandoff();
+    lastObservedActor = actorSeat();
+    lastShownSeat = actorSeat();
     messageText = "";
     if (ONLINE_MODE) publishOnlineState();
     render();
@@ -1036,7 +1067,9 @@
     clearTimeout(aiTimer);
     game = new BridgeGame(launchConfig);
     assignOnlineSeats();
-    lastShownSeat = -1;
+    clearHandoff();
+    lastObservedActor = actorSeat();
+    lastShownSeat = actorSeat();
     messageText = "";
     if (ONLINE_MODE) publishOnlineState();
     render();
