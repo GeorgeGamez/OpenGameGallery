@@ -579,6 +579,41 @@ export class GameRoom extends DurableObject {
         await this.relayGameEvent(room, participant, "game:event", data);
         break;
 
+      // Host-only, targeted delivery for hidden information such as card hands.
+      // This is additive; existing game:event broadcasts remain unchanged.
+      case "game:private": {
+        if (!attachment.isHost) {
+          sendJson(ws, {
+            type: "error",
+            code: "HOST_ONLY",
+            message: "Only the host may send private game data.",
+          });
+          break;
+        }
+        if (!room.started) {
+          sendJson(ws, { type: "error", code: "GAME_NOT_STARTED", message: "The game has not started." });
+          break;
+        }
+        const targetClientId = typeof data.targetClientId === "string" ? data.targetClientId.trim() : "";
+        const target = room.participants.find((p) => p.clientId === targetClientId && p.connected && p.spectator !== true);
+        const payload = sanitizeGamePayload(data);
+        if (!targetClientId || !target || payload === null) {
+          sendJson(ws, { type: "error", code: "INVALID_PRIVATE_TARGET", message: "Private game data needs a connected player and a valid payload." });
+          break;
+        }
+        const privateMessage = { type: "game:private", sender: publicParticipant(participant), payload };
+        let delivered = false;
+        for (const targetWs of this.ctx.getWebSockets()) {
+          const targetAttachment = targetWs.deserializeAttachment();
+          if (targetAttachment?.clientId === targetClientId) {
+            sendJson(targetWs, privateMessage);
+            delivered = true;
+          }
+        }
+        if (!delivered) sendJson(ws, { type: "error", code: "PRIVATE_TARGET_OFFLINE", message: "The private recipient is no longer connected." });
+        break;
+      }
+
       default:
         sendJson(ws, {
           type: "error",
