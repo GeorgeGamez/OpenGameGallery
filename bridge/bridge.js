@@ -169,20 +169,35 @@
 
     finishAuction() {
       const finalBid = this.highBid;
-      let declarer = -1;
-      for (const call of this.auction) {
-        if (call.type === "bid" && sideOf(call.seat) === sideOf(finalBid.seat) && call.strain === finalBid.strain) {
-          declarer = call.seat;
-          break;
-        }
-      }
+      // In Bridge, declarer is the FIRST member of the winning partnership
+      // who bid the final denomination, not necessarily the last/high bidder.
+      // Dummy is declarer's partner. The dealer is independent of both roles.
+      const winningSide = sideOf(finalBid.seat);
+      const firstWinningSideBid = this.auction.find((call) =>
+        call.type === "bid" && sideOf(call.seat) === winningSide && call.strain === finalBid.strain
+      );
+      const declarer = firstWinningSideBid ? firstWinningSideBid.seat : finalBid.seat;
       this.declarer = declarer;
       this.dummy = partnerOf(declarer);
+      // The player immediately to declarer's left makes the opening lead.
       this.openingLeader = (declarer + 1) % 4;
-      this.contract = { level: finalBid.level, strain: finalBid.strain, multiplier: this.multiplier, bidSeat: finalBid.seat, side: sideOf(finalBid.seat) };
+      this.contract = {
+        level: finalBid.level,
+        strain: finalBid.strain,
+        multiplier: this.multiplier,
+        bidSeat: finalBid.seat,
+        side: winningSide,
+        declarer: this.declarer,
+        dummy: this.dummy,
+        openingLeader: this.openingLeader,
+      };
       this.phase = "play";
       this.turn = this.openingLeader;
-      this.history.unshift(`${this.players[declarer].compass} is declarer in ${this.contract.level}${suitSymbol(this.contract.strain)}${this.multiplier === 2 ? " doubled" : this.multiplier === 4 ? " redoubled" : ""}. ${this.players[this.dummy].compass} is dummy.`);
+      this.history.unshift(
+        `${this.players[declarer].compass} is declarer in ${this.contract.level}${suitSymbol(this.contract.strain)}${this.multiplier === 2 ? " doubled" : this.multiplier === 4 ? " redoubled" : ""}. ` +
+        `${this.players[this.dummy].compass} is dummy. ${this.players[this.openingLeader].compass} makes the opening lead; ` +
+        `after that lead, declarer controls dummy's cards.`
+      );
     }
 
     legalCards(seat) {
@@ -349,8 +364,8 @@
 
   let game = new BridgeGame(launchConfig);
   let aiTimer = null;
-  // The first actor sees their hand immediately. Later actor changes are
-  // gated by the two-second full-screen handoff, like Chess Fog of War.
+  // In local hot-seat play, later human actors use a two-second black handoff.
+  // Online players are on separate devices and do not need a privacy delay.
   let lastShownSeat = actorSeat();
   let lastObservedActor = actorSeat();
   let messageText = "";
@@ -392,17 +407,20 @@
   }
 
   function handoffEnabled() {
-    // Local hot-seat games need a pass-device screen. In online multiplayer,
-    // show the same black countdown on the current player's own device when
-    // their turn arrives, even though only one seat belongs to that client.
-    return ONLINE_MODE || localHumanCount() > 1;
+    // A full-screen privacy handoff is only needed when people share a device.
+    // Online opponents use separate screens, so never delay their turns.
+    return !ONLINE_MODE && localHumanCount() > 1;
   }
 
   function handReady() {
     const seat = actorSeat();
     if (seat < 0 || !currentActorIsHuman()) return false;
-    if (ONLINE_MODE && !hasPrivateHand(seat)) return false;
-    if (!ONLINE_MODE && localHumanCount() <= 1) {
+    if (ONLINE_MODE) {
+      // A remote player's own hand is unlocked as soon as the server has sent
+      // its private hand, rather than waiting for a local-device countdown.
+      return hasPrivateHand(seat);
+    }
+    if (localHumanCount() <= 1) {
       lastShownSeat = seat;
       return true;
     }
@@ -422,7 +440,7 @@
   }
 
   function beginHandoff(seat) {
-    if (seat < 0 || seat !== actorSeat() || !seatIsLocalHuman(seat) || !handoffEnabled() || game.over) return;
+    if (ONLINE_MODE || seat < 0 || seat !== actorSeat() || !seatIsLocalHuman(seat) || !handoffEnabled() || game.over) return;
     if (handoffTimer && handoffTargetSeat === seat) return;
     clearHandoff();
     handoffTargetSeat = seat;
@@ -432,12 +450,8 @@
     const note = $("handoffNote");
     const countdown = $("handoffCountdown");
     if (!overlay || !title || !countdown) return;
-    title.textContent = ONLINE_MODE
-      ? "Your turn is starting"
-      : `Pass the device to ${game.players[seat].name || game.players[seat].compass}`;
-    if (note) note.textContent = ONLINE_MODE
-      ? "Your hand and controls will be available when the timer reaches zero."
-      : "The next player's hand will appear when the timer reaches zero.";
+    title.textContent = `Pass the device to ${game.players[seat].name || game.players[seat].compass}`;
+    if (note) note.textContent = "The next player's hand will appear when the timer reaches zero.";
     overlay.classList.add("open");
     overlay.setAttribute("aria-hidden", "false");
     const update = () => {
@@ -872,6 +886,16 @@
       : '<span class="muted">No cards remain.</span>';
   }
 
+  function contractSummary() {
+    if (!game.contract) return game.passedOut ? "Passed out" : "No contract yet";
+    const doubling = game.contract.multiplier === 2 ? " ×2 (doubled)" : game.contract.multiplier === 4 ? " ×4 (redoubled)" : "";
+    const declarer = game.players[game.declarer]?.compass || "—";
+    const dummy = game.players[game.dummy]?.compass || "—";
+    const openingLeader = game.players[game.openingLeader]?.compass || "—";
+    const bidBy = game.players[game.contract.bidSeat]?.compass || "—";
+    return `${game.contract.level}${suitSymbol(game.contract.strain)}${doubling} · Highest bid ${bidBy} · Declarer ${declarer} · Dummy ${dummy} · Opening lead ${openingLeader}`;
+  }
+
   function render() {
     renderPlayers();
     const actor = actorSeat();
@@ -888,7 +912,13 @@
     else if (handoffTargetSeat !== -1 && handoffTargetSeat !== actor) clearHandoff();
     $("boardInfo").textContent = `Board ${game.dealNumber} · Dealer ${game.players[game.dealer].compass} · ${game.vulnerability.label}`;
     $("phaseTitle").textContent = game.phase === "auction" ? "Auction" : game.phase === "play" ? `Play · Trick ${Math.min(13, game.trickNumber + 1)} of 13` : "Deal complete";
-    $("contractInfo").textContent = game.contract ? `${game.contract.level}${suitSymbol(game.contract.strain)}${game.contract.multiplier === 2 ? " ×2 (doubled)" : game.contract.multiplier === 4 ? " ×4 (redoubled)" : ""} · Declarer ${game.players[game.declarer].compass} · ${game.tricksWon.reduce((n, v, i) => n + (sideOf(i) === sideOf(game.declarer) ? v : 0), 0)} tricks for declarer` : game.passedOut ? "Passed out" : "No contract yet";
+    const contractSummaryText = contractSummary();
+    const declarerTrickCount = game.contract
+      ? game.tricksWon.reduce((n, v, i) => n + (sideOf(i) === sideOf(game.declarer) ? v : 0), 0)
+      : 0;
+    $("contractInfo").textContent = game.contract
+      ? `${contractSummaryText} · ${declarerTrickCount} declarer tricks`
+      : contractSummaryText;
     $("auction").innerHTML = renderAuction();
     $("trickCards").innerHTML = renderTrick();
     $("auctionPanel").classList.toggle("hidden", game.phase !== "auction");
