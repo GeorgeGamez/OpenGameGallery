@@ -1131,6 +1131,13 @@ No diagnostics run yet.</pre
         return games.find((game) => game.id === gameId) || null;
       }
 
+      // A saved room may remain connected while the user plays a local-only game.
+      // Do not let that room's participants/settings implicitly turn every game online.
+      function selectedGameUsesOnlineRoom() {
+        const game = libraryGame(selectedSetupGame);
+        return Boolean(onlineState.connected && game?.capabilities?.online);
+      }
+
       function libraryVariants(gameId) {
         return libraryGame(gameId)?.variants || [];
       }
@@ -1668,14 +1675,14 @@ No diagnostics run yet.</pre
           profileId: p.id,
           name: p.name || "Player",
           avatar: p.avatar || "♟",
-          type: onlineState.connected
+          type: selectedGameUsesOnlineRoom()
             ? "Local player • This computer"
             : "Local player",
           online: false,
           spectator: setupSpectatorTokens.has(`local:${p.id}`),
-          controllerClientId: onlineState.connected ? onlineState.clientId : "",
+          controllerClientId: selectedGameUsesOnlineRoom() ? onlineState.clientId : "",
         }));
-        if (!onlineState.connected) return localEntries;
+        if (!selectedGameUsesOnlineRoom()) return localEntries;
         const remoteEntries = [];
         for (const participant of onlineState.participants.filter(
           (p) => p.connected && p.clientId !== onlineState.clientId,
@@ -1741,11 +1748,13 @@ No diagnostics run yet.</pre
       function initializeSetupState() {
         const requestedGame = selectedSetupGame;
         const configuredGame = onlineState.config?.game;
-        // Non-host clients must follow the host's room game, but the host
-        // must be able to click a different game card and open that game's
-        // setup menu. Previously the room game always overrode the clicked
-        // game, which caused every setup button to open (for example) Reversi.
-        const nonHostOnline = onlineState.connected && !onlineState.isHost;
+        const requestedDefinition = libraryGame(requestedGame);
+        const requestedUsesOnline = Boolean(
+          onlineState.connected && requestedDefinition?.capabilities?.online,
+        );
+        // An online guest follows the host only when opening an online-capable
+        // game. Local-only games must remain launchable even while a room is saved.
+        const nonHostOnline = requestedUsesOnline && !onlineState.isHost;
         const roomGame =
           nonHostOnline && configuredGame && libraryGame(configuredGame)
             ? configuredGame
@@ -1761,6 +1770,10 @@ No diagnostics run yet.</pre
           : variants[0]?.id || "standard";
 
         const gameDefinition = libraryGame(selectedSetupGame);
+        const roomConfig =
+          selectedGameUsesOnlineRoom() && onlineState.config?.game === selectedSetupGame
+            ? onlineState.config
+            : null;
         const variantDefinition =
           (gameDefinition?.variants || []).find(
             (v) => v.id === selectedSetupVariant,
@@ -1776,17 +1789,14 @@ No diagnostics run yet.</pre
                 ? option.choices[0].value
                 : option.choices[0]
               : false);
-          selectedSetupOptions[key] =
-            onlineState.config?.options?.[key] ?? fallback;
+          selectedSetupOptions[key] = roomConfig?.options?.[key] ?? fallback;
         }
         if (selectedSetupGame === "chess") {
-          selectedSetupOptions.fogOfWar = Boolean(
-            onlineState.config?.options?.fogOfWar,
-          );
+          selectedSetupOptions.fogOfWar = Boolean(roomConfig?.options?.fogOfWar);
         }
         setupComputerDifficulties = {};
 
-        if (onlineState.connected) {
+        if (selectedGameUsesOnlineRoom()) {
           setupSpectatorTokens = new Set(
             onlineState.participants
               .filter((p) => p.connected && p.spectator)
@@ -1815,9 +1825,9 @@ No diagnostics run yet.</pre
           setupComputerCount,
         );
 
-        if (onlineState.config?.players?.length) {
+        if (roomConfig?.players?.length) {
           const ordered = [];
-          for (const p of onlineState.config.players) {
+          for (const p of roomConfig.players) {
             if (p.id) ordered.push(p.id);
             else if (p.type === "computer") {
               const id = p.id || p.seat || "";
@@ -1827,7 +1837,7 @@ No diagnostics run yet.</pre
               ordered.push(`online:${p.controllerClientId}:${p.profileId}`);
             else if (p.profileId) ordered.push(`local:${p.profileId}`);
           }
-          setupComputerCount = onlineState.config.players.filter(
+          setupComputerCount = roomConfig.players.filter(
             (p) => p.type === "computer",
           ).length;
           const configuredBounds = computerBounds();
@@ -1836,7 +1846,7 @@ No diagnostics run yet.</pre
             Math.min(configuredBounds.max, setupComputerCount),
           );
           for (let i = 0; i < setupComputerCount; i++) {
-            const configured = onlineState.config.players.find((p) =>
+            const configured = roomConfig.players.find((p) =>
               String(p.id || "").includes(`computer:${i}`),
             );
             setupComputerDifficulties[`computer:${i}`] =
@@ -1897,6 +1907,7 @@ No diagnostics run yet.</pre
 
       function setupConfigFromState() {
         ensureSetupCounts();
+        const useOnline = selectedGameUsesOnlineRoom();
         let active = activeSetupEntries();
         const range = selectedPlayerRange();
         if (selectedSetupGame === "president") {
@@ -1951,7 +1962,7 @@ No diagnostics run yet.</pre
               type: "computer",
               name: entry.name,
               avatar: entry.avatar,
-              controllerClientId: onlineState.connected
+              controllerClientId: useOnline
                 ? onlineState.participants.find((p) => p.role === "host")
                     ?.clientId || onlineState.clientId
                 : "",
@@ -1988,7 +1999,7 @@ No diagnostics run yet.</pre
         return {
           game: selectedSetupGame,
           variant: selectedSetupVariant,
-          hostClientId: onlineState.connected
+          hostClientId: useOnline
             ? onlineState.participants.find((p) => p.role === "host")
                 ?.clientId || ""
             : "",
@@ -1996,7 +2007,7 @@ No diagnostics run yet.</pre
             ...human(entry),
             seat: seatOrder[index],
           })),
-          spectators: onlineState.connected
+          spectators: useOnline
             ? onlineState.participants
                 .filter((p) => p.spectator)
                 .map((p) => p.clientId)
@@ -2007,7 +2018,7 @@ No diagnostics run yet.</pre
 
       function sendPreGameConfig() {
         if (
-          !onlineState.connected ||
+          !selectedGameUsesOnlineRoom() ||
           !onlineState.isHost ||
           !onlineState.socket ||
           onlineState.socket.readyState !== WebSocket.OPEN
@@ -2034,7 +2045,8 @@ No diagnostics run yet.</pre
         const subtitle = $("gameSetupSubtitle");
         body.innerHTML = "";
 
-        const host = onlineState.connected && !onlineState.isHost;
+        const useOnline = selectedGameUsesOnlineRoom();
+        const host = useOnline && !onlineState.isHost;
         ensureSetupCounts();
         const active = activeSetupEntries();
         const humans = setupEntries().filter(
@@ -2052,9 +2064,9 @@ No diagnostics run yet.</pre
         const isChess = selectedSetupGame === "chess";
         $("gameSetupTitle").textContent =
           `${gameDefinition?.name || "Game"} Setup`;
-        subtitle.textContent = onlineState.connected
+        subtitle.textContent = useOnline
           ? host
-            ? "The host controls the match configuration."
+            ? "The host controls the online match configuration."
             : `Room ${roomCode()} • Host setup`
           : "Choose the variant and configure this match.";
 
@@ -2078,7 +2090,7 @@ No diagnostics run yet.</pre
               selectedSetupVariant = variant.id;
               ensureSetupCounts();
               normalizeSetupOrder();
-              if (onlineState.connected && onlineState.isHost)
+              if (selectedGameUsesOnlineRoom() && onlineState.isHost)
                 sendPreGameConfig();
               renderGameSetup();
             };
@@ -2112,7 +2124,7 @@ No diagnostics run yet.</pre
           fogSlider.className = "toggle-slider";
           fogCheckbox.addEventListener("change", () => {
             selectedSetupOptions.fogOfWar = fogCheckbox.checked;
-            if (onlineState.connected && onlineState.isHost)
+            if (selectedGameUsesOnlineRoom() && onlineState.isHost)
               sendPreGameConfig();
           });
           fogSwitch.append(fogCheckbox, fogSlider);
@@ -2156,7 +2168,7 @@ No diagnostics run yet.</pre
               slider.className = "toggle-slider";
               cb.addEventListener("change", () => {
                 selectedSetupOptions[key] = cb.checked;
-                if (onlineState.connected && onlineState.isHost)
+                if (selectedGameUsesOnlineRoom() && onlineState.isHost)
                   sendPreGameConfig();
               });
               sw.append(cb, slider);
@@ -2215,7 +2227,7 @@ No diagnostics run yet.</pre
 
               select.addEventListener("change", () => {
                 selectedSetupOptions[key] = select.value;
-                if (onlineState.connected && onlineState.isHost)
+                if (selectedGameUsesOnlineRoom() && onlineState.isHost)
                   sendPreGameConfig();
               });
 
@@ -2321,7 +2333,7 @@ No diagnostics run yet.</pre
           ensureSetupCounts();
           normalizeSetupOrder();
           renderGameSetup();
-          if (onlineState.connected && onlineState.isHost) sendPreGameConfig();
+          if (selectedGameUsesOnlineRoom() && onlineState.isHost) sendPreGameConfig();
         };
         const rh = document.createElement("div");
         rh.className = "range-help";
@@ -2386,7 +2398,7 @@ No diagnostics run yet.</pre
             select.onchange = () => {
               setupComputerDifficulties[entry.token] = select.value;
               renderGameSetup();
-              if (onlineState.connected && onlineState.isHost)
+              if (selectedGameUsesOnlineRoom() && onlineState.isHost)
                 sendPreGameConfig();
             };
             row.append(pos, info, select);
@@ -2404,7 +2416,7 @@ No diagnostics run yet.</pre
               setupPlayerOrder[index - 1],
             ];
             renderGameSetup();
-            if (onlineState.connected && onlineState.isHost)
+            if (selectedGameUsesOnlineRoom() && onlineState.isHost)
               sendPreGameConfig();
           };
           const down = document.createElement("button");
@@ -2418,7 +2430,7 @@ No diagnostics run yet.</pre
               setupPlayerOrder[index + 1],
             ];
             renderGameSetup();
-            if (onlineState.connected && onlineState.isHost)
+            if (selectedGameUsesOnlineRoom() && onlineState.isHost)
               sendPreGameConfig();
           };
           buttons.append(up, down);
@@ -2445,17 +2457,13 @@ No diagnostics run yet.</pre
           message.classList.add("error");
           message.textContent = `This variant requires ${playerRange.min}–${playerRange.max} active players.`;
         } else
-          message.textContent = onlineState.connected
-            ? "Both sides are configured. Start the match when ready."
-            : "Start the match when ready.";
+          message.textContent = useOnline
+            ? "The online match is configured. Start it when ready."
+            : "Start the local match when ready.";
         body.appendChild(message);
 
-        play.disabled =
-          host || !valid || (onlineState.connected && !onlineState.isHost);
-        play.textContent =
-          onlineState.connected && !onlineState.isHost
-            ? "Waiting for host"
-            : "Play";
+        play.disabled = host || !valid;
+        play.textContent = useOnline && !onlineState.isHost ? "Waiting for host" : "Play";
       }
 
       function formatSetupLabel(value) {
@@ -2497,14 +2505,29 @@ No diagnostics run yet.</pre
           backdrop.classList.remove("open");
       }
 
+      function showGameSetupError(message) {
+        const body = $("gameSetupBody");
+        if (!body) return;
+        let panel = $("gameSetupLaunchError");
+        if (!panel) {
+          panel = document.createElement("div");
+          panel.id = "gameSetupLaunchError";
+          panel.className = "setup-message error";
+          body.prepend(panel);
+        }
+        panel.textContent = message;
+      }
+
       function startSelectedGame() {
-        if (onlineState.connected && !onlineState.isHost) return;
+        $("gameSetupLaunchError")?.remove();
         const gameDefinition = selectedGameDefinition();
-        if (!gameDefinition || !gameVisibleInLibrary(gameDefinition)) return;
-        if (onlineState.connected && !gameDefinition.capabilities?.online) {
-          error(
-            `${gameDefinition.name || "This game"} does not support online play yet.`,
-          );
+        if (!gameDefinition || !gameVisibleInLibrary(gameDefinition)) {
+          showGameSetupError("This game is not available in the current library view.");
+          return;
+        }
+        const useOnline = selectedGameUsesOnlineRoom();
+        if (useOnline && !onlineState.isHost) {
+          showGameSetupError("Only the host can start this online match. Choose a local-only game to play on this computer.");
           return;
         }
         if (
@@ -2519,14 +2542,17 @@ No diagnostics run yet.</pre
         // Launch any game with a configured page and a supported play mode.
         // The actual configured seat count may vary within the game's limits.
         if (
-          !gameDefinition.page ||
           !(
             gameDefinition.capabilities?.local ||
             gameDefinition.capabilities?.computer ||
             gameDefinition.capabilities?.online
           )
-        )
+        ) {
+          showGameSetupError(
+            `${gameDefinition.name || "This game"} is not marked as available for local, computer, or online play in library.json.`,
+          );
           return;
+        }
 
         const config = setupConfigFromState();
         const range = selectedPlayerRange();
@@ -2535,14 +2561,16 @@ No diagnostics run yet.</pre
           config.players.length < range.min ||
           config.players.length > range.max
         ) {
-          error(
+          showGameSetupError(
             `Could not prepare ${gameDefinition.name || "the game"}. This match needs ${range.min}–${range.max} players; check the player setup and try again.`,
           );
           return;
         }
 
-        onlineState.config = config;
+        if (useOnline) onlineState.config = config;
         try {
+          // Game pages use this to initialize their local player seats as well.
+          // Keep the room's in-memory config separate when launching a local-only game.
           sessionStorage.setItem(
             "gameLibraryOnlineConfig",
             JSON.stringify(config),
@@ -2552,25 +2580,27 @@ No diagnostics run yet.</pre
         const params = new URLSearchParams({
           game: selectedSetupGame,
           variant: selectedSetupVariant,
-          online: onlineState.connected ? "1" : "0",
-          onlineCode: onlineState.connected ? roomCode() : "",
-          onlineServer: onlineState.connected ? serverBase() : "",
-          onlineClientId: onlineState.connected ? onlineState.clientId : "",
+          online: useOnline ? "1" : "0",
+          onlineCode: useOnline ? roomCode() : "",
+          onlineServer: useOnline ? serverBase() : "",
+          onlineClientId: useOnline ? onlineState.clientId : "",
           onlineConfig: JSON.stringify(config),
         });
         if (
-          onlineState.connected &&
+          useOnline &&
           onlineState.isHost &&
           onlineState.hostToken
         )
           params.set("hostToken", onlineState.hostToken);
 
-        if (onlineState.connected) {
+        if (useOnline) {
           if (
             !onlineState.socket ||
             onlineState.socket.readyState !== WebSocket.OPEN
-          )
+          ) {
+            showGameSetupError("The online connection is not ready. Reconnect to the room and try again.");
             return;
+          }
           onlineState.socket.send(
             JSON.stringify({ type: "room:config", config }),
           );
@@ -2590,9 +2620,15 @@ No diagnostics run yet.</pre
         };
         const gamePage =
           playablePages[selectedSetupGame] || gameDefinition.page;
-        if (!gamePage) return;
+        if (!gamePage) {
+          showGameSetupError(`Could not find a page for ${gameDefinition.name || "this game"}. Check its page entry in library.json.`);
+          return;
+        }
 
         closeGameSetup();
+        // A local-only game should not remain subscribed to room game:start events;
+        // closing the socket is safe because saved room credentials reconnect on return.
+        if (!useOnline && onlineState.connected) closeSocket();
         window.location.href = `${gamePage}?${params}`;
       }
 
@@ -2615,7 +2651,6 @@ No diagnostics run yet.</pre
           return;
         }
 
-        const waitingForHost = onlineState.connected && !onlineState.isHost;
         const visibleGames = games.filter(gameVisibleInLibrary);
         if (!visibleGames.length) {
           const empty = document.createElement("div");
@@ -2628,6 +2663,9 @@ No diagnostics run yet.</pre
           return;
         }
         for (const game of visibleGames) {
+          const waitingForHost = Boolean(
+            onlineState.connected && !onlineState.isHost && game.capabilities?.online,
+          );
           const card = document.createElement("article");
           card.className = "game-card";
 
