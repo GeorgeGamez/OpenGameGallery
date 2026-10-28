@@ -1115,6 +1115,8 @@ No diagnostics run yet.</pre
       let setupPlayerOrder = [];
       let setupSpectatorTokens = new Set();
       let gameSetupOpen = false;
+      // Online hosts navigate only after the Worker confirms game:start.
+      let pendingOnlineLaunch = null;
 
       // Release channels: normal is the public library, Beta is the separate
       // beta menu, and Alpha is shown inside Beta only after the access code.
@@ -1513,6 +1515,7 @@ No diagnostics run yet.</pre
         onlineState.connected = false;
         onlineState.isHost = false;
         onlineState.participants = [];
+        pendingOnlineLaunch = null;
       }
       function renderParty() {
         partyList.innerHTML = "";
@@ -1705,7 +1708,7 @@ No diagnostics run yet.</pre
               profileId: memberId,
               name: member.name || participant.name || "Online player",
               avatar: member.avatar || participant.avatar || "♟",
-              type: "Online player • Remote computer",
+              type: "Online player • Remote device",
               online: true,
               participantClientId: participant.clientId,
               controllerClientId: participant.clientId,
@@ -1987,7 +1990,9 @@ No diagnostics run yet.</pre
           return {
             seat: "",
             type: "human",
-            controllerClientId: "",
+            controllerClientId: useOnline
+              ? entry.controllerClientId || onlineState.clientId
+              : "",
             profileId: p.id || entry.id,
             name: p.name || entry.name,
             avatar: p.avatar || entry.avatar,
@@ -2518,6 +2523,17 @@ No diagnostics run yet.</pre
         panel.textContent = message;
       }
 
+      const PLAYABLE_PAGE_OVERRIDES = {
+        chess: "chess/chess.html",
+        draughts: "draughts/draughts.html",
+        reversi: "reversi/reversi.html",
+        president: "president/president.html",
+      };
+
+      function gamePageFor(gameId) {
+        return PLAYABLE_PAGE_OVERRIDES[gameId] || libraryGame(gameId)?.page || "";
+      }
+
       function startSelectedGame() {
         $("gameSetupLaunchError")?.remove();
         const gameDefinition = selectedGameDefinition();
@@ -2593,6 +2609,12 @@ No diagnostics run yet.</pre
         )
           params.set("hostToken", onlineState.hostToken);
 
+        const gamePage = gamePageFor(selectedSetupGame);
+        if (!gamePage) {
+          showGameSetupError(`Could not find a page for ${gameDefinition.name || "this game"}. Check its page entry in library.json.`);
+          return;
+        }
+
         if (useOnline) {
           if (
             !onlineState.socket ||
@@ -2601,34 +2623,31 @@ No diagnostics run yet.</pre
             showGameSetupError("The online connection is not ready. Reconnect to the room and try again.");
             return;
           }
-          onlineState.socket.send(
-            JSON.stringify({ type: "room:config", config }),
-          );
-          onlineState.socket.send(
-            JSON.stringify({ type: "game:start", config, resetState: true }),
-          );
-        }
 
-        // Keep the library data-driven while making the two currently playable
-        // pages unambiguous. This prevents an old/incorrect page field from
-        // ever routing Chess to the Draughts player (or vice versa).
-        const playablePages = {
-          chess: "chess/chess.html",
-          draughts: "draughts/draughts.html",
-          reversi: "reversi/reversi.html",
-          president: "president/president.html",
-        };
-        const gamePage =
-          playablePages[selectedSetupGame] || gameDefinition.page;
-        if (!gamePage) {
-          showGameSetupError(`Could not find a page for ${gameDefinition.name || "this game"}. Check its page entry in library.json.`);
+          // The Worker now stores this exact config as part of game:start, so
+          // a separate room:config message cannot race with the start request.
+          pendingOnlineLaunch = {
+            gameId: selectedSetupGame,
+            href: `${gamePage}?${params}`,
+          };
+          gameSetupPlay.disabled = true;
+          gameSetupPlay.textContent = "Starting…";
+          try {
+            onlineState.socket.send(
+              JSON.stringify({ type: "game:start", config, resetState: true }),
+            );
+          } catch (e) {
+            pendingOnlineLaunch = null;
+            renderGameSetup();
+            showGameSetupError(`Could not start the online match: ${e.message || String(e)}`);
+          }
           return;
         }
 
         closeGameSetup();
         // A local-only game should not remain subscribed to room game:start events;
-        // closing the socket is safe because saved room credentials reconnect on return.
-        if (!useOnline && onlineState.connected) closeSocket();
+        // saved room credentials reconnect when the user returns to the library.
+        if (onlineState.connected) closeSocket();
         window.location.href = `${gamePage}?${params}`;
       }
 
@@ -2759,7 +2778,7 @@ No diagnostics run yet.</pre
               Array.isArray(p.party) && p.party.length
                 ? p.party.map((member) => member.name || "Player").join(", ")
                 : p.name || "Player";
-            row.innerHTML = `<div class="avatar">${escapeHtml(p.avatar || "🎮")}</div><div class="grow"><div class="player-name">${escapeHtml(partyNames)}</div><div class="player-type">${p.clientId === onlineState.clientId ? "You • " : ""}${p.role === "host" ? "Host" : "Online computer"}</div></div>`;
+            row.innerHTML = `<div class="avatar">${escapeHtml(p.avatar || "🎮")}</div><div class="grow"><div class="player-name">${escapeHtml(partyNames)}</div><div class="player-type">${p.clientId === onlineState.clientId ? "You • " : ""}${p.role === "host" ? "Host" : "Online player"}</div></div>`;
             onlineParticipants.appendChild(row);
           }
         if (onlineState.connected) {
@@ -2995,7 +3014,11 @@ No diagnostics run yet.</pre
               renderOnline();
               break;
             case "game:start": {
-              onlineState.config = m.config || onlineState.config;
+              // Prefer the config included in the Worker-confirmed start event.
+              // Fall back only if an older Worker omitted a usable game config.
+              if (m.config && typeof m.config === "object" && m.config.game) {
+                onlineState.config = m.config;
+              }
               try {
                 sessionStorage.setItem(
                   "gameLibraryOnlineConfig",
@@ -3003,15 +3026,26 @@ No diagnostics run yet.</pre
                 );
               } catch {}
               renderOnline();
-              if (onlineState.connected && !onlineState.isHost) {
-                const gameId = onlineState.config?.game || "";
+
+              const gameId = onlineState.config?.game || "";
+              if (onlineState.isHost) {
+                // Do not navigate away until the Worker has saved the match
+                // config and broadcast the start event back to this host.
+                if (pendingOnlineLaunch && pendingOnlineLaunch.gameId === gameId) {
+                  const destination = pendingOnlineLaunch.href;
+                  pendingOnlineLaunch = null;
+                  window.location.href = destination;
+                }
+                break;
+              }
+
+              if (onlineState.connected) {
                 if (!libraryLoaded) {
                   try {
                     await loadLibrary();
                   } catch {}
                 }
-                const gameDefinition = libraryGame(gameId);
-                const page = gameDefinition?.page || "";
+                const page = gamePageFor(gameId);
                 if (!page) {
                   error(
                     `Could not find the game page for "${gameId || "unknown game"}".`,
@@ -3033,6 +3067,13 @@ No diagnostics run yet.</pre
             }
             case "error":
               error(m.message || "Server error");
+              if (pendingOnlineLaunch) {
+                pendingOnlineLaunch = null;
+                if (gameSetupOpen) {
+                  renderGameSetup();
+                  showGameSetupError(m.message || "The server rejected the online game start.");
+                }
+              }
               break;
           }
         };
@@ -3040,6 +3081,13 @@ No diagnostics run yet.</pre
           if (onlineState.socket !== ws) return;
           onlineState.connected = false;
           onlineState.socket = null;
+          if (pendingOnlineLaunch) {
+            pendingOnlineLaunch = null;
+            if (gameSetupOpen) {
+              renderGameSetup();
+              showGameSetupError("The online connection closed before the match could start. Reconnect and try again.");
+            }
+          }
           renderOnline();
         };
         ws.onerror = () => {

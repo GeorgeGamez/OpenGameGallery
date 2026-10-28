@@ -502,17 +502,41 @@ export class GameRoom extends DurableObject {
           });
           break;
         }
-        room.started = true;
-        room.matchId = crypto.randomUUID();
-        room.revision += 1;
-        await this.saveState(room);
-        this.broadcast({
-          type: "game:start",
-          config: room.config,
-          state: room.state,
-          matchId: room.matchId,
-          revision: room.revision,
-        });
+
+        // The selected configuration travels with game:start. Persist it here
+        // instead of relying on a separate room:config message arriving first.
+        // This avoids stale/empty game IDs when the host navigates away.
+        {
+          const requestedConfig =
+            data.config &&
+            typeof data.config === "object" &&
+            data.config.game
+              ? data.config
+              : room.config;
+          const nextConfig = sanitizeConfig(requestedConfig);
+          if (!nextConfig.game) {
+            sendJson(ws, {
+              type: "error",
+              code: "INVALID_GAME_CONFIG",
+              message: "Select a game and configure the match before starting.",
+            });
+            break;
+          }
+
+          room.config = nextConfig;
+          if (data.resetState === true) room.state = null;
+          room.started = true;
+          room.matchId = crypto.randomUUID();
+          room.revision += 1;
+          await this.saveState(room);
+          this.broadcast({
+            type: "game:start",
+            config: room.config,
+            state: room.state,
+            matchId: room.matchId,
+            revision: room.revision,
+          });
+        }
         break;
 
       case "game:result":
