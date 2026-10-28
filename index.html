@@ -1133,11 +1133,33 @@ No diagnostics run yet.</pre
         return games.find((game) => game.id === gameId) || null;
       }
 
+      // These games already have online-aware game pages, but some deployed
+      // library.json revisions still mark them online:false. Treat them as
+      // online-capable until the metadata is updated. Other local-only games
+      // remain local even when a saved room is connected.
+      const ONLINE_CAPABILITY_OVERRIDES = new Set([
+        "chess",
+        "draughts",
+        "hex",
+        "reversi",
+        "president",
+      ]);
+
+      function gameSupportsOnline(gameOrId) {
+        const game =
+          typeof gameOrId === "string" ? libraryGame(gameOrId) : gameOrId;
+        return Boolean(
+          game &&
+            (game.capabilities?.online === true ||
+              ONLINE_CAPABILITY_OVERRIDES.has(game.id)),
+        );
+      }
+
       // A saved room may remain connected while the user plays a local-only game.
       // Do not let that room's participants/settings implicitly turn every game online.
       function selectedGameUsesOnlineRoom() {
         const game = libraryGame(selectedSetupGame);
-        return Boolean(onlineState.connected && game?.capabilities?.online);
+        return Boolean(onlineState.connected && gameSupportsOnline(game));
       }
 
       function libraryVariants(gameId) {
@@ -1753,7 +1775,7 @@ No diagnostics run yet.</pre
         const configuredGame = onlineState.config?.game;
         const requestedDefinition = libraryGame(requestedGame);
         const requestedUsesOnline = Boolean(
-          onlineState.connected && requestedDefinition?.capabilities?.online,
+          onlineState.connected && gameSupportsOnline(requestedDefinition),
         );
         // An online guest follows the host only when opening an online-capable
         // game. Local-only games must remain launchable even while a room is saved.
@@ -2561,7 +2583,7 @@ No diagnostics run yet.</pre
           !(
             gameDefinition.capabilities?.local ||
             gameDefinition.capabilities?.computer ||
-            gameDefinition.capabilities?.online
+            gameSupportsOnline(gameDefinition)
           )
         ) {
           showGameSetupError(
@@ -2683,7 +2705,7 @@ No diagnostics run yet.</pre
         }
         for (const game of visibleGames) {
           const waitingForHost = Boolean(
-            onlineState.connected && !onlineState.isHost && game.capabilities?.online,
+            onlineState.connected && !onlineState.isHost && gameSupportsOnline(game),
           );
           const card = document.createElement("article");
           card.className = "game-card";
@@ -2726,7 +2748,7 @@ No diagnostics run yet.</pre
             game.page &&
             (game.capabilities?.local ||
               game.capabilities?.computer ||
-              game.capabilities?.online),
+              gameSupportsOnline(game)),
           );
           const status = releaseStatus(game.release);
           const statusLabel =
@@ -2742,7 +2764,7 @@ No diagnostics run yet.</pre
             <div class="game-meta">
               <span class="meta-tag">${escapeHtml(rangeLabel)}</span>
               ${variantsLabel ? `<span class="meta-tag">${escapeHtml(variantsLabel)}</span>` : ""}
-              <span class="meta-tag">${playable ? [game.capabilities?.local ? "Local" : null, game.capabilities?.computer ? "Computer" : null, game.capabilities?.online ? "Online" : null].filter(Boolean).join(" / ") : "Unavailable"}</span>
+              <span class="meta-tag">${playable ? [game.capabilities?.local ? "Local" : null, game.capabilities?.computer ? "Computer" : null, gameSupportsOnline(game) ? "Online" : null].filter(Boolean).join(" / ") : "Unavailable"}</span>
               <span class="release-badge ${status}">${statusLabel}</span>
             </div>`;
 
