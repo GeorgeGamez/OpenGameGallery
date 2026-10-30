@@ -262,6 +262,13 @@
 
       hand.splice(hand.findIndex((candidate) => candidate.id === cardId), 1);
       this.discardPile.push(card);
+
+      // Every coloured card becomes the active colour, not just Wild cards.
+      // This keeps matching rules, the displayed colour, and Wild artwork in sync.
+      if (card.color !== null && card.color !== undefined) {
+        this.currentColor = card.color;
+      }
+
       this.emptyDeckPasses = 0;
       this.turnDraw = null;
       this.log(`${this.players[playerIndex].name} plays ${this.describeCard(card)}.`);

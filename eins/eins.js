@@ -131,8 +131,10 @@
     $("activeColour").textContent = game.currentColor || "—";
     $("directionLabel").textContent = game.direction === 1 ? "Clockwise" : "Counter-clockwise";
     $("drawPile").innerHTML = window.EinsCards.renderBack({ cover: "standard" });
+    // Always pass the active colour so a Wild on top is recoloured after
+    // either a Wild choice or a subsequent coloured card.
     $("discardPile").innerHTML = window.EinsCards.renderCard(game.topCard, {
-      activeColor: game.topCard?.color ? null : game.currentColor,
+      activeColor: game.currentColor,
       disabled: true,
     });
     $("drawCount").textContent = `${game.drawPile.length} remaining`;

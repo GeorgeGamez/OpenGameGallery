@@ -23,12 +23,14 @@
     draw2: () => "+2",
     skip: () => "skip",
     reverse: () => "reverse",
-    wild: () => "drawUntilColour",
+    wild: () => "standard",
     wildDraw4: () => "drawFour",
   };
 
+  // Standard Eins uses only the plain Wild and Wild Draw Four faces.
+  // drawUntilColour and drawTwo are reserved for the Flip variant.
   const WILD_FILES = {
-    wild: "drawUntilColour",
+    wild: "standard",
     wildDraw4: "drawFour",
   };
 
