@@ -1,4 +1,4 @@
-/* Standard Eins user interface and local multiplayer controller. */
+/* Shared Standard Eins / Eins Flip local multiplayer controller. */
 (() => {
   "use strict";
 
@@ -13,10 +13,6 @@
   }
 
   const selectedVariant = params.get("variant") || launchConfig.variant || "eins";
-  if (selectedVariant === "flip") {
-    showNotice("Eins Flip is not part of this build yet", "The shared card renderer and rules foundation are being built first. Standard Eins is the playable version in this build.");
-    return;
-  }
   if (params.get("online") === "1") {
     showNotice("Online play is not available in this build", "This rebuild starts with local play. Online support will be added after the Standard and Flip game logic has been stabilised.");
     return;
@@ -36,7 +32,7 @@
     catch { return []; }
   })();
 
-  const config = { ...launchConfig, ...(launchConfig.options || {}) };
+  const config = { ...launchConfig, ...(launchConfig.options || {}), variant: selectedVariant };
   if (!Array.isArray(config.players) || !config.players.length) {
     const firstProfile = profiles[0] || {};
     config.players = [
@@ -47,11 +43,16 @@
     ];
   }
 
-  let game = new window.EinsRules.EinsGame(config);
+  const GameClass = selectedVariant === "flip" ? window.EinsRules.EinsFlipGame : window.EinsRules.EinsGame;
+  let game = new GameClass(config);
   let selectedCardId = null;
   let aiTimer = null;
   let blackoutTimer = null;
   let lastTurnPlayer = null;
+  let einsTimerTimeout = null;
+  let einsTimerInterval = null;
+  let einsTimerDeadline = 0;
+  let einsTimerKey = null;
 
   const humanCount = game.players.filter((player) => player.type === "human").length;
   const optionText = [
@@ -59,6 +60,10 @@
     `Draw Until Playable: ${game.options.drawUntilPlayable ? "On" : "Off"}`,
   ];
   $("optionSummary").textContent = optionText.join(" · ") + ". These options are set before the game starts.";
+  $("gameTitle").textContent = selectedVariant === "flip" ? "Eins Flip" : "Standard Eins";
+  $("rulesText").textContent = selectedVariant === "flip"
+    ? "112 double-sided cards. Start on the Light Side; Flip cards turn over the draw pile, discard pile, and every hand. Light actions: Draw One, Skip, Reverse, Flip, Wild, and Wild Draw Two. Dark actions: Draw Five, Skip Everyone, Reverse, Flip, Wild, and Wild Draw Colour."
+    : "Standard 108-card deck, seven cards per player, matching by colour or symbol, plain Wild, Wild Draw Four, Skip, Reverse, and Draw Two. Optional stacking and Draw Until Playable are configured before the game. Draw penalties are collected one card per click.";
   $("backBtn").addEventListener("click", () => { window.location.href = "../index.html"; });
 
   function playerName(index) {
@@ -67,6 +72,51 @@
 
   function isHumanTurn() {
     return !game.isFinished && game.players[game.currentPlayer]?.type === "human";
+  }
+
+  function stopEinsTimer() {
+    window.clearTimeout(einsTimerTimeout);
+    window.clearInterval(einsTimerInterval);
+    einsTimerTimeout = null;
+    einsTimerInterval = null;
+    einsTimerDeadline = 0;
+    einsTimerKey = null;
+  }
+
+  function updateEinsTimerDisplay() {
+    const remaining = Math.max(0, einsTimerDeadline - Date.now());
+    $("callEinsBtn").textContent = `Call EINS (${(remaining / 1000).toFixed(1)}s)`;
+    $("einsTimerBar").style.width = `${Math.min(100, (remaining / 2000) * 100)}%`;
+  }
+
+  function syncEinsTimer() {
+    const active = game.phase === "callEins" && Boolean(game.pendingEffect);
+    const human = isHumanTurn();
+    $("einsTimerPanel").classList.toggle("hidden", !active || !human);
+    $("callEinsBtn").classList.toggle("hidden", !active || !human);
+    if (!active) {
+      if (einsTimerKey !== null) stopEinsTimer();
+      return;
+    }
+
+    const key = `${game.pendingEffect.playerIndex}:${game.pendingEffect.card.id}`;
+    if (einsTimerKey !== key) {
+      stopEinsTimer();
+      einsTimerKey = key;
+      einsTimerDeadline = Date.now() + 2000;
+      einsTimerTimeout = window.setTimeout(() => {
+        if (einsTimerKey !== key || game.phase !== "callEins") return;
+        const playerIndex = game.currentPlayer;
+        stopEinsTimer();
+        if (game.skipEinsCall(playerIndex)) {
+          selectedCardId = null;
+          render();
+          runAI();
+        }
+      }, 2000);
+      einsTimerInterval = window.setInterval(updateEinsTimerDisplay, 50);
+    }
+    updateEinsTimerDisplay();
   }
 
   function startTurnBlackoutIfNeeded() {
@@ -104,11 +154,12 @@
   function currentMessage() {
     const name = playerName(game.currentPlayer);
     if (game.isFinished) return game.isDraw ? "The round is a draw because no more playable cards or draw cards remain." : `${playerName(game.winner)} wins this game.`;
-    if (game.phase === "callEins") return `${name} has one card left. Call EINS before continuing.`;
+    if (game.phase === "callEins") return `${name} has one card left. They have two seconds to call EINS.`;
     if (game.phase === "chooseColor") return `${name} must choose the colour for the Wild card.`;
     if (game.phase === "catchPenalty") return `${playerName(game.catchTarget)} must receive ${game.catchRemaining} more catch-penalty card${game.catchRemaining === 1 ? "" : "s"}.`;
     if (game.missedUnoPlayer !== null && game.missedUnoPlayer !== game.currentPlayer) return `${name} may catch ${playerName(game.missedUnoPlayer)} for not calling EINS, or continue the turn.`;
-    if (game.pendingPenalty > 0) {
+    if (game.hasPendingPenalty()) {
+      if (game.pendingPenaltyType === "wildDrawColor") return `${name} must draw until they find ${game.pendingDrawColor}, one card at a time.`;
       const canStack = game.options.stacking && !game.penaltyDrawStarted && game.playableCards().length > 0;
       if (game.penaltyDrawStarted) {
         return `${name} must finish drawing the ${game.pendingPenalty} remaining penalty card${game.pendingPenalty === 1 ? "" : "s"}, one click at a time.`;
@@ -126,14 +177,16 @@
   function render() {
     startTurnBlackoutIfNeeded();
     renderPlayers();
-    $("roundInfo").textContent = `Round ${game.roundNumber} · ${game.players.length} players`;
+    $("roundInfo").textContent = `Round ${game.roundNumber} · ${game.players.length} players${game.variant === "flip" ? ` · ${game.sideName}` : ""}`;
     $("tableCaption").textContent = currentMessage();
-    $("activeColour").textContent = game.currentColor || "—";
+    $("activeColour").textContent = game.currentColor ? (window.EinsCards.COLOR_LABELS[game.currentColor] || game.currentColor) : "Choose a colour";
     $("directionLabel").textContent = game.direction === 1 ? "Clockwise" : "Counter-clockwise";
-    $("drawPile").innerHTML = window.EinsCards.renderBack({ cover: "standard" });
-    // Always pass the active colour so a Wild on top is recoloured after
-    // either a Wild choice or a subsequent coloured card.
-    $("discardPile").innerHTML = window.EinsCards.renderCard(game.topCard, {
+    $("tableSurface").classList.toggle("flip-dark", game.variant === "flip" && game.side === "dark");
+    $("drawPile").innerHTML = window.EinsCards.renderBack({ variant: game.variant, side: game.side });
+    const visibleTop = game.topCard ? { ...game.face(game.topCard), id: game.topCard.id } : null;
+    $("discardPile").innerHTML = window.EinsCards.renderCard(visibleTop, {
+      variant: game.variant,
+      side: game.side,
       activeColor: game.currentColor,
       disabled: true,
     });
@@ -146,10 +199,15 @@
     const playableIds = new Set(game.playableCards().map((card) => card.id));
     $("handTitle").textContent = human ? `${playerName(game.currentPlayer)}'s hand` : (game.isFinished ? "Game complete" : "Computer hand");
     if (human) {
-      $("hand").innerHTML = activeHand.map((card) => window.EinsCards.renderCard(card, {
-        selected: selectedCardId === card.id,
-        disabled: !playableIds.has(card.id),
-      })).join("");
+      $("hand").innerHTML = activeHand.map((card) => window.EinsCards.renderCard(
+        { ...game.face(card), id: card.id },
+        {
+          variant: game.variant,
+          side: game.side,
+          selected: selectedCardId === card.id,
+          disabled: !playableIds.has(card.id),
+        },
+      )).join("");
     } else {
       $("hand").innerHTML = game.isFinished
         ? `<div class="note">${escapeHTML(playerName(game.winner))} has won the game.</div>`
@@ -160,10 +218,12 @@
       ? "Start another game from the controls."
       : !human
         ? "The computer is taking its turn."
-        : game.pendingPenalty > 0
-          ? game.penaltyDrawStarted
-            ? "Finish drawing the penalty one card at a time; stacking is no longer available this turn."
-            : "Draw the penalty one card at a time, or stack a matching draw card before drawing starts."
+        : game.hasPendingPenalty()
+          ? game.pendingPenaltyType === "wildDrawColor"
+            ? `Draw one card at a time until you find ${game.pendingDrawColor}.`
+            : game.penaltyDrawStarted
+              ? "Finish drawing the penalty one card at a time; stacking is no longer available this turn."
+              : "Draw the penalty one card at a time, or stack a matching draw card before drawing starts."
           : game.turnDraw?.status === "mustDraw"
             ? "Draw one card at a time until a playable card appears."
             : game.turnDraw?.status === "playable"
@@ -177,17 +237,21 @@
     $("playBtn").classList.toggle("hidden", !human || game.phase !== "play");
     $("playBtn").disabled = !selectedIsPlayable;
     $("drawBtn").classList.toggle("hidden", !human || game.phase !== "play" || !game.canDraw());
-    $("drawBtn").textContent = game.pendingPenalty > 0
-      ? `Draw Penalty (${game.pendingPenalty} left)`
-      : game.turnDraw?.status === "mustDraw" ? "Draw Another Card" : "Draw One Card";
+    $("drawBtn").textContent = game.pendingPenaltyType === "wildDrawColor"
+      ? `Draw Until ${window.EinsCards.COLOR_LABELS[game.pendingDrawColor] || game.pendingDrawColor}`
+      : game.pendingPenalty > 0
+        ? `Draw Penalty (${game.pendingPenalty} left)`
+        : game.turnDraw?.status === "mustDraw" ? "Draw Another Card" : "Draw One Card";
     $("passBtn").classList.toggle("hidden", !human || !game.canPass());
     $("catchBtn").classList.toggle("hidden", !human || game.phase !== "play" || game.missedUnoPlayer === null || game.missedUnoPlayer === game.currentPlayer);
     $("catchBtn").textContent = game.missedUnoPlayer === null ? "Catch EINS (+2)" : `Catch ${playerName(game.missedUnoPlayer)} (+2)`;
     $("catchDrawBtn").classList.toggle("hidden", !human || game.phase !== "catchPenalty");
     $("catchDrawBtn").textContent = `Add One Penalty Card (${game.catchRemaining} left)`;
-    $("callEinsBtn").classList.toggle("hidden", !human || game.phase !== "callEins");
-    $("skipCallBtn").classList.toggle("hidden", !human || game.phase !== "callEins");
+    $("colourChoices").innerHTML = game.availableColors.map((color) =>
+      `<button class="colour-choice" data-colour="${escapeHTML(color)}" aria-label="Choose ${escapeHTML(color)}" title="${escapeHTML(window.EinsCards.COLOR_LABELS[color] || color)}"></button>`
+    ).join("");
     $("colourChoices").classList.toggle("hidden", !human || game.phase !== "chooseColor");
+    syncEinsTimer();
     $("turnActions").classList.toggle("hidden", !human || game.isFinished);
 
     if (game.isFinished) {
@@ -201,6 +265,7 @@
   }
 
   function doHumanAction(action) {
+    if (game.phase === "callEins") stopEinsTimer();
     const result = action();
     selectedCardId = null;
     render();
@@ -216,7 +281,7 @@
       if (game.phase === "callEins") {
         game.callEins(playerIndex);
       } else if (game.phase === "chooseColor") {
-        const colour = window.EinsAI.chooseColour(game.hands[playerIndex]);
+        const colour = window.EinsAI.chooseColour(game, game.hands[playerIndex]);
         game.chooseColor(colour, playerIndex);
       } else if (game.phase === "catchPenalty") {
         game.drawCatchCard();
@@ -227,7 +292,7 @@
           const stack = window.EinsAI.chooseStackCard(game, playerIndex);
           if (stack) {
             game.playCard(playerIndex, stack.id);
-          } else if (game.pendingPenalty > 0) {
+          } else if (game.hasPendingPenalty()) {
             game.drawOne(playerIndex);
           } else {
             const chosen = window.EinsAI.chooseCard(game, playerIndex);
@@ -265,7 +330,6 @@
   $("catchBtn").addEventListener("click", () => doHumanAction(() => game.catchEins()));
   $("catchDrawBtn").addEventListener("click", () => doHumanAction(() => game.drawCatchCard()));
   $("callEinsBtn").addEventListener("click", () => doHumanAction(() => game.callEins()));
-  $("skipCallBtn").addEventListener("click", () => doHumanAction(() => game.skipEinsCall()));
   $("colourChoices").addEventListener("click", (event) => {
     const button = event.target.closest("[data-colour]");
     if (!button) return;
@@ -275,15 +339,17 @@
   $("newGameBtn").addEventListener("click", () => {
     window.clearTimeout(aiTimer);
     window.clearTimeout(blackoutTimer);
+    stopEinsTimer();
     $("blackout").classList.add("hidden");
     selectedCardId = null;
     lastTurnPlayer = null;
-    game = new window.EinsRules.EinsGame(config);
+    game = new GameClass(config);
     render();
     runAI();
   });
 
   $("nextRoundBtn").addEventListener("click", () => {
+    stopEinsTimer();
     if (!game.startNextRound()) return;
     selectedCardId = null;
     lastTurnPlayer = null;
