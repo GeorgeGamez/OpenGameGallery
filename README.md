@@ -4,8 +4,6 @@ This game is still in very early development. Many features may be broken or rem
 Currently, only chess and draughts available, as the project just started.
 In the future, more games are planned, such as hex, rummy and backgammon.
 
-# The Online System is Currently Broken. A Fix is in the Works.
-
 ## Released Game List
 ### Chess
 Standard  
